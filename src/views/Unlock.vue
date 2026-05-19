@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores'
+import { invoke } from '@tauri-apps/api/core'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
@@ -10,20 +11,44 @@ const password = ref('')
 const error = ref('')
 const biometricFailed = ref(false)
 
-function handleSubmit() {
+onMounted(async () => {
+  await settingsStore.checkSetup()
+  if (!settingsStore.isSetup) {
+    router.replace('/setup')
+  }
+})
+
+async function handleSubmit() {
   if (password.value.length !== 6) {
     error.value = '请输入6位密码'
     return
   }
-  
-  // TODO: Verify password
-  settingsStore.unlock()
-  router.replace('/')
+
+  try {
+    const valid = await settingsStore.verifyPassword(password.value)
+    if (valid) {
+      settingsStore.unlock()
+      router.replace('/')
+    } else {
+      error.value = '密码错误'
+    }
+  } catch {
+    error.value = '验证失败，请重试'
+  }
 }
 
-function useBiometric() {
-  // TODO: Implement biometric authentication
-  biometricFailed.value = true
+async function useBiometric() {
+  try {
+    const success = await invoke('biometric_auth', { reason: '解锁 openOTP' })
+    if (success) {
+      settingsStore.unlock()
+      router.replace('/')
+    } else {
+      biometricFailed.value = true
+    }
+  } catch {
+    biometricFailed.value = true
+  }
 }
 </script>
 

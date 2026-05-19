@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { useSettingsStore } from '@/stores'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -24,6 +25,22 @@ const router = createRouter({
       component: () => import('@/views/Settings.vue')
     }
   ]
+})
+
+router.beforeEach((to, _from, next) => {
+  const settingsStore = useSettingsStore()
+
+  if (!settingsStore.isSetup && to.name !== 'setup') {
+    next({ name: 'setup' })
+    return
+  }
+
+  if (settingsStore.isLocked && to.name !== 'unlock' && to.name !== 'setup') {
+    next({ name: 'unlock' })
+    return
+  }
+
+  next()
 })
 
 export default router

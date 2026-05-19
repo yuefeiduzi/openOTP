@@ -12,7 +12,7 @@ const passwordHint = ref('')
 const enableBiometric = ref(true)
 const error = ref('')
 
-function handleSubmit() {
+async function handleSubmit() {
   if (password.value.length !== 6) {
     error.value = '密码必须是6位数字'
     return
@@ -21,14 +21,19 @@ function handleSubmit() {
     error.value = '两次密码不一致'
     return
   }
-  
-  // TODO: Store encrypted password
-  settingsStore.updateSettings({ 
-    passwordHint: passwordHint.value,
-    biometricEnabled: enableBiometric.value 
-  })
-  settingsStore.completeSetup()
-  router.replace('/')
+
+  try {
+    settingsStore.updateSettings({
+      passwordHint: passwordHint.value,
+      biometricEnabled: enableBiometric.value
+    })
+    await settingsStore.savePassword(password.value)
+    await settingsStore.saveSettings()
+    settingsStore.completeSetup()
+    router.replace('/')
+  } catch (e) {
+    error.value = '设置失败，请重试'
+  }
 }
 </script>
 
