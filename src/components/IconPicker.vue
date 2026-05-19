@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { AccountIcon } from '@/types'
+import type { AccountIcon, IconType } from '@/types'
 import { getInitialStyle } from '@/utils/icons'
 
 const props = defineProps<{
@@ -27,7 +27,7 @@ const COLORS = [
   '#BB8FCE', '#85C1E9', '#F8C471', '#E59866',
 ]
 
-const activeTab = ref<'emoji' | 'initial' | 'image'>(props.modelValue.type || 'emoji')
+const activeTab = ref<IconType>(props.modelValue.type || 'emoji')
 const localIcon = ref<AccountIcon>({ ...props.modelValue })
 const fileInput = ref<HTMLInputElement | null>(null)
 

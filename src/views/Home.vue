@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAccountStore } from '@/stores'
 import type { Account } from '@/types'
@@ -21,8 +21,41 @@ const editingAccount = ref<Account | null>(null)
 const copiedCode = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
-onMounted(() => {
-  accountStore.loadAccounts()
+const dragIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
+
+function byOrder(a: Account, b: Account): number {
+  return a.order - b.order
+}
+
+const totpSorted = computed(() =>
+  accountStore.accounts.filter(a => a.type === 'totp').sort(byOrder)
+)
+const hotpSorted = computed(() =>
+  accountStore.accounts.filter(a => a.type === 'hotp').sort(byOrder)
+)
+
+const displayedAccounts = ref<Account[]>([])
+
+function syncDisplayed() {
+  displayedAccounts.value = activeTab.value === 'totp'
+    ? [...totpSorted.value]
+    : [...hotpSorted.value]
+}
+
+watch(activeTab, () => {
+  syncDisplayed()
+})
+
+watch([totpSorted, hotpSorted], () => {
+  if (dragIndex.value === null) {
+    syncDisplayed()
+  }
+}, { deep: true })
+
+onMounted(async () => {
+  await accountStore.loadAccounts()
+  syncDisplayed()
 })
 
 function goToSettings() {
@@ -55,6 +88,46 @@ function confirmDelete() {
 function handleEdit(account: Account) {
   editingAccount.value = account
   showEdit.value = true
+}
+
+function onDragStart(index: number, event: DragEvent) {
+  dragIndex.value = index
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(index))
+  }
+}
+
+function onDragOver(index: number, event: DragEvent) {
+  event.preventDefault()
+  if (dragIndex.value === null || dragIndex.value === index) return
+  event.dataTransfer!.dropEffect = 'move'
+
+  dragOverIndex.value = index
+
+  const items = [...displayedAccounts.value]
+  const dragged = items.splice(dragIndex.value, 1)[0]
+  items.splice(index, 0, dragged)
+  displayedAccounts.value = items
+  dragIndex.value = index
+}
+
+function onDragLeave() {
+  dragOverIndex.value = null
+}
+
+function onDrop(event: DragEvent) {
+  event.preventDefault()
+  dragOverIndex.value = null
+}
+
+function onDragEnd() {
+  if (dragIndex.value === null) return
+
+  const orderedIds = displayedAccounts.value.map(a => a.id)
+  accountStore.reorderAccounts(activeTab.value, orderedIds)
+  dragIndex.value = null
+  dragOverIndex.value = null
 }
 
 function handleAddAccount(data: Partial<Account>) {
@@ -110,30 +183,37 @@ function handleEditSave(data: Partial<Account>) {
     </div>
 
     <div class="account-list">
-      <div v-if="activeTab === 'totp'">
-        <p v-if="accountStore.totpAccounts.length === 0" class="empty">
-          No TOTP accounts
-        </p>
+      <p v-if="displayedAccounts.length === 0" class="empty">
+        No {{ activeTab.toUpperCase() }} accounts
+      </p>
+      <div
+        v-for="(account, index) in displayedAccounts"
+        :key="account.id"
+        class="account-wrapper"
+        :class="{
+          dragging: dragIndex === index,
+          'drag-over': dragOverIndex === index,
+        }"
+        draggable="true"
+        @dragstart="onDragStart(index, $event)"
+        @dragover="onDragOver(index, $event)"
+        @dragleave="onDragLeave"
+        @drop="onDrop"
+        @dragend="onDragEnd"
+      >
+        <div
+          v-if="dragOverIndex === index && dragIndex !== null && dragIndex > index"
+          class="drop-indicator drop-before"
+        />
         <AccountCard
-          v-for="account in accountStore.totpAccounts"
-          :key="account.id"
           :account="account"
           @copy="handleCopy"
           @delete="handleDelete(account)"
           @refresh="handleEdit(account)"
         />
-      </div>
-      <div v-else>
-        <p v-if="accountStore.hotpAccounts.length === 0" class="empty">
-          No HOTP accounts
-        </p>
-        <AccountCard
-          v-for="account in accountStore.hotpAccounts"
-          :key="account.id"
-          :account="account"
-          @copy="handleCopy"
-          @delete="handleDelete(account)"
-          @refresh="handleEdit(account)"
+        <div
+          v-if="dragOverIndex === index && dragIndex !== null && dragIndex < index"
+          class="drop-indicator drop-after"
         />
       </div>
     </div>
@@ -250,5 +330,37 @@ function handleEditSave(data: Partial<Account>) {
   font-size: 13px;
   z-index: 300;
   pointer-events: none;
+}
+
+.account-wrapper {
+  position: relative;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.account-wrapper.dragging {
+  opacity: 0.4;
+}
+
+.account-wrapper.drag-over {
+  transform: scale(1.02);
+}
+
+.drop-indicator {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: #4a90d9;
+  border-radius: 2px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.drop-before {
+  top: -1px;
+}
+
+.drop-after {
+  bottom: -1px;
 }
 </style>

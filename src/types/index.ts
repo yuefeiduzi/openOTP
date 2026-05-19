@@ -1,5 +1,7 @@
+export type IconType = 'emoji' | 'image' | 'initial' | 'preset'
+
 export interface AccountIcon {
-  type: 'emoji' | 'image' | 'initial'
+  type: IconType
   value: string
   bgColor: string
 }

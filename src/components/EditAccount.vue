@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { Account, AccountIcon } from '@/types'
+import type { Account, AccountIcon, IconType } from '@/types'
 
 const props = defineProps<{
   visible: boolean
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 const editName = ref('')
 const editIssuer = ref('')
 const showIconEditor = ref(false)
-const iconType = ref<'emoji' | 'initial'>('emoji')
+const iconType = ref<IconType>('emoji')
 const emojiValue = ref('')
 const bgColor = ref('')
 

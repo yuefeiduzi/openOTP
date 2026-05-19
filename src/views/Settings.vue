@@ -2,10 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
-import { useSettingsStore } from '@/stores'
+import { save, open } from '@tauri-apps/plugin-dialog'
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { useSettingsStore, useAccountStore } from '@/stores'
+import { createBackup, restoreBackup } from '@/utils/backup'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
+const accountStore = useAccountStore()
 
 const showPasswordModal = ref(false)
 const passwordStep = ref<'verify' | 'change'>('verify')
@@ -15,6 +19,13 @@ const confirmNewPassword = ref('')
 const passwordError = ref('')
 const passwordSuccess = ref('')
 const passwordHash = ref('')
+
+const showBackupModal = ref(false)
+const backupMode = ref<'export' | 'import'>('export')
+const backupPassword = ref('')
+const backupConfirmPassword = ref('')
+const backupMessage = ref('')
+const backupError = ref('')
 
 const editingHint = ref(false)
 const hintValue = ref('')
@@ -176,14 +187,101 @@ async function submitNewPassword() {
   }
 }
 
+function openBackupExport() {
+  backupMode.value = 'export'
+  backupPassword.value = ''
+  backupConfirmPassword.value = ''
+  backupMessage.value = ''
+  backupError.value = ''
+  showBackupModal.value = true
+}
+
+function openBackupImport() {
+  backupMode.value = 'import'
+  backupPassword.value = ''
+  backupConfirmPassword.value = ''
+  backupMessage.value = ''
+  backupError.value = ''
+  showBackupModal.value = true
+}
+
+function closeBackupModal() {
+  showBackupModal.value = false
+}
+
+async function confirmBackupExport() {
+  backupError.value = ''
+  backupMessage.value = ''
+
+  if (!backupPassword.value || backupPassword.value.length < 6) {
+    backupError.value = '密码至少6位字符'
+    return
+  }
+  if (backupPassword.value !== backupConfirmPassword.value) {
+    backupError.value = '两次密码不一致'
+    return
+  }
+
+  try {
+    const filePath = await save({
+      defaultPath: 'openotp-backup.openotp',
+      filters: [{ name: 'openOTP Backup', extensions: ['openotp'] }],
+    })
+
+    if (!filePath) {
+      closeBackupModal()
+      return
+    }
+
+    const json = await createBackup(accountStore.accounts, backupPassword.value)
+    await writeTextFile(filePath, json)
+    backupMessage.value = '导出成功'
+    setTimeout(() => closeBackupModal(), 1500)
+  } catch (err) {
+    backupError.value = `导出失败：${String(err)}`
+  }
+}
+
+async function confirmBackupImport() {
+  backupError.value = ''
+  backupMessage.value = ''
+
+  if (!backupPassword.value) {
+    backupError.value = '请输入备份密码'
+    return
+  }
+
+  try {
+    const filePath = await open({
+      filters: [{ name: 'openOTP Backup', extensions: ['openotp'] }],
+      multiple: false,
+    })
+
+    if (!filePath) {
+      closeBackupModal()
+      return
+    }
+
+    const fileContent = await readTextFile(filePath)
+    const { manifest, accounts } = await restoreBackup(fileContent, backupPassword.value)
+
+    for (const account of accounts) {
+      accountStore.addAccount(account)
+    }
+
+    backupMessage.value = `成功导入 ${manifest.accountCount} 个账户`
+    setTimeout(() => closeBackupModal(), 2000)
+  } catch (err) {
+    backupError.value = `导入失败：${String(err)}`
+  }
+}
+
 function exportBackup() {
-  // TODO: Implement export with Tauri file dialog
-  alert('备份功能即将推出')
+  openBackupExport()
 }
 
 function importBackup() {
-  // TODO: Implement import with Tauri file dialog
-  alert('导入功能即将推出')
+  openBackupImport()
 }
 
 function lockApp() {
@@ -329,6 +427,58 @@ function goBack() {
         <p class="about-line">openOTP v0.1.0</p>
         <p class="about-line">开源地址：github.com/openotp/openotp</p>
       </section>
+    </div>
+
+    <div v-if="showBackupModal" class="modal-overlay" @click.self="closeBackupModal">
+      <div class="modal">
+        <h3 class="modal-title">{{ backupMode === 'export' ? '导出备份' : '导入备份' }}</h3>
+
+        <template v-if="backupMode === 'export'">
+          <div class="form-group">
+            <label>设置备份密码</label>
+            <input
+              v-model="backupPassword"
+              type="password"
+              placeholder="至少6位字符"
+              class="form-input"
+            />
+          </div>
+          <div class="form-group">
+            <label>确认备份密码</label>
+            <input
+              v-model="backupConfirmPassword"
+              type="password"
+              placeholder="请再次输入"
+              class="form-input"
+            />
+          </div>
+        </template>
+
+        <template v-if="backupMode === 'import'">
+          <div class="form-group">
+            <label>备份密码</label>
+            <input
+              v-model="backupPassword"
+              type="password"
+              placeholder="输入备份时设置的密码"
+              class="form-input"
+            />
+          </div>
+        </template>
+
+        <p v-if="backupError" class="form-error">{{ backupError }}</p>
+        <p v-if="backupMessage" class="form-success">{{ backupMessage }}</p>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" @click="closeBackupModal">取消</button>
+          <button
+            class="btn btn-primary"
+            @click="backupMode === 'export' ? confirmBackupExport() : confirmBackupImport()"
+          >
+            {{ backupMode === 'export' ? '导出' : '导入' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-if="showPasswordModal" class="modal-overlay" @click.self="closePasswordModal">

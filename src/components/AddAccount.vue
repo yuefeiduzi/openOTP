@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import type { Account, AccountIcon } from '@/types'
 import { parseOtpauthUrl } from '@/utils/otp'
 import { getRandomBgColor } from '@/utils/icons'
+import jsQR from 'jsqr'
 
 const props = defineProps<{
   visible: boolean
@@ -25,6 +26,11 @@ const manualType = ref<'totp' | 'hotp'>('totp')
 const manualAlgorithm = ref<'sha1' | 'sha256' | 'sha512'>('sha1')
 const manualDigits = ref<6 | 7 | 8>(6)
 const manualPeriod = ref(30)
+
+const qrImageUrl = ref<string | null>(null)
+const qrScanning = ref(false)
+const qrError = ref('')
+const qrResult = ref('')
 
 const parsedPreview = computed(() => {
   if (!otpauthUrl.value.trim()) {
@@ -54,8 +60,97 @@ watch(() => props.visible, (val) => {
     manualAlgorithm.value = 'sha1'
     manualDigits.value = 6
     manualPeriod.value = 30
+    qrImageUrl.value = null
+    qrScanning.value = false
+    qrError.value = ''
+    qrResult.value = ''
   }
 })
+
+async function selectQrImage() {
+  qrError.value = ''
+  qrResult.value = ''
+
+  try {
+    const { open } = await import('@tauri-apps/plugin-dialog')
+    const filePath = await open({
+      title: '选择二维码图片',
+      filters: [{
+        name: 'Images',
+        extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']
+      }]
+    })
+
+    if (!filePath) return
+
+    qrScanning.value = true
+
+    const { readFile } = await import('@tauri-apps/plugin-fs')
+    const bytes = await readFile(filePath)
+
+    const ext = filePath.split('.').pop()?.toLowerCase() || 'png'
+    const mimeMap: Record<string, string> = {
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+      bmp: 'image/bmp',
+      webp: 'image/webp'
+    }
+    const mime = mimeMap[ext] || 'image/png'
+
+    if (qrImageUrl.value) {
+      URL.revokeObjectURL(qrImageUrl.value)
+    }
+
+    const blob = new Blob([bytes], { type: mime })
+    qrImageUrl.value = URL.createObjectURL(blob)
+
+    await nextTick()
+    await decodeQr()
+  } catch (e) {
+    qrError.value = e instanceof Error ? e.message : '选择文件失败'
+  } finally {
+    qrScanning.value = false
+  }
+}
+
+function decodeQr(): Promise<void> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        qrError.value = '无法创建画布'
+        resolve()
+        return
+      }
+
+      canvas.width = img.width
+      canvas.height = img.height
+      ctx.drawImage(img, 0, 0)
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const code = jsQR(imageData.data, imageData.width, imageData.height)
+
+      if (code) {
+        qrResult.value = code.data
+        otpauthUrl.value = code.data
+        qrError.value = ''
+        activeTab.value = 'url'
+      } else {
+        qrError.value = '未识别到二维码，请尝试更清晰的图片'
+      }
+      resolve()
+    }
+    img.onerror = () => {
+      qrError.value = '图片加载失败'
+      resolve()
+    }
+    img.src = qrImageUrl.value!
+  })
+}
 
 function handleCancel() {
   emit('close')
@@ -124,6 +219,12 @@ function useParsedData() {
 
       <div class="tab-bar">
         <button
+          :class="['tab-btn', { active: activeTab === 'qr' }]"
+          @click="activeTab = 'qr'; manualMode = false"
+        >
+          扫描二维码
+        </button>
+        <button
           :class="['tab-btn', { active: activeTab === 'url' }]"
           @click="activeTab = 'url'; manualMode = false"
         >
@@ -135,6 +236,33 @@ function useParsedData() {
         >
           手动输入
         </button>
+      </div>
+
+      <div v-if="!manualMode && activeTab === 'qr'" class="qr-section">
+        <div v-if="!qrImageUrl" class="qr-placeholder">
+          <button class="scan-btn" @click="selectQrImage" :disabled="qrScanning">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="4" y="4" width="16" height="16" rx="3" stroke="#999" stroke-width="2.5"/>
+              <rect x="28" y="4" width="16" height="16" rx="3" stroke="#999" stroke-width="2.5"/>
+              <rect x="4" y="28" width="16" height="16" rx="3" stroke="#999" stroke-width="2.5"/>
+              <rect x="36" y="36" width="8" height="8" rx="2" stroke="#999" stroke-width="2.5"/>
+              <rect x="28" y="36" width="4" height="8" rx="1.5" fill="#999"/>
+            </svg>
+            <span class="scan-label">{{ qrScanning ? '处理中...' : '点击选择二维码图片' }}</span>
+          </button>
+        </div>
+
+        <div v-if="qrImageUrl" class="qr-preview">
+          <img :src="qrImageUrl" alt="QR preview" class="qr-preview-img" />
+          <div v-if="qrScanning" class="qr-status">正在识别...</div>
+          <div v-if="qrResult && !qrScanning" class="qr-success">
+            已识别，已填入 URL 输入框
+          </div>
+          <div v-if="qrError" class="qr-fail">{{ qrError }}</div>
+          <button v-if="qrError" class="scan-btn retry" @click="selectQrImage">
+            重新选择
+          </button>
+        </div>
       </div>
 
       <div v-if="!manualMode && activeTab === 'url'" class="url-section">
@@ -252,7 +380,7 @@ function useParsedData() {
   background: #fff;
   border-radius: 12px;
   padding: 20px;
-  width: 400px;
+  width: 420px;
   max-width: 90vw;
   max-height: 90vh;
   overflow-y: auto;
@@ -283,11 +411,12 @@ function useParsedData() {
   padding: 8px 0;
   border: none;
   background: transparent;
-  font-size: 13px;
+  font-size: 12px;
   color: #666;
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 
 .tab-btn.active {
@@ -295,6 +424,90 @@ function useParsedData() {
   color: #333;
   font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+}
+
+.qr-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.scan-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 48px;
+  border: 2px dashed #ddd;
+  border-radius: 12px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.scan-btn:hover {
+  border-color: #4A90D9;
+  background: #f0f6ff;
+}
+
+.scan-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.scan-label {
+  font-size: 14px;
+  color: #888;
+}
+
+.qr-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.qr-preview-img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.qr-status {
+  font-size: 13px;
+  color: #888;
+}
+
+.qr-success {
+  font-size: 13px;
+  color: #4CAF50;
+}
+
+.qr-fail {
+  font-size: 13px;
+  color: #F44336;
+}
+
+.scan-btn.retry {
+  padding: 8px 20px;
+  font-size: 13px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #666;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.scan-btn.retry:hover {
+  background: #f5f5f5;
 }
 
 .field-group {

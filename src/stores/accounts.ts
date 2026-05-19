@@ -57,6 +57,17 @@ export const useAccountStore = defineStore('accounts', () => {
     }
   }
 
+  function reorderAccounts(type: 'totp' | 'hotp', orderedIds: string[]) {
+    let order = 0
+    for (const id of orderedIds) {
+      const account = accounts.value.find(a => a.id === id)
+      if (account && account.type === type) {
+        account.order = order++
+      }
+    }
+    persistAccounts()
+  }
+
   async function persistAccounts(): Promise<void> {
     try {
       await invoke('save_account', { account: accounts.value })
@@ -73,6 +84,7 @@ export const useAccountStore = defineStore('accounts', () => {
     addAccount,
     removeAccount,
     updateAccount,
+    reorderAccounts,
     persistAccounts
   }
 })
