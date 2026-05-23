@@ -31,7 +31,7 @@ base64 = "0.22"
 hex = "0.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "3"
+apple-localauthentication = "0.3"
 
 [target.'cfg(target_os = "android")'.dependencies]
 tauri-plugin-biometric = "2"

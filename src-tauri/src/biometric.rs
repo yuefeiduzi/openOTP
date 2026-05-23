@@ -23,7 +23,14 @@ pub struct BiometricStatusResponse {
 pub fn is_biometric_available() -> bool {
     #[cfg(target_os = "macos")]
     {
-        true
+        use localauthentication::LAContext;
+        if let Ok(context) = LAContext::new() {
+            context
+                .can_evaluate_policy(localauthentication::LAPolicy::DeviceOwnerAuthenticationWithBiometrics)
+                .unwrap_or(false)
+        } else {
+            false
+        }
     }
     #[cfg(target_os = "android")]
     {
@@ -38,7 +45,18 @@ pub fn is_biometric_available() -> bool {
 pub fn get_biometric_type() -> String {
     #[cfg(target_os = "macos")]
     {
-        "touchid".to_string()
+        use localauthentication::LAContext;
+        if let Ok(context) = LAContext::new() {
+            if let Ok(biometry_type) = context.biometry_type() {
+                return match biometry_type {
+                    localauthentication::BiometryType::FaceId => "faceid",
+                    localauthentication::BiometryType::TouchId => "touchid",
+                    _ => "none",
+                }
+                .to_string();
+            }
+        }
+        "none".to_string()
     }
     #[cfg(target_os = "android")]
     {
@@ -52,7 +70,7 @@ pub fn get_biometric_type() -> String {
 
 pub fn authenticate(app: &AppHandle, reason: &str) -> Result<bool, BiometricError> {
     let mut status = BiometricStatus::load(app);
-    
+
     if !status.can_use() {
         return Err(BiometricError::LockedOut);
     }
@@ -70,14 +88,9 @@ pub fn authenticate(app: &AppHandle, reason: &str) -> Result<bool, BiometricErro
     }
     #[cfg(target_os = "android")]
     {
-        authenticate_android(reason).map(|success| {
-            if success {
-                status.reset();
-            } else {
-                status.record_failure();
-            }
-            success
-        })
+        Err(BiometricError::SystemError(
+            "Android biometric not yet integrated".into(),
+        ))
     }
     #[cfg(not(any(target_os = "macos", target_os = "android")))]
     {
@@ -100,13 +113,22 @@ pub fn reset_failures(app: &AppHandle) {
 }
 
 #[cfg(target_os = "macos")]
-fn authenticate_macos(_reason: &str) -> Result<bool, BiometricError> {
-    Ok(true)
-}
+fn authenticate_macos(reason: &str) -> Result<bool, BiometricError> {
+    use localauthentication::{LAContext, LAPolicy, LAError};
 
-#[cfg(target_os = "android")]
-fn authenticate_android(_reason: &str) -> Result<bool, BiometricError> {
-    Err(BiometricError::SystemError("Android biometric not yet integrated".into()))
+    let context = LAContext::new().map_err(|e| BiometricError::SystemError(e.message().to_string()))?;
+
+    match context.evaluate_policy(LAPolicy::DeviceOwnerAuthenticationWithBiometrics, reason) {
+        Ok(true) => Ok(true),
+        Ok(false) => Err(BiometricError::Failed),
+        Err(e) => match e {
+            LAError::UserCancel(_) => Err(BiometricError::UserCancelled),
+            LAError::BiometryNotAvailable(_) => Err(BiometricError::NotAvailable),
+            LAError::BiometryNotEnrolled(_) => Err(BiometricError::NoPermission),
+            LAError::BiometryLockout(_) => Err(BiometricError::LockedOut),
+            _ => Err(BiometricError::SystemError(e.message().to_string())),
+        },
+    }
 }
 
 pub fn is_biometric_available_public() -> bool {
