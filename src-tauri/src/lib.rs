@@ -1,6 +1,7 @@
 mod storage;
 mod crypto;
 mod biometric;
+mod biometric_status;
 
 use tauri::AppHandle;
 
