@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores'
+import { invoke } from '@tauri-apps/api/core'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
@@ -11,6 +12,31 @@ const confirmPassword = ref('')
 const passwordHint = ref('')
 const enableBiometric = ref(true)
 const error = ref('')
+
+const biometricType = ref('')
+const biometricAvailable = ref(false)
+
+const biometricLabel = computed(() => {
+  const labels: Record<string, string> = {
+    touchid: 'Touch ID',
+    faceid: 'Face ID',
+    fingerprint: '指纹',
+    face: '面容'
+  }
+  return labels[biometricType.value] || '生物识别'
+})
+
+onMounted(async () => {
+  try {
+    biometricAvailable.value = await invoke<boolean>('check_biometric')
+    if (biometricAvailable.value) {
+      biometricType.value = await invoke<string>('get_biometric_type')
+    }
+  } catch {
+    biometricAvailable.value = false
+    enableBiometric.value = false
+  }
+})
 
 async function handleSubmit() {
   if (password.value.length !== 6) {
@@ -23,6 +49,14 @@ async function handleSubmit() {
   }
 
   try {
+    if (enableBiometric.value && biometricAvailable.value) {
+      const success = await invoke<boolean>('biometric_auth', { reason: '设置主密码' })
+      if (!success) {
+        error.value = '生物识别验证失败'
+        return
+      }
+    }
+
     settingsStore.updateSettings({
       passwordHint: passwordHint.value,
       biometricEnabled: enableBiometric.value
@@ -32,7 +66,14 @@ async function handleSubmit() {
     settingsStore.completeSetup()
     router.replace('/')
   } catch (e) {
-    error.value = '设置失败，请重试'
+    const err = e as { type: string }
+    if (err.type === 'UserCancelled') {
+      error.value = '请完成生物识别验证'
+    } else if (err.type) {
+      error.value = '生物识别验证失败'
+    } else {
+      error.value = '设置失败，请重试'
+    }
   }
 }
 </script>
@@ -73,10 +114,10 @@ async function handleSubmit() {
         />
       </div>
 
-      <div class="form-group checkbox">
+      <div v-if="biometricAvailable" class="form-group checkbox">
         <label>
           <input v-model="enableBiometric" type="checkbox" />
-          启用生物识别解锁
+          启用{{ biometricLabel }}解锁
         </label>
       </div>
 
