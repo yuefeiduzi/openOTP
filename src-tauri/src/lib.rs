@@ -81,8 +81,8 @@ fn load_password_hash(app: AppHandle) -> Option<String> {
 }
 
 #[tauri::command]
-fn biometric_auth(reason: String) -> Result<bool, String> {
-    biometric::authenticate_biometric(&reason)
+fn biometric_auth(app: AppHandle, reason: String) -> Result<bool, String> {
+    biometric::authenticate_biometric(&app, &reason).map_err(|e| serde_json::to_string(&e).unwrap_or_else(|_| "BiometricError".to_string()))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
