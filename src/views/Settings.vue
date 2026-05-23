@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { save, open } from '@tauri-apps/plugin-dialog'
@@ -31,6 +31,17 @@ const editingHint = ref(false)
 const hintValue = ref('')
 
 const biometricAvailable = ref(false)
+const biometricType = ref('')
+
+const biometricLabel = computed(() => {
+  const labels: Record<string, string> = {
+    touchid: 'Touch ID',
+    faceid: 'Face ID',
+    fingerprint: '指纹',
+    face: '面容'
+  }
+  return labels[biometricType.value] || '生物识别'
+})
 
 onMounted(async () => {
   try {
@@ -53,6 +64,9 @@ onMounted(async () => {
 
   try {
     biometricAvailable.value = await invoke<boolean>('check_biometric')
+    if (biometricAvailable.value) {
+      biometricType.value = await invoke<string>('get_biometric_type')
+    }
   } catch {
     biometricAvailable.value = false
   }
@@ -150,6 +164,23 @@ async function verifyCurrentPassword() {
     })
 
     if (valid) {
+      if (settingsStore.settings.biometricEnabled && biometricAvailable.value) {
+        try {
+          const bioSuccess = await invoke<boolean>('biometric_auth', { reason: '修改主密码' })
+          if (!bioSuccess) {
+            passwordError.value = '生物识别验证失败'
+            return
+          }
+        } catch (e) {
+          const err = e as { type: string }
+          if (err.type === 'UserCancelled') {
+            passwordError.value = '请完成生物识别验证'
+          } else {
+            passwordError.value = '生物识别验证失败'
+          }
+          return
+        }
+      }
       passwordStep.value = 'change'
     } else {
       passwordError.value = '密码验证失败'
@@ -497,6 +528,10 @@ function goBack() {
             />
           </div>
 
+          <p v-if="settingsStore.settings.biometricEnabled && biometricAvailable" class="biometric-hint">
+            或使用{{ biometricLabel }}验证
+          </p>
+
           <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
 
           <div class="modal-actions">
@@ -828,6 +863,12 @@ select:focus {
   color: #27ae60;
   font-size: 13px;
   margin: -8px 0 12px 0;
+}
+
+.biometric-hint {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 12px;
 }
 
 .modal-actions {
