@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores'
 import { invoke } from '@tauri-apps/api/core'
@@ -9,12 +9,38 @@ const settingsStore = useSettingsStore()
 
 const password = ref('')
 const error = ref('')
-const biometricFailed = ref(false)
+const biometricType = ref('')
+const canUseBiometric = ref(false)
+const biometricError = ref('')
+
+const biometricLabel = computed(() => {
+  const labels: Record<string, string> = {
+    touchid: 'Touch ID',
+    faceid: 'Face ID',
+    fingerprint: '指纹',
+    face: '面容'
+  }
+  return labels[biometricType.value] || '生物识别'
+})
 
 onMounted(async () => {
   await settingsStore.checkSetup()
   if (!settingsStore.isSetup) {
     router.replace('/setup')
+    return
+  }
+
+  if (settingsStore.settings.biometricEnabled) {
+    try {
+      const available = await invoke<boolean>('check_biometric')
+      if (available) {
+        biometricType.value = await invoke<string>('get_biometric_type')
+        const status = await invoke<{ failure_count: number; can_use_biometric: boolean }>('get_biometric_status')
+        canUseBiometric.value = status.can_use_biometric
+      }
+    } catch {
+      canUseBiometric.value = false
+    }
   }
 })
 
@@ -38,16 +64,26 @@ async function handleSubmit() {
 }
 
 async function useBiometric() {
+  biometricError.value = ''
   try {
-    const success = await invoke('biometric_auth', { reason: '解锁 openOTP' })
+    const success = await invoke<boolean>('biometric_auth', { reason: '解锁 openOTP' })
     if (success) {
+      await invoke('reset_biometric_failures')
       settingsStore.unlock()
       router.replace('/')
-    } else {
-      biometricFailed.value = true
     }
-  } catch {
-    biometricFailed.value = true
+  } catch (e) {
+    const err = e as { type: string }
+    if (err.type === 'LockedOut') {
+      canUseBiometric.value = false
+      biometricError.value = '生物识别已锁定，请使用密码解锁'
+    } else if (err.type === 'UserCancelled') {
+      // 静默处理
+    } else if (err.type === 'Failed') {
+      biometricError.value = '验证失败，请重试'
+    } else {
+      biometricError.value = '系统错误，请稍后重试'
+    }
   }
 }
 </script>
@@ -74,12 +110,14 @@ async function useBiometric() {
     </form>
 
     <button 
-      v-if="settingsStore.settings.biometricEnabled && !biometricFailed"
+      v-if="settingsStore.settings.biometricEnabled && canUseBiometric"
       class="biometric-btn"
       @click="useBiometric"
     >
-      使用生物识别解锁
+      使用 {{ biometricLabel }} 解锁
     </button>
+
+    <p v-if="biometricError" class="biometric-error">{{ biometricError }}</p>
 
     <p v-if="settingsStore.settings.passwordHint" class="hint">
       提示：{{ settingsStore.settings.passwordHint }}
@@ -145,6 +183,12 @@ h1 {
   color: #4a90d9;
   font-size: 16px;
   cursor: pointer;
+}
+
+.biometric-error {
+  color: #e74c3c;
+  font-size: 14px;
+  margin-top: 12px;
 }
 
 .hint {
