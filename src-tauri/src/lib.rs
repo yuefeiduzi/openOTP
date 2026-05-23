@@ -62,7 +62,27 @@ fn verify_password_cmd(password: String, hash: String) -> bool {
 
 #[tauri::command]
 fn check_biometric() -> bool {
-    biometric::is_biometric_available()
+    biometric::is_biometric_available_public()
+}
+
+#[tauri::command]
+fn get_biometric_type() -> String {
+    biometric::get_biometric_type()
+}
+
+#[tauri::command]
+fn biometric_auth(app: AppHandle, reason: String) -> Result<bool, biometric::BiometricError> {
+    biometric::authenticate_biometric(&app, &reason)
+}
+
+#[tauri::command]
+fn get_biometric_status(app: AppHandle) -> biometric::BiometricStatusResponse {
+    biometric::get_status(&app)
+}
+
+#[tauri::command]
+fn reset_biometric_failures(app: AppHandle) {
+    biometric::reset_failures(&app)
 }
 
 #[tauri::command]
@@ -80,16 +100,9 @@ fn load_password_hash(app: AppHandle) -> Option<String> {
     storage::load_password_hash(&app)
 }
 
-#[tauri::command]
-fn biometric_auth(app: AppHandle, reason: String) -> Result<bool, String> {
-    biometric::authenticate_biometric(&app, &reason).map_err(|e| serde_json::to_string(&e).unwrap_or_else(|_| "BiometricError".to_string()))
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
@@ -113,7 +126,10 @@ pub fn run() {
             hash_password_cmd,
             verify_password_cmd,
             check_biometric,
+            get_biometric_type,
             biometric_auth,
+            get_biometric_status,
+            reset_biometric_failures,
             has_setup,
             save_password_hash,
             load_password_hash,
