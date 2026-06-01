@@ -9,7 +9,8 @@ export const useSettingsStore = defineStore('settings', () => {
     autoCopy: true,
     clipboardClearTime: 30,
     lockTimeout: 1,
-    passwordHint: ''
+    passwordHint: '',
+    language: 'auto'
   })
 
   const isSetup = ref(false)

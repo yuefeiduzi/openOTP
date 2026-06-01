@@ -2,23 +2,19 @@ import { createI18n } from 'vue-i18n'
 import zhCN from './zh-CN'
 import enUS from './en-US'
 
-function getSystemLocale(): string {
+function getSystemLocale(): 'zh-CN' | 'en-US' {
   const systemLang = navigator.language || 'zh-CN'
   return systemLang.startsWith('zh') ? 'zh-CN' : 'en-US'
 }
 
-function getInitialLocale(): string {
+function getInitialLocale(): 'zh-CN' | 'en-US' {
   const saved = localStorage.getItem('locale')
   
-  if (!saved) {
+  if (!saved || saved === 'auto') {
     return getSystemLocale()
   }
   
-  if (saved === 'auto') {
-    return getSystemLocale()
-  }
-  
-  return saved
+  return saved as 'zh-CN' | 'en-US'
 }
 
 const i18n = createI18n({
