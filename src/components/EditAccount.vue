@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Account, AccountIcon, IconType } from '@/types'
 
 const props = defineProps<{
@@ -12,6 +13,7 @@ const emit = defineEmits<{
   save: [data: Partial<Account>]
 }>()
 
+const { t } = useI18n()
 const editName = ref('')
 const editIssuer = ref('')
 const showIconEditor = ref(false)
@@ -64,21 +66,21 @@ function handleCancel() {
   <div v-if="visible" class="overlay" @click.self="handleCancel">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title">编辑账号</h2>
+        <h2 class="modal-title">{{ t('editAccount.title') }}</h2>
       </div>
 
       <div class="field-group">
-        <label class="field-label">账号名称</label>
+        <label class="field-label">{{ t('editAccount.accountName') }}</label>
         <input v-model="editName" type="text" class="input" />
       </div>
 
       <div class="field-group">
-        <label class="field-label">发行方</label>
+        <label class="field-label">{{ t('editAccount.issuer') }}</label>
         <input v-model="editIssuer" type="text" class="input" />
       </div>
 
       <div class="field-group">
-        <label class="field-label">图标</label>
+        <label class="field-label">{{ t('editAccount.icon') }}</label>
         <div class="current-icon" @click="showIconEditor = !showIconEditor">
           <span v-if="iconType === 'emoji'" class="icon-emoji">{{ emojiValue || (account?.icon.type === 'emoji' ? account.icon.value : '🔑') }}</span>
           <div
@@ -88,7 +90,7 @@ function handleCancel() {
           >
             {{ editName ? editName.charAt(0).toUpperCase() : '?' }}
           </div>
-          <button class="edit-icon-btn">修改图标</button>
+          <button class="edit-icon-btn">{{ t('editAccount.changeIcon') }}</button>
         </div>
 
         <div v-if="showIconEditor" class="icon-editor">
@@ -97,23 +99,23 @@ function handleCancel() {
               :class="['icon-type-btn', { active: iconType === 'emoji' }]"
               @click="iconType = 'emoji'"
             >
-              Emoji
+              {{ t('editAccount.emoji') }}
             </button>
             <button
               :class="['icon-type-btn', { active: iconType === 'initial' }]"
               @click="iconType = 'initial'"
             >
-              首字母
+              {{ t('editAccount.initial') }}
             </button>
           </div>
 
           <div v-if="iconType === 'emoji'" class="field-group">
-            <label class="field-label">Emoji</label>
-            <input v-model="emojiValue" type="text" class="input" placeholder="选择一个 emoji" maxlength="2" />
+            <label class="field-label">{{ t('editAccount.emoji') }}</label>
+            <input v-model="emojiValue" type="text" class="input" :placeholder="t('editAccount.emojiPlaceholder')" maxlength="2" />
           </div>
 
           <div v-if="iconType === 'initial'" class="field-group">
-            <label class="field-label">背景颜色</label>
+            <label class="field-label">{{ t('editAccount.bgColor') }}</label>
             <div class="color-grid">
               <button
                 v-for="color in PRESET_COLORS"
@@ -128,8 +130,8 @@ function handleCancel() {
       </div>
 
       <div class="actions">
-        <button class="btn btn-cancel" @click="handleCancel">取消</button>
-        <button class="btn btn-save" @click="handleSave">保存</button>
+        <button class="btn btn-cancel" @click="handleCancel">{{ t('common.cancel') }}</button>
+        <button class="btn btn-save" @click="handleSave">{{ t('common.save') }}</button>
       </div>
     </div>
   </div>
