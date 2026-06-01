@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
 import { invoke } from '@tauri-apps/api/core'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
+const { t } = useI18n()
 
 const password = ref('')
 const error = ref('')
@@ -15,12 +17,12 @@ const biometricError = ref('')
 
 const biometricLabel = computed(() => {
   const labels: Record<string, string> = {
-    touchid: 'Touch ID',
-    faceid: 'Face ID',
-    fingerprint: '指纹',
-    face: '面容'
+    touchid: t('biometric.touchid'),
+    faceid: t('biometric.faceid'),
+    fingerprint: t('biometric.fingerprint'),
+    face: t('biometric.face')
   }
-  return labels[biometricType.value] || '生物识别'
+  return labels[biometricType.value] || t('biometric.default')
 })
 
 onMounted(async () => {
@@ -46,7 +48,7 @@ onMounted(async () => {
 
 async function handleSubmit() {
   if (password.value.length !== 6) {
-    error.value = '请输入6位密码'
+    error.value = t('errors.enterPassword')
     return
   }
 
@@ -56,17 +58,17 @@ async function handleSubmit() {
       settingsStore.unlock()
       router.replace('/')
     } else {
-      error.value = '密码错误'
+      error.value = t('errors.passwordError')
     }
   } catch {
-    error.value = '验证失败，请重试'
+    error.value = t('errors.verifyFailed')
   }
 }
 
 async function useBiometric() {
   biometricError.value = ''
   try {
-    const success = await invoke<boolean>('biometric_auth', { reason: '解锁 openOTP' })
+    const success = await invoke<boolean>('biometric_auth', { reason: t('biometric.unlock') })
     if (success) {
       await invoke('reset_biometric_failures')
       settingsStore.unlock()
@@ -76,13 +78,12 @@ async function useBiometric() {
     const err = e as { type: string }
     if (err.type === 'LockedOut') {
       canUseBiometric.value = false
-      biometricError.value = '生物识别已锁定，请使用密码解锁'
+      biometricError.value = t('errors.biometricLocked')
     } else if (err.type === 'UserCancelled') {
-      // 静默处理
     } else if (err.type === 'Failed') {
-      biometricError.value = '验证失败，请重试'
+      biometricError.value = t('errors.verifyFailed')
     } else {
-      biometricError.value = '系统错误，请稍后重试'
+      biometricError.value = t('errors.verifyFailed')
     }
   }
 }
@@ -90,8 +91,8 @@ async function useBiometric() {
 
 <template>
   <div class="unlock">
-    <h1>openOTP</h1>
-    <p class="subtitle">请输入主密码解锁</p>
+    <h1>{{ t('unlock.title') }}</h1>
+    <p class="subtitle">{{ t('unlock.enterPassword') }}</p>
 
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
@@ -99,14 +100,14 @@ async function useBiometric() {
           v-model="password"
           type="password"
           maxlength="6"
-          placeholder="请输入6位密码"
+          :placeholder="t('unlock.passwordPlaceholder')"
           autofocus
         />
       </div>
 
       <p v-if="error" class="error">{{ error }}</p>
 
-      <button type="submit" class="submit-btn">解锁</button>
+      <button type="submit" class="submit-btn">{{ t('unlock.unlock') }}</button>
     </form>
 
     <button 
@@ -114,13 +115,13 @@ async function useBiometric() {
       class="biometric-btn"
       @click="useBiometric"
     >
-      使用 {{ biometricLabel }} 解锁
+      {{ t('unlock.useBiometric', { biometric: biometricLabel }) }}
     </button>
 
     <p v-if="biometricError" class="biometric-error">{{ biometricError }}</p>
 
     <p v-if="settingsStore.settings.passwordHint" class="hint">
-      提示：{{ settingsStore.settings.passwordHint }}
+      {{ t('unlock.hint', { hint: settingsStore.settings.passwordHint }) }}
     </p>
   </div>
 </template>
