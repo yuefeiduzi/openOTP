@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 defineProps<{
   visible: boolean
   accountName: string
@@ -8,6 +10,8 @@ const emit = defineEmits<{
   close: []
   confirm: []
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -16,11 +20,11 @@ const emit = defineEmits<{
       <div class="icon-wrapper">
         <span class="warning-icon">⚠️</span>
       </div>
-      <p class="message">确定要删除 <strong>{{ accountName }}</strong> 吗？</p>
-      <p class="subtitle">此操作不可撤销</p>
+      <p class="message">{{ t('deleteConfirm.message', { name: accountName }) }}</p>
+      <p class="subtitle">{{ t('deleteConfirm.warning') }}</p>
       <div class="actions">
-        <button class="btn btn-cancel" @click="emit('close')">取消</button>
-        <button class="btn btn-delete" @click="emit('confirm')">删除</button>
+        <button class="btn btn-cancel" @click="emit('close')">{{ t('common.cancel') }}</button>
+        <button class="btn btn-delete" @click="emit('confirm')">{{ t('common.delete') }}</button>
       </div>
     </div>
   </div>
