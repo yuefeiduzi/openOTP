@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
 import { invoke } from '@tauri-apps/api/core'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
+const { t } = useI18n()
 
 const password = ref('')
 const confirmPassword = ref('')
@@ -18,12 +20,12 @@ const biometricAvailable = ref(false)
 
 const biometricLabel = computed(() => {
   const labels: Record<string, string> = {
-    touchid: 'Touch ID',
-    faceid: 'Face ID',
-    fingerprint: '指纹',
-    face: '面容'
+    touchid: t('biometric.touchid'),
+    faceid: t('biometric.faceid'),
+    fingerprint: t('biometric.fingerprint'),
+    face: t('biometric.face')
   }
-  return labels[biometricType.value] || '生物识别'
+  return labels[biometricType.value] || t('biometric.default')
 })
 
 onMounted(async () => {
@@ -40,19 +42,19 @@ onMounted(async () => {
 
 async function handleSubmit() {
   if (password.value.length !== 6) {
-    error.value = '密码必须是6位数字'
+    error.value = t('errors.passwordLength')
     return
   }
   if (password.value !== confirmPassword.value) {
-    error.value = '两次密码不一致'
+    error.value = t('errors.passwordMismatch')
     return
   }
 
   try {
     if (enableBiometric.value && biometricAvailable.value) {
-      const success = await invoke<boolean>('biometric_auth', { reason: '设置主密码' })
+      const success = await invoke<boolean>('biometric_auth', { reason: t('biometric.setup') })
       if (!success) {
-        error.value = '生物识别验证失败'
+        error.value = t('errors.biometricFailed')
         return
       }
     }
@@ -68,11 +70,11 @@ async function handleSubmit() {
   } catch (e) {
     const err = e as { type: string }
     if (err.type === 'UserCancelled') {
-      error.value = '请完成生物识别验证'
+      error.value = t('errors.biometricRequired')
     } else if (err.type) {
-      error.value = '生物识别验证失败'
+      error.value = t('errors.biometricFailed')
     } else {
-      error.value = '设置失败，请重试'
+      error.value = t('errors.setupFailed')
     }
   }
 }
@@ -80,50 +82,50 @@ async function handleSubmit() {
 
 <template>
   <div class="setup">
-    <h1>欢迎使用 openOTP</h1>
-    <p class="subtitle">请设置6位数字主密码</p>
+    <h1>{{ t('setup.welcome') }}</h1>
+    <p class="subtitle">{{ t('setup.setPassword') }}</p>
 
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
-        <label>主密码</label>
+        <label>{{ t('setup.masterPassword') }}</label>
         <input 
           v-model="password"
           type="password"
           maxlength="6"
-          placeholder="请输入6位数字"
+          :placeholder="t('setup.passwordPlaceholder')"
         />
       </div>
 
       <div class="form-group">
-        <label>确认密码</label>
+        <label>{{ t('setup.confirmPassword') }}</label>
         <input 
           v-model="confirmPassword"
           type="password"
           maxlength="6"
-          placeholder="请再次输入"
+          :placeholder="t('setup.confirmPlaceholder')"
         />
       </div>
 
       <div class="form-group">
-        <label>密码提示（可选）</label>
+        <label>{{ t('setup.passwordHint') }}</label>
         <input 
           v-model="passwordHint"
           type="text"
           maxlength="50"
-          placeholder="最多50字符"
+          :placeholder="t('setup.hintPlaceholder')"
         />
       </div>
 
       <div v-if="biometricAvailable" class="form-group checkbox">
         <label>
           <input v-model="enableBiometric" type="checkbox" />
-          启用{{ biometricLabel }}解锁
+          {{ t('setup.enableBiometric', { biometric: biometricLabel }) }}
         </label>
       </div>
 
       <p v-if="error" class="error">{{ error }}</p>
 
-      <button type="submit" class="submit-btn">完成设置</button>
+      <button type="submit" class="submit-btn">{{ t('setup.completeSetup') }}</button>
     </form>
   </div>
 </template>
