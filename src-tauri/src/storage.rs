@@ -42,6 +42,8 @@ pub struct AppSettings {
     pub lock_timeout: u32,
     #[serde(rename = "passwordHint")]
     pub password_hint: String,
+    #[serde(rename = "language")]
+    pub language: String,
 }
 
 impl Default for AppSettings {
@@ -52,6 +54,7 @@ impl Default for AppSettings {
             clipboard_clear_time: 30,
             lock_timeout: 60,
             password_hint: String::new(),
+            language: String::from("auto"),
         }
     }
 }

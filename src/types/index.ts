@@ -27,4 +27,5 @@ export interface AppSettings {
   clipboardClearTime: number
   lockTimeout: number
   passwordHint: string
+  language: 'auto' | 'zh-CN' | 'en-US'
 }
