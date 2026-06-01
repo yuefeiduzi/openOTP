@@ -43,3 +43,6 @@ coverage/
 # SQLite databases (local data)
 *.db
 *.db-journal
+
+# Git worktrees
+.worktrees/
