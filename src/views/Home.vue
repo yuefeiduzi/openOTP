@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAccountStore } from '@/stores'
 import type { Account } from '@/types'
 import AccountCard from '@/components/AccountCard.vue'
@@ -10,6 +11,7 @@ import EditAccount from '@/components/EditAccount.vue'
 
 const router = useRouter()
 const accountStore = useAccountStore()
+const { t } = useI18n()
 const activeTab = ref<'totp' | 'hotp'>('totp')
 
 const showAdd = ref(false)
@@ -161,7 +163,7 @@ function handleEditSave(data: Partial<Account>) {
 <template>
   <div class="home">
     <header class="header">
-      <h1>openOTP</h1>
+      <h1>{{ t('home.title') }}</h1>
       <button class="settings-btn" @click="goToSettings">
         <span>⚙</span>
       </button>
@@ -172,19 +174,19 @@ function handleEditSave(data: Partial<Account>) {
         :class="['tab', { active: activeTab === 'totp' }]"
         @click="activeTab = 'totp'"
       >
-        TOTP
+        {{ t('home.totp') }}
       </button>
       <button
         :class="['tab', { active: activeTab === 'hotp' }]"
         @click="activeTab = 'hotp'"
       >
-        HOTP
+        {{ t('home.hotp') }}
       </button>
     </div>
 
     <div class="account-list">
       <p v-if="displayedAccounts.length === 0" class="empty">
-        No {{ activeTab.toUpperCase() }} accounts
+        {{ t('home.noAccounts', { type: activeTab.toUpperCase() }) }}
       </p>
       <div
         v-for="(account, index) in displayedAccounts"
@@ -221,7 +223,7 @@ function handleEditSave(data: Partial<Account>) {
     <button class="add-btn" @click="showAdd = true">+</button>
 
     <div v-if="showToast" class="toast">
-      Copied {{ copiedCode }}
+      {{ t('home.copied', { code: copiedCode }) }}
     </div>
 
     <AddAccount
