@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 import { save, open } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { useSettingsStore, useAccountStore } from '@/stores'
 import { createBackup, restoreBackup } from '@/utils/backup'
+import { setLocale, getSavedLocalePreference } from '@/locales'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
 const accountStore = useAccountStore()
+const { t } = useI18n()
+
+const languagePreference = ref<'auto' | 'zh-CN' | 'en-US'>('auto')
 
 const showPasswordModal = ref(false)
 const passwordStep = ref<'verify' | 'change'>('verify')
@@ -35,15 +40,17 @@ const biometricType = ref('')
 
 const biometricLabel = computed(() => {
   const labels: Record<string, string> = {
-    touchid: 'Touch ID',
-    faceid: 'Face ID',
-    fingerprint: '指纹',
-    face: '面容'
+    touchid: t('biometric.touchid'),
+    faceid: t('biometric.faceid'),
+    fingerprint: t('biometric.fingerprint'),
+    face: t('biometric.face')
   }
-  return labels[biometricType.value] || '生物识别'
+  return labels[biometricType.value] || t('biometric.default')
 })
 
 onMounted(async () => {
+  languagePreference.value = getSavedLocalePreference()
+  
   try {
     const settings = await invoke<{
       biometric_enabled: boolean
@@ -85,6 +92,13 @@ async function saveSettings() {
     })
   } catch {
   }
+}
+
+function handleLanguageChange(value: 'auto' | 'zh-CN' | 'en-US') {
+  languagePreference.value = value
+  setLocale(value)
+  settingsStore.updateSettings({ language: value })
+  saveSettings()
 }
 
 function toggleBiometric() {
@@ -152,7 +166,7 @@ async function verifyCurrentPassword() {
   passwordSuccess.value = ''
 
   if (currentPassword.value.length !== 6) {
-    passwordError.value = '请输入6位数字密码'
+    passwordError.value = t('errors.changePasswordVerify')
     return
   }
 
@@ -166,27 +180,27 @@ async function verifyCurrentPassword() {
     if (valid) {
       if (settingsStore.settings.biometricEnabled && biometricAvailable.value) {
         try {
-          const bioSuccess = await invoke<boolean>('biometric_auth', { reason: '修改主密码' })
+          const bioSuccess = await invoke<boolean>('biometric_auth', { reason: t('biometric.changePassword') })
           if (!bioSuccess) {
-            passwordError.value = '生物识别验证失败'
+            passwordError.value = t('errors.biometricFailed')
             return
           }
         } catch (e) {
           const err = e as { type: string }
           if (err.type === 'UserCancelled') {
-            passwordError.value = '请完成生物识别验证'
+            passwordError.value = t('errors.biometricRequired')
           } else {
-            passwordError.value = '生物识别验证失败'
+            passwordError.value = t('errors.biometricFailed')
           }
           return
         }
       }
       passwordStep.value = 'change'
     } else {
-      passwordError.value = '密码验证失败'
+      passwordError.value = t('errors.passwordVerifyFailed')
     }
   } catch {
-    passwordError.value = '验证失败，请稍后重试'
+    passwordError.value = t('errors.verifyFailed')
   }
 }
 
@@ -195,12 +209,12 @@ async function submitNewPassword() {
   passwordSuccess.value = ''
 
   if (newPassword.value.length !== 6) {
-    passwordError.value = '密码必须是6位数字'
+    passwordError.value = t('errors.passwordLength')
     return
   }
 
   if (newPassword.value !== confirmNewPassword.value) {
-    passwordError.value = '两次密码不一致'
+    passwordError.value = t('errors.changePasswordMismatch')
     return
   }
 
@@ -209,12 +223,12 @@ async function submitNewPassword() {
       password: newPassword.value
     })
     await invoke('save_password_hash', { hash })
-    passwordSuccess.value = '密码修改成功'
+    passwordSuccess.value = t('errors.changePasswordSuccess')
     setTimeout(() => {
       closePasswordModal()
     }, 1500)
   } catch {
-    passwordError.value = '密码修改失败，请稍后重试'
+    passwordError.value = t('errors.changePasswordFailed')
   }
 }
 
@@ -245,11 +259,11 @@ async function confirmBackupExport() {
   backupMessage.value = ''
 
   if (!backupPassword.value || backupPassword.value.length < 6) {
-    backupError.value = '密码至少6位字符'
+    backupError.value = t('errors.backupPasswordLength')
     return
   }
   if (backupPassword.value !== backupConfirmPassword.value) {
-    backupError.value = '两次密码不一致'
+    backupError.value = t('errors.backupPasswordMismatch')
     return
   }
 
@@ -266,10 +280,10 @@ async function confirmBackupExport() {
 
     const json = await createBackup(accountStore.accounts, backupPassword.value)
     await writeTextFile(filePath, json)
-    backupMessage.value = '导出成功'
+    backupMessage.value = t('common.save')
     setTimeout(() => closeBackupModal(), 1500)
   } catch (err) {
-    backupError.value = `导出失败：${String(err)}`
+    backupError.value = t('errors.exportFailed', { error: String(err) })
   }
 }
 
@@ -278,7 +292,7 @@ async function confirmBackupImport() {
   backupMessage.value = ''
 
   if (!backupPassword.value) {
-    backupError.value = '请输入备份密码'
+    backupError.value = t('errors.backupPasswordRequired')
     return
   }
 
@@ -300,10 +314,10 @@ async function confirmBackupImport() {
       accountStore.addAccount(account)
     }
 
-    backupMessage.value = `成功导入 ${manifest.accountCount} 个账户`
+    backupMessage.value = t('errors.importSuccess', { count: manifest.accountCount })
     setTimeout(() => closeBackupModal(), 2000)
   } catch (err) {
-    backupError.value = `导入失败：${String(err)}`
+    backupError.value = t('errors.importFailed', { error: String(err) })
   }
 }
 
@@ -329,21 +343,37 @@ function goBack() {
   <div class="settings">
     <header class="header">
       <button class="back-btn" @click="goBack">←</button>
-      <h1>设置</h1>
+      <h1>{{ t('settings.title') }}</h1>
     </header>
 
     <div class="content">
       <section class="section">
-        <h2 class="section-title">安全设置</h2>
+        <h2 class="section-title">{{ t('settings.languageSettings') }}</h2>
+        <div class="setting-item setting-row">
+          <span class="setting-label">{{ t('settings.language') }}</span>
+          <div class="setting-control">
+            <select :value="languagePreference" @change="handleLanguageChange(($event.target as HTMLSelectElement).value as 'auto' | 'zh-CN' | 'en-US')">
+              <option value="auto">{{ t('settings.languageAuto') }}</option>
+              <option value="zh-CN">{{ t('settings.languageZhCN') }}</option>
+              <option value="en-US">{{ t('settings.languageEnUS') }}</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="section">
+        <h2 class="section-title">{{ t('settings.securitySettings') }}</h2>
 
         <div class="setting-item setting-action">
           <button class="setting-btn danger" @click="openChangePassword">
-            修改主密码
+            {{ t('settings.changePassword') }}
           </button>
         </div>
 
         <div class="setting-item setting-row">
-          <span class="setting-label">密码提示</span>
+          <span class="setting-label">{{ t('settings.passwordHint') }}</span>
           <div class="setting-control hint-control">
             <template v-if="editingHint">
               <input
@@ -362,7 +392,7 @@ function goBack() {
                 :class="{ empty: !settingsStore.settings.passwordHint }"
                 @click="startEditingHint"
               >
-                {{ settingsStore.settings.passwordHint || '点击设置' }}
+                {{ settingsStore.settings.passwordHint || t('settings.clickToSet') }}
               </span>
             </template>
           </div>
@@ -372,10 +402,10 @@ function goBack() {
       <div class="divider"></div>
 
       <section class="section">
-        <h2 class="section-title">安全选项</h2>
+        <h2 class="section-title">{{ t('settings.securityOptions') }}</h2>
 
         <div class="setting-item setting-row">
-          <span class="setting-label">生物识别解锁</span>
+          <span class="setting-label">{{ t('settings.biometricUnlock') }}</span>
           <div class="setting-control">
             <label class="toggle" :class="{ disabled: !biometricAvailable }">
               <input
@@ -386,12 +416,12 @@ function goBack() {
               />
               <span class="toggle-slider"></span>
             </label>
-            <span v-if="!biometricAvailable" class="status-text">设备不支持</span>
+            <span v-if="!biometricAvailable" class="status-text">{{ t('settings.biometricNotAvailable') }}</span>
           </div>
         </div>
 
         <div class="setting-item setting-row">
-          <span class="setting-label">自动复制验证码</span>
+          <span class="setting-label">{{ t('settings.autoCopy') }}</span>
           <div class="setting-control">
             <label class="toggle">
               <input
@@ -405,29 +435,29 @@ function goBack() {
         </div>
 
         <div class="setting-item setting-row">
-          <span class="setting-label">剪贴板清除时间</span>
+          <span class="setting-label">{{ t('settings.clipboardClearTime') }}</span>
           <div class="setting-control">
             <select
               :value="settingsStore.settings.clipboardClearTime"
               @change="setClipboardClearTime(Number(($event.target as HTMLSelectElement).value))"
             >
-              <option :value="30">30秒</option>
-              <option :value="60">60秒</option>
-              <option :value="0">永不</option>
+              <option :value="30">{{ t('settings.clipboard30s') }}</option>
+              <option :value="60">{{ t('settings.clipboard60s') }}</option>
+              <option :value="0">{{ t('settings.clipboardNever') }}</option>
             </select>
           </div>
         </div>
 
         <div class="setting-item setting-row">
-          <span class="setting-label">应用锁定时间</span>
+          <span class="setting-label">{{ t('settings.lockTimeout') }}</span>
           <div class="setting-control">
             <select
               :value="settingsStore.settings.lockTimeout"
               @change="setLockTimeout(Number(($event.target as HTMLSelectElement).value))"
             >
-              <option :value="0">立即</option>
-              <option :value="1">1分钟</option>
-              <option :value="5">5分钟</option>
+              <option :value="0">{{ t('settings.lockImmediate') }}</option>
+              <option :value="1">{{ t('settings.lock1min') }}</option>
+              <option :value="5">{{ t('settings.lock5min') }}</option>
             </select>
           </div>
         </div>
@@ -436,50 +466,50 @@ function goBack() {
       <div class="divider"></div>
 
       <section class="section">
-        <h2 class="section-title">数据管理</h2>
+        <h2 class="section-title">{{ t('settings.dataManagement') }}</h2>
 
         <div class="setting-item setting-action">
-          <button class="setting-btn" @click="exportBackup">导出备份</button>
+          <button class="setting-btn" @click="exportBackup">{{ t('settings.exportBackup') }}</button>
         </div>
 
         <div class="setting-item setting-action">
-          <button class="setting-btn" @click="importBackup">导入备份</button>
+          <button class="setting-btn" @click="importBackup">{{ t('settings.importBackup') }}</button>
         </div>
 
         <div class="setting-item setting-action">
-          <button class="setting-btn" @click="lockApp">锁定应用</button>
+          <button class="setting-btn" @click="lockApp">{{ t('settings.lockApp') }}</button>
         </div>
       </section>
 
       <div class="divider"></div>
 
       <section class="section about-section">
-        <h2 class="section-title">关于</h2>
-        <p class="about-line">openOTP v0.1.0</p>
-        <p class="about-line">开源地址：github.com/openotp/openotp</p>
+        <h2 class="section-title">{{ t('settings.about') }}</h2>
+        <p class="about-line">{{ t('settings.version') }}</p>
+        <p class="about-line">{{ t('settings.sourceCode') }}</p>
       </section>
     </div>
 
     <div v-if="showBackupModal" class="modal-overlay" @click.self="closeBackupModal">
       <div class="modal">
-        <h3 class="modal-title">{{ backupMode === 'export' ? '导出备份' : '导入备份' }}</h3>
+        <h3 class="modal-title">{{ backupMode === 'export' ? t('settings.exportBackup') : t('settings.importBackup') }}</h3>
 
         <template v-if="backupMode === 'export'">
           <div class="form-group">
-            <label>设置备份密码</label>
+            <label>{{ t('settings.exportBackup') }}</label>
             <input
               v-model="backupPassword"
               type="password"
-              placeholder="至少6位字符"
+              :placeholder="t('errors.backupPasswordLength')"
               class="form-input"
             />
           </div>
           <div class="form-group">
-            <label>确认备份密码</label>
+            <label>{{ t('common.confirm') }}</label>
             <input
               v-model="backupConfirmPassword"
               type="password"
-              placeholder="请再次输入"
+              :placeholder="t('setup.confirmPlaceholder')"
               class="form-input"
             />
           </div>
@@ -487,11 +517,11 @@ function goBack() {
 
         <template v-if="backupMode === 'import'">
           <div class="form-group">
-            <label>备份密码</label>
+            <label>{{ t('settings.importBackup') }}</label>
             <input
               v-model="backupPassword"
               type="password"
-              placeholder="输入备份时设置的密码"
+              :placeholder="t('errors.backupPasswordRequired')"
               class="form-input"
             />
           </div>
@@ -501,12 +531,12 @@ function goBack() {
         <p v-if="backupMessage" class="form-success">{{ backupMessage }}</p>
 
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeBackupModal">取消</button>
+          <button class="btn btn-secondary" @click="closeBackupModal">{{ t('common.cancel') }}</button>
           <button
             class="btn btn-primary"
             @click="backupMode === 'export' ? confirmBackupExport() : confirmBackupImport()"
           >
-            {{ backupMode === 'export' ? '导出' : '导入' }}
+            {{ backupMode === 'export' ? t('settings.exportBackup') : t('settings.importBackup') }}
           </button>
         </div>
       </div>
@@ -514,51 +544,51 @@ function goBack() {
 
     <div v-if="showPasswordModal" class="modal-overlay" @click.self="closePasswordModal">
       <div class="modal">
-        <h3 class="modal-title">修改主密码</h3>
+        <h3 class="modal-title">{{ t('settings.changePassword') }}</h3>
 
         <template v-if="passwordStep === 'verify'">
           <div class="form-group">
-            <label>请输入当前密码</label>
+            <label>{{ t('setup.setPassword') }}</label>
             <input
               v-model="currentPassword"
               type="password"
               maxlength="6"
-              placeholder="6位数字密码"
+              :placeholder="t('errors.changePasswordVerify')"
               class="form-input"
             />
           </div>
 
           <p v-if="settingsStore.settings.biometricEnabled && biometricAvailable" class="biometric-hint">
-            或使用{{ biometricLabel }}验证
+            {{ t('setup.enableBiometric', { biometric: biometricLabel }) }}
           </p>
 
           <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
 
           <div class="modal-actions">
-            <button class="btn btn-secondary" @click="closePasswordModal">取消</button>
-            <button class="btn btn-primary" @click="verifyCurrentPassword">验证</button>
+            <button class="btn btn-secondary" @click="closePasswordModal">{{ t('common.cancel') }}</button>
+            <button class="btn btn-primary" @click="verifyCurrentPassword">{{ t('common.confirm') }}</button>
           </div>
         </template>
 
         <template v-if="passwordStep === 'change'">
           <div class="form-group">
-            <label>新密码</label>
+            <label>{{ t('setup.masterPassword') }}</label>
             <input
               v-model="newPassword"
               type="password"
               maxlength="6"
-              placeholder="请输入新的6位数字密码"
+              :placeholder="t('setup.passwordPlaceholder')"
               class="form-input"
             />
           </div>
 
           <div class="form-group">
-            <label>确认新密码</label>
+            <label>{{ t('setup.confirmPassword') }}</label>
             <input
               v-model="confirmNewPassword"
               type="password"
               maxlength="6"
-              placeholder="请再次输入"
+              :placeholder="t('setup.confirmPlaceholder')"
               class="form-input"
             />
           </div>
@@ -567,8 +597,8 @@ function goBack() {
           <p v-if="passwordSuccess" class="form-success">{{ passwordSuccess }}</p>
 
           <div class="modal-actions">
-            <button class="btn btn-secondary" @click="closePasswordModal">取消</button>
-            <button class="btn btn-primary" @click="submitNewPassword">保存</button>
+            <button class="btn btn-secondary" @click="closePasswordModal">{{ t('common.cancel') }}</button>
+            <button class="btn btn-primary" @click="submitNewPassword">{{ t('common.save') }}</button>
           </div>
         </template>
       </div>
