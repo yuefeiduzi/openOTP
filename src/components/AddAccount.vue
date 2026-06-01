@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Account, AccountIcon } from '@/types'
 import { parseOtpauthUrl } from '@/utils/otp'
 import { getRandomBgColor } from '@/utils/icons'
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   add: [data: Partial<Account>]
 }>()
 
+const { t } = useI18n()
 const activeTab = ref<'qr' | 'url' | 'manual'>('url')
 const otpauthUrl = ref('')
 const parseError = ref('')
@@ -74,7 +76,7 @@ async function selectQrImage() {
   try {
     const { open } = await import('@tauri-apps/plugin-dialog')
     const filePath = await open({
-      title: '选择二维码图片',
+      title: t('addAccount.scanQR'),
       filters: [{
         name: 'Images',
         extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']
@@ -109,7 +111,7 @@ async function selectQrImage() {
     await nextTick()
     await decodeQr()
   } catch (e) {
-    qrError.value = e instanceof Error ? e.message : '选择文件失败'
+    qrError.value = e instanceof Error ? e.message : t('addAccount.selectFailed')
   } finally {
     qrScanning.value = false
   }
@@ -122,7 +124,7 @@ function decodeQr(): Promise<void> {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
       if (!ctx) {
-        qrError.value = '无法创建画布'
+        qrError.value = t('addAccount.cannotCreateCanvas')
         resolve()
         return
       }
@@ -140,12 +142,12 @@ function decodeQr(): Promise<void> {
         qrError.value = ''
         activeTab.value = 'url'
       } else {
-        qrError.value = '未识别到二维码，请尝试更清晰的图片'
+        qrError.value = t('addAccount.qrNotRecognized')
       }
       resolve()
     }
     img.onerror = () => {
-      qrError.value = '图片加载失败'
+      qrError.value = t('addAccount.imageLoadFailed')
       resolve()
     }
     img.src = qrImageUrl.value!
@@ -214,7 +216,7 @@ function useParsedData() {
   <div v-if="visible" class="overlay" @click.self="handleCancel">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title">添加账号</h2>
+        <h2 class="modal-title">{{ t('addAccount.title') }}</h2>
       </div>
 
       <div class="tab-bar">
@@ -222,19 +224,19 @@ function useParsedData() {
           :class="['tab-btn', { active: activeTab === 'qr' }]"
           @click="activeTab = 'qr'; manualMode = false"
         >
-          扫描二维码
+          {{ t('addAccount.scanQR') }}
         </button>
         <button
           :class="['tab-btn', { active: activeTab === 'url' }]"
           @click="activeTab = 'url'; manualMode = false"
         >
-          OTP URL
+          {{ t('addAccount.otpUrl') }}
         </button>
         <button
           :class="['tab-btn', { active: activeTab === 'manual' || manualMode }]"
           @click="activeTab = 'manual'; manualMode = true"
         >
-          手动输入
+          {{ t('addAccount.manual') }}
         </button>
       </div>
 
@@ -248,82 +250,82 @@ function useParsedData() {
               <rect x="36" y="36" width="8" height="8" rx="2" stroke="#999" stroke-width="2.5"/>
               <rect x="28" y="36" width="4" height="8" rx="1.5" fill="#999"/>
             </svg>
-            <span class="scan-label">{{ qrScanning ? '处理中...' : '点击选择二维码图片' }}</span>
+            <span class="scan-label">{{ qrScanning ? t('addAccount.processing') : t('addAccount.selectQRImage') }}</span>
           </button>
         </div>
 
         <div v-if="qrImageUrl" class="qr-preview">
           <img :src="qrImageUrl" alt="QR preview" class="qr-preview-img" />
-          <div v-if="qrScanning" class="qr-status">正在识别...</div>
+          <div v-if="qrScanning" class="qr-status">{{ t('addAccount.recognizing') }}</div>
           <div v-if="qrResult && !qrScanning" class="qr-success">
-            已识别，已填入 URL 输入框
+            {{ t('addAccount.recognized') }}
           </div>
           <div v-if="qrError" class="qr-fail">{{ qrError }}</div>
           <button v-if="qrError" class="scan-btn retry" @click="selectQrImage">
-            重新选择
+            {{ t('common.retry') }}
           </button>
         </div>
       </div>
 
       <div v-if="!manualMode && activeTab === 'url'" class="url-section">
         <div class="field-group">
-          <label class="field-label">otpauth:// URL</label>
+          <label class="field-label">{{ t('addAccount.otpauthUrl') }}</label>
           <input
             v-model="otpauthUrl"
             type="text"
             class="input"
-            placeholder="otpauth://totp/..."
+            :placeholder="t('addAccount.otpauthPlaceholder')"
           />
         </div>
 
-        <div v-if="parseError" class="parse-error">{{ parseError }}</div>
+        <div v-if="parseError" class="parse-error">{{ t('addAccount.parseError') }}</div>
 
         <div v-if="parsedPreview" class="preview-section">
           <div class="preview-row">
-            <span class="preview-label">类型</span>
+            <span class="preview-label">{{ t('addAccount.previewType') }}</span>
             <span class="preview-value">{{ parsedPreview.type }}</span>
           </div>
           <div class="preview-row">
-            <span class="preview-label">名称</span>
+            <span class="preview-label">{{ t('addAccount.previewName') }}</span>
             <span class="preview-value">{{ parsedPreview.name }}</span>
           </div>
           <div class="preview-row">
-            <span class="preview-label">发行方</span>
+            <span class="preview-label">{{ t('addAccount.previewIssuer') }}</span>
             <span class="preview-value">{{ parsedPreview.issuer || '-' }}</span>
           </div>
           <div class="preview-row">
-            <span class="preview-label">算法</span>
+            <span class="preview-label">{{ t('addAccount.previewAlgorithm') }}</span>
             <span class="preview-value">{{ parsedPreview.algorithm || 'sha1' }}</span>
           </div>
           <div class="preview-row">
-            <span class="preview-label">位数</span>
+            <span class="preview-label">{{ t('addAccount.previewDigits') }}</span>
             <span class="preview-value">{{ parsedPreview.digits || 6 }}</span>
           </div>
           <button class="edit-fields-btn" @click="useParsedData">
-            修改并添加
+            {{ t('addAccount.editAndAdd') }}
           </button>
         </div>
       </div>
 
       <div v-if="manualMode || activeTab === 'manual'" class="manual-section">
         <div class="field-group">
-          <label class="field-label">账号名称</label>
-          <input v-model="manualName" type="text" class="input" placeholder="例如: user@example.com" />
+          <label class="field-label">{{ t('addAccount.accountName') }}</label>
+          <input v-model="manualName" type="text" class="input" :placeholder="t('addAccount.accountNamePlaceholder')" />
         </div>
 
         <div class="field-group">
-          <label class="field-label">发行方</label>
-          <input v-model="manualIssuer" type="text" class="input" placeholder="例如: Google" />
+          <label class="field-label">{{ t('addAccount.issuer') }}</label>
+          <input v-model="manualIssuer" type="text" class="input" :placeholder="t('addAccount.issuerPlaceholder')" />
         </div>
 
         <div class="field-group">
-          <label class="field-label">密钥 (Base32)</label>
-          <input v-model="manualSecret" type="text" class="input" placeholder="JBSWY3DPEHPK3PXP" />
+          <label class="field-label">{{ t('addAccount.secretKey') }}</label>
+          <input v-model="manualSecret" type="text" class="input" :placeholder="t('addAccount.secretPlaceholder')" />
         </div>
 
         <div class="field-row">
           <div class="field-group">
-            <label class="field-label">类型</label>
+            <label class="field-label">{{ t('addAccount.type') }}</label>
             <select v-model="manualType" class="input">
               <option value="totp">TOTP</option>
               <option value="hotp">HOTP</option>
@@ -331,7 +333,7 @@ function useParsedData() {
           </div>
 
           <div class="field-group">
-            <label class="field-label">算法</label>
+            <label class="field-label">{{ t('addAccount.algorithm') }}</label>
             <select v-model="manualAlgorithm" class="input">
               <option value="sha1">SHA1</option>
               <option value="sha256">SHA256</option>
@@ -342,7 +344,7 @@ function useParsedData() {
 
         <div class="field-row">
           <div class="field-group">
-            <label class="field-label">位数</label>
+            <label class="field-label">{{ t('addAccount.digits') }}</label>
             <select v-model="manualDigits" class="input">
               <option :value="6">6</option>
               <option :value="7">7</option>
@@ -351,15 +353,15 @@ function useParsedData() {
           </div>
 
           <div v-if="manualType === 'totp'" class="field-group">
-            <label class="field-label">周期 (秒)</label>
+            <label class="field-label">{{ t('addAccount.period') }}</label>
             <input v-model.number="manualPeriod" type="number" class="input" min="1" />
           </div>
         </div>
       </div>
 
       <div class="actions">
-        <button class="btn btn-cancel" @click="handleCancel">取消</button>
-        <button class="btn btn-add" @click="handleAdd">添加</button>
+        <button class="btn btn-cancel" @click="handleCancel">{{ t('common.cancel') }}</button>
+        <button class="btn btn-add" @click="handleAdd">{{ t('common.add') }}</button>
       </div>
     </div>
   </div>
