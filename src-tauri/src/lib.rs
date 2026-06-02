@@ -5,6 +5,8 @@ mod biometric_status;
 
 use serde::Serialize;
 use tauri::AppHandle;
+use tauri::Manager;
+use tauri::tray::TrayIconBuilder;
 
 #[derive(Serialize)]
 struct SetupStatus {
@@ -109,6 +111,11 @@ fn load_password_hash(app: AppHandle) -> Option<String> {
     storage::load_password_hash(&app)
 }
 
+#[tauri::command]
+fn is_macos() -> bool {
+    cfg!(target_os = "macos")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -122,7 +129,33 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            #[cfg(target_os = "macos")]
+            {
+                let _tray = TrayIconBuilder::with_id("main-tray")
+                    .tooltip("OpenOTP")
+                    .icon(app.default_window_icon().unwrap().clone())
+                    .on_tray_icon_event(|tray, event| {
+                        if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
+                            let app = tray.app_handle();
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    })
+                    .show_menu_on_left_click(false)
+                    .build(app)?;
+            }
+
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                window.hide().ok();
+                api.prevent_close();
+            }
         })
         .invoke_handler(tauri::generate_handler![
             get_accounts,
@@ -142,6 +175,7 @@ pub fn run() {
             has_setup,
             save_password_hash,
             load_password_hash,
+            is_macos,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

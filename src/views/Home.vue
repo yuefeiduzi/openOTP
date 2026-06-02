@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useAccountStore } from '@/stores'
 import type { Account } from '@/types'
 import { getRandomBgColor } from '@/utils/icons'
+import { useToast } from '@/composables/useToast'
 import AccountCard from '@/components/AccountCard.vue'
 import AddAccount from '@/components/AddAccount.vue'
 import DeleteConfirm from '@/components/DeleteConfirm.vue'
@@ -13,14 +14,13 @@ import EditAccount from '@/components/EditAccount.vue'
 const router = useRouter()
 const accountStore = useAccountStore()
 const { t } = useI18n()
+const { show: showToast } = useToast()
 
 const showAdd = ref(false)
 const showDelete = ref(false)
 const showEdit = ref(false)
-const showToast = ref(false)
 const deletingAccount = ref<Account | null>(null)
 const editingAccount = ref<Account | null>(null)
-let toastTimer: ReturnType<typeof setTimeout> | null = null
 
 const dragIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
@@ -43,11 +43,7 @@ function goToSettings() {
 
 function handleCopy(code: string) {
   navigator.clipboard.writeText(code)
-  showToast.value = true
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    showToast.value = false
-  }, 2000)
+  showToast(t('home.copied'))
 }
 
 function handleDelete(account: Account) {
@@ -180,10 +176,6 @@ function handleEditSave(data: Partial<Account>) {
     </div>
 
     <button class="add-btn" @click="showAdd = true">+</button>
-
-    <div v-if="showToast" class="toast">
-      {{ t('home.copied') }}
-    </div>
 
     <AddAccount
       :visible="showAdd"

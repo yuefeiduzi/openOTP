@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { useSettingsStore } from '@/stores'
+import GlobalToast from '@/components/GlobalToast.vue'
 
 const settingsStore = useSettingsStore()
 let hiddenTime: number | null = null
@@ -29,6 +30,7 @@ onUnmounted(() => {
 <template>
   <div class="app">
     <router-view />
+    <GlobalToast />
   </div>
 </template>
 

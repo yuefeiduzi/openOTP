@@ -48,6 +48,7 @@ export default {
     setPassword: '设置密码',
     verifyPassword: '验证密码',
     passwordHint: '密码提示',
+    hintSaved: '密码提示已保存',
     clickToSet: '点击设置',
     securityOptions: '安全选项',
     biometricUnlock: '生物识别解锁',

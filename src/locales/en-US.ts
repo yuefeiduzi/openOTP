@@ -48,6 +48,7 @@ export default {
     setPassword: 'Set Password',
     verifyPassword: 'Verify Password',
     passwordHint: 'Password Hint',
+    hintSaved: 'Hint saved',
     clickToSet: 'Click to set',
     securityOptions: 'Security Options',
     biometricUnlock: 'Biometric Unlock',

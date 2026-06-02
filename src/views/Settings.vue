@@ -12,11 +12,13 @@ import { setLocale, getSavedLocalePreference } from '@/locales'
 import PinInput from '@/components/PinInput.vue'
 import BottomSheet from '@/components/BottomSheet.vue'
 import { enableDebugLog, disableDebugLog, isDebugEnabled, exportLogsText } from '@/utils/debug'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
 const accountStore = useAccountStore()
 const { t } = useI18n()
+const { show: showToast } = useToast()
 
 const languagePreference = ref<'auto' | 'zh-CN' | 'en-US'>('auto')
 
@@ -58,19 +60,6 @@ const importFilePath = ref('')
 const importFileContent = ref('')
 const importPassword = ref('')
 const importPasswordError = ref('')
-
-const toastMessage = ref('')
-const toastError = ref(false)
-let toastTimer: ReturnType<typeof setTimeout> | null = null
-
-function showToast(msg: string, isError = false) {
-  toastMessage.value = msg
-  toastError.value = isError
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    toastMessage.value = ''
-  }, 2500)
-}
 
 const biometricLabel = computed(() => {
   const labels: Record<string, string> = {
@@ -171,6 +160,7 @@ function saveHint() {
   settingsStore.settings.passwordHint = hintValue.value
   showHintModal.value = false
   saveSettings()
+  showToast(t('settings.hintSaved'))
 }
 
 function handleHintKeydown(e: KeyboardEvent) {
@@ -259,8 +249,8 @@ async function submitNewPassword() {
   try {
     const hash = await invoke<string>('hash_password_cmd', { password: newPassword.value })
     await invoke('save_password_hash', { hash })
-    passwordSuccess.value = t('errors.changePasswordSuccess')
-    setTimeout(() => closePasswordModal(), 1500)
+    closePasswordModal()
+    showToast(t('errors.changePasswordSuccess'))
   } catch {
     passwordError.value = t('errors.changePasswordFailed')
   }
@@ -308,8 +298,8 @@ async function submitSetPassword() {
     })
     await settingsStore.savePassword(setNewPassword.value)
     await settingsStore.saveSettings()
-    setPasswordSuccess.value = t('errors.changePasswordSuccess')
-    setTimeout(() => closeSetPasswordModal(), 1500)
+    closeSetPasswordModal()
+    showToast(t('errors.changePasswordSuccess'))
   } catch {
     setPasswordError.value = t('errors.changePasswordFailed')
   }
@@ -781,9 +771,6 @@ async function exportDebugLogs() {
       </div>
     </div>
 
-    <div v-if="toastMessage" class="toast" :class="{ error: toastError }">
-      {{ toastMessage }}
-    </div>
   </div>
 </template>
 
@@ -1137,62 +1124,5 @@ async function exportDebugLogs() {
 
 .btn-primary:hover {
   background: #3a7bc8;
-}
-
-.toast {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  padding: 14px 24px;
-  border-radius: 10px;
-  font-size: 14px;
-  z-index: 400;
-  text-align: center;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-.toast.error {
-  background: rgba(231, 76, 60, 0.9);
-}
-
-.lang-options {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.lang-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  font-size: 15px;
-  color: #333;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s;
-}
-
-.lang-option:hover {
-  background: #f5f5f5;
-}
-
-.lang-option.active {
-  background: #eef4ff;
-  color: #4a90d9;
-  font-weight: 500;
-}
-
-.lang-check {
-  color: #4a90d9;
-  font-size: 16px;
 }
 </style>
