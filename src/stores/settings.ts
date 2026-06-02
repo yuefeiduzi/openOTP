@@ -14,6 +14,7 @@ export const useSettingsStore = defineStore('settings', () => {
   })
 
   const isSetup = ref(false)
+  const hasPassword = ref(false)
   const isLocked = ref(true)
 
   function updateSettings(updates: Partial<AppSettings>) {
@@ -28,14 +29,16 @@ export const useSettingsStore = defineStore('settings', () => {
     isLocked.value = true
   }
 
-  function completeSetup() {
+  function completeSetup(withPassword: boolean = true) {
     isSetup.value = true
+    hasPassword.value = withPassword
     isLocked.value = false
   }
 
   async function savePassword(password: string): Promise<void> {
     const hash: string = await invoke('hash_password_cmd', { password })
     await invoke('save_password_hash', { hash })
+    hasPassword.value = true
   }
 
   async function verifyPassword(password: string): Promise<boolean> {
@@ -45,7 +48,9 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function checkSetup(): Promise<void> {
-    isSetup.value = await invoke('has_setup')
+    const result = await invoke<{ is_setup: boolean; has_password: boolean }>('has_setup')
+    isSetup.value = result.is_setup
+    hasPassword.value = result.has_password
   }
 
   async function loadSettings(): Promise<void> {
@@ -66,6 +71,7 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     settings,
     isSetup,
+    hasPassword,
     isLocked,
     updateSettings,
     unlock,
