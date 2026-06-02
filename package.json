@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@tauri-apps/plugin-dialog": "^2.0.0",
@@ -25,9 +27,12 @@
     "@tauri-apps/cli": "^2.11.2",
     "@types/node": "^24.12.3",
     "@vitejs/plugin-vue": "^6.0.6",
+    "@vue/test-utils": "^2.4.10",
     "@vue/tsconfig": "^0.9.1",
+    "happy-dom": "^20.9.0",
     "typescript": "~6.0.2",
     "vite": "^8.0.12",
+    "vitest": "^4.1.8",
     "vue-tsc": "^3.2.8"
   },
   "allowScripts": {

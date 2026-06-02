@@ -334,6 +334,7 @@ async function handleExportConfirm() {
   }
 
   showExportSheet.value = false
+  await new Promise(r => setTimeout(r, 350))
   await doExport('')
 }
 
@@ -345,15 +346,8 @@ async function handleExportWithAppPassword() {
   showPasswordModal.value = true
 }
 
-async function doExport(password: string | undefined) {
+async function doExport(password: string) {
   try {
-    const exportPassword = password !== undefined ? password : ''
-    let finalPassword = exportPassword
-    
-    if (password === undefined && settingsStore.hasPassword) {
-      finalPassword = ''
-    }
-
     const filePath = await save({
       defaultPath: 'openotp-backup.openotp',
       filters: [{ name: 'OpenOTP Backup', extensions: ['openotp'] }],
@@ -361,7 +355,7 @@ async function doExport(password: string | undefined) {
 
     if (!filePath) return
 
-    const json = await createBackup(accountStore.accounts, finalPassword)
+    const json = await createBackup(accountStore.accounts, password)
     await writeTextFile(filePath, json)
     showToast(t('settings.exportSuccess', { path: filePath }))
   } catch (err) {
