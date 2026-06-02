@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
 import { invoke } from '@tauri-apps/api/core'
+import PinInput from '@/components/PinInput.vue'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
@@ -47,10 +48,7 @@ onMounted(async () => {
 })
 
 async function handleSubmit() {
-  if (password.value.length !== 6) {
-    error.value = t('errors.enterPassword')
-    return
-  }
+  if (password.value.length !== 6) return
 
   try {
     const valid = await settingsStore.verifyPassword(password.value)
@@ -59,6 +57,7 @@ async function handleSubmit() {
       router.replace('/')
     } else {
       error.value = t('errors.passwordError')
+      password.value = ''
     }
   } catch {
     error.value = t('errors.verifyFailed')
@@ -80,8 +79,6 @@ async function useBiometric() {
       canUseBiometric.value = false
       biometricError.value = t('errors.biometricLocked')
     } else if (err.type === 'UserCancelled') {
-    } else if (err.type === 'Failed') {
-      biometricError.value = t('errors.verifyFailed')
     } else {
       biometricError.value = t('errors.verifyFailed')
     }
@@ -94,23 +91,13 @@ async function useBiometric() {
     <h1>{{ t('unlock.title') }}</h1>
     <p class="subtitle">{{ t('unlock.enterPassword') }}</p>
 
-    <form @submit.prevent="handleSubmit">
-      <div class="form-group">
-        <input 
-          v-model="password"
-          type="password"
-          maxlength="6"
-          :placeholder="t('unlock.passwordPlaceholder')"
-          autofocus
-        />
-      </div>
+    <PinInput v-model="password" @complete="handleSubmit" />
 
-      <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="error" class="error">{{ error }}</p>
 
-      <button type="submit" class="submit-btn">{{ t('unlock.unlock') }}</button>
-    </form>
+    <button class="submit-btn" @click="handleSubmit">{{ t('unlock.unlock') }}</button>
 
-    <button 
+    <button
       v-if="settingsStore.settings.biometricEnabled && canUseBiometric"
       class="biometric-btn"
       @click="useBiometric"
@@ -142,32 +129,18 @@ h1 {
   margin-bottom: 32px;
 }
 
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 20px;
-  text-align: center;
-  letter-spacing: 8px;
-  box-sizing: border-box;
-}
-
 .error {
   color: #e74c3c;
   font-size: 14px;
-  margin-bottom: 16px;
+  margin: 12px 0 0;
 }
 
 .submit-btn {
   width: 100%;
   padding: 12px;
+  margin-top: 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #4a90d9;
   color: white;
   font-size: 16px;
@@ -179,7 +152,7 @@ h1 {
   padding: 12px;
   margin-top: 12px;
   border: 1px solid #4a90d9;
-  border-radius: 8px;
+  border-radius: 10px;
   background: white;
   color: #4a90d9;
   font-size: 16px;

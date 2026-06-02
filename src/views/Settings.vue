@@ -9,6 +9,8 @@ import { useSettingsStore, useAccountStore } from '@/stores'
 import { createBackup, restoreBackup } from '@/utils/backup'
 import { importAndOTPBackup } from '@/utils/andotp'
 import { setLocale, getSavedLocalePreference } from '@/locales'
+import PinInput from '@/components/PinInput.vue'
+import BottomSheet from '@/components/BottomSheet.vue'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
@@ -19,6 +21,7 @@ const languagePreference = ref<'auto' | 'zh-CN' | 'en-US'>('auto')
 
 const showPasswordModal = ref(false)
 const passwordStep = ref<'verify' | 'change'>('verify')
+const passwordModalPurpose = ref<'change' | 'export'>('change')
 const currentPassword = ref('')
 const newPassword = ref('')
 const confirmNewPassword = ref('')
@@ -34,18 +37,37 @@ const setEnableBiometric = ref(true)
 const setPasswordError = ref('')
 const setPasswordSuccess = ref('')
 
-const showBackupModal = ref(false)
-const backupMode = ref<'export' | 'import'>('export')
-const backupPassword = ref('')
-const backupConfirmPassword = ref('')
-const backupMessage = ref('')
-const backupError = ref('')
-
 const editingHint = ref(false)
 const hintValue = ref('')
 
 const biometricAvailable = ref(false)
 const biometricType = ref('')
+
+const showExportSheet = ref(false)
+const exportMode = ref<'none' | 'custom' | 'app'>('none')
+const showExportPasswordModal = ref(false)
+const exportCustomPassword = ref('')
+const exportConfirmPassword = ref('')
+const exportPasswordError = ref('')
+
+const showImportPasswordModal = ref(false)
+const importFilePath = ref('')
+const importFileContent = ref('')
+const importPassword = ref('')
+const importPasswordError = ref('')
+
+const toastMessage = ref('')
+const toastError = ref(false)
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+function showToast(msg: string, isError = false) {
+  toastMessage.value = msg
+  toastError.value = isError
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toastMessage.value = ''
+  }, 2500)
+}
 
 const biometricLabel = computed(() => {
   const labels: Record<string, string> = {
@@ -59,7 +81,7 @@ const biometricLabel = computed(() => {
 
 onMounted(async () => {
   languagePreference.value = getSavedLocalePreference()
-  
+
   try {
     const settings = await invoke<{
       biometric_enabled: boolean
@@ -149,15 +171,13 @@ function cancelHint() {
 }
 
 function handleHintKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter') {
-    saveHint()
-  } else if (e.key === 'Escape') {
-    cancelHint()
-  }
+  if (e.key === 'Enter') saveHint()
+  else if (e.key === 'Escape') cancelHint()
 }
 
 function openChangePassword() {
   showPasswordModal.value = true
+  passwordModalPurpose.value = 'change'
   passwordStep.value = 'verify'
   currentPassword.value = ''
   newPassword.value = ''
@@ -168,6 +188,79 @@ function openChangePassword() {
 
 function closePasswordModal() {
   showPasswordModal.value = false
+}
+
+async function verifyCurrentPassword() {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+
+  if (currentPassword.value.length !== 6) {
+    passwordError.value = t('errors.changePasswordVerify')
+    return
+  }
+
+  try {
+    passwordHash.value = await invoke<string>('load_password_hash')
+    const valid = await invoke<boolean>('verify_password_cmd', {
+      password: currentPassword.value,
+      hash: passwordHash.value
+    })
+
+    if (valid) {
+      if (passwordModalPurpose.value === 'export') {
+        showPasswordModal.value = false
+        await doExport(currentPassword.value)
+        return
+      }
+
+      if (settingsStore.settings.biometricEnabled && biometricAvailable.value) {
+        try {
+          const bioSuccess = await invoke<boolean>('biometric_auth', { reason: t('biometric.changePassword') })
+          if (!bioSuccess) {
+            passwordError.value = t('errors.biometricFailed')
+            return
+          }
+        } catch (e) {
+          const err = e as { type: string }
+          if (err.type === 'UserCancelled') {
+            passwordError.value = t('errors.biometricRequired')
+          } else {
+            passwordError.value = t('errors.biometricFailed')
+          }
+          return
+        }
+      }
+      passwordStep.value = 'change'
+    } else {
+      passwordError.value = t('errors.passwordVerifyFailed')
+    }
+  } catch {
+    passwordError.value = t('errors.verifyFailed')
+  }
+}
+
+async function submitNewPassword() {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+
+  if (newPassword.value.length !== 6) {
+    passwordError.value = t('errors.passwordLength')
+    return
+  }
+
+  if (newPassword.value !== confirmNewPassword.value) {
+    passwordError.value = t('errors.passwordMismatch')
+    return
+  }
+
+  try {
+    const hash = await invoke<string>('hash_password_cmd', { password: newPassword.value })
+    await invoke('save_password_hash', { hash })
+    passwordSuccess.value = t('errors.changePasswordSuccess')
+    setTimeout(() => closePasswordModal(), 1500)
+  } catch {
+    passwordError.value = t('errors.changePasswordFailed')
+  }
 }
 
 function openSetPassword() {
@@ -213,212 +306,139 @@ async function submitSetPassword() {
     await settingsStore.savePassword(setNewPassword.value)
     await settingsStore.saveSettings()
     setPasswordSuccess.value = t('errors.changePasswordSuccess')
-    setTimeout(() => {
-      closeSetPasswordModal()
-    }, 1500)
+    setTimeout(() => closeSetPasswordModal(), 1500)
   } catch {
     setPasswordError.value = t('errors.changePasswordFailed')
   }
 }
 
-async function verifyCurrentPassword() {
-  passwordError.value = ''
-  passwordSuccess.value = ''
+function openExportSheet() {
+  exportMode.value = 'none'
+  showExportSheet.value = true
+}
 
-  if (currentPassword.value.length !== 6) {
-    passwordError.value = t('errors.changePasswordVerify')
+async function handleExportConfirm() {
+  if (exportMode.value === 'custom') {
+    showExportSheet.value = false
+    exportCustomPassword.value = ''
+    exportConfirmPassword.value = ''
+    exportPasswordError.value = ''
+    showExportPasswordModal.value = true
     return
   }
 
-  try {
-    passwordHash.value = await invoke<string>('load_password_hash')
-    const valid = await invoke<boolean>('verify_password_cmd', {
-      password: currentPassword.value,
-      hash: passwordHash.value
-    })
+  if (exportMode.value === 'app') {
+    showExportSheet.value = false
+    await handleExportWithAppPassword()
+    return
+  }
 
-    if (valid) {
-      if (settingsStore.settings.biometricEnabled && biometricAvailable.value) {
-        try {
-          const bioSuccess = await invoke<boolean>('biometric_auth', { reason: t('biometric.changePassword') })
-          if (!bioSuccess) {
-            passwordError.value = t('errors.biometricFailed')
-            return
-          }
-        } catch (e) {
-          const err = e as { type: string }
-          if (err.type === 'UserCancelled') {
-            passwordError.value = t('errors.biometricRequired')
-          } else {
-            passwordError.value = t('errors.biometricFailed')
-          }
-          return
-        }
-      }
-      passwordStep.value = 'change'
-    } else {
-      passwordError.value = t('errors.passwordVerifyFailed')
+  showExportSheet.value = false
+  await doExport('')
+}
+
+async function handleExportWithAppPassword() {
+  currentPassword.value = ''
+  passwordError.value = ''
+  passwordModalPurpose.value = 'export'
+  passwordStep.value = 'verify'
+  showPasswordModal.value = true
+}
+
+async function doExport(password: string | undefined) {
+  try {
+    const exportPassword = password !== undefined ? password : ''
+    let finalPassword = exportPassword
+    
+    if (password === undefined && settingsStore.hasPassword) {
+      finalPassword = ''
     }
-  } catch {
-    passwordError.value = t('errors.verifyFailed')
-  }
-}
 
-async function submitNewPassword() {
-  passwordError.value = ''
-  passwordSuccess.value = ''
-
-  if (newPassword.value.length !== 6) {
-    passwordError.value = t('errors.passwordLength')
-    return
-  }
-
-  if (newPassword.value !== confirmNewPassword.value) {
-    passwordError.value = t('errors.changePasswordMismatch')
-    return
-  }
-
-  try {
-    const hash = await invoke<string>('hash_password_cmd', {
-      password: newPassword.value
-    })
-    await invoke('save_password_hash', { hash })
-    passwordSuccess.value = t('errors.changePasswordSuccess')
-    setTimeout(() => {
-      closePasswordModal()
-    }, 1500)
-  } catch {
-    passwordError.value = t('errors.changePasswordFailed')
-  }
-}
-
-function openBackupExport() {
-  backupMode.value = 'export'
-  backupPassword.value = ''
-  backupConfirmPassword.value = ''
-  backupMessage.value = ''
-  backupError.value = ''
-  showBackupModal.value = true
-}
-
-function openBackupImport() {
-  backupMode.value = 'import'
-  backupPassword.value = ''
-  backupConfirmPassword.value = ''
-  backupMessage.value = ''
-  backupError.value = ''
-  showBackupModal.value = true
-}
-
-function closeBackupModal() {
-  showBackupModal.value = false
-}
-
-async function confirmBackupExport() {
-  backupError.value = ''
-  backupMessage.value = ''
-
-  if (!backupPassword.value || backupPassword.value.length < 6) {
-    backupError.value = t('errors.backupPasswordLength')
-    return
-  }
-  if (backupPassword.value !== backupConfirmPassword.value) {
-    backupError.value = t('errors.backupPasswordMismatch')
-    return
-  }
-
-  try {
     const filePath = await save({
       defaultPath: 'openotp-backup.openotp',
-      filters: [{ name: 'openOTP Backup', extensions: ['openotp'] }],
+      filters: [{ name: 'OpenOTP Backup', extensions: ['openotp'] }],
     })
 
-    if (!filePath) {
-      closeBackupModal()
-      return
-    }
+    if (!filePath) return
 
-    const json = await createBackup(accountStore.accounts, backupPassword.value)
+    const json = await createBackup(accountStore.accounts, finalPassword)
     await writeTextFile(filePath, json)
-    backupMessage.value = t('common.save')
-    setTimeout(() => closeBackupModal(), 1500)
+    showToast(t('settings.exportSuccess', { path: filePath }))
   } catch (err) {
-    backupError.value = t('errors.exportFailed', { error: String(err) })
+    showToast(t('errors.exportFailed', { error: String(err) }), true)
   }
 }
 
-async function confirmBackupImport() {
-  backupError.value = ''
-  backupMessage.value = ''
+async function handleExportPasswordConfirm() {
+  exportPasswordError.value = ''
 
-  if (!backupPassword.value) {
-    backupError.value = t('errors.backupPasswordRequired')
+  if (exportCustomPassword.value.length < 6) {
+    exportPasswordError.value = t('errors.backupPasswordLength')
+    return
+  }
+  if (exportCustomPassword.value !== exportConfirmPassword.value) {
+    exportPasswordError.value = t('errors.backupPasswordMismatch')
     return
   }
 
+  showExportPasswordModal.value = false
+  await doExport(exportCustomPassword.value)
+}
+
+async function handleImportBackup() {
   try {
     const filePath = await open({
-      filters: [{ name: 'openOTP Backup', extensions: ['openotp'] }],
-      multiple: false,
-    })
-
-    if (!filePath) {
-      closeBackupModal()
-      return
-    }
-
-    const fileContent = await readTextFile(filePath)
-    const { manifest, accounts } = await restoreBackup(fileContent, backupPassword.value)
-
-    for (const account of accounts) {
-      accountStore.addAccount(account)
-    }
-
-    backupMessage.value = t('errors.importSuccess', { count: manifest.accountCount })
-    setTimeout(() => closeBackupModal(), 2000)
-  } catch (err) {
-    backupError.value = t('errors.importFailed', { error: String(err) })
-  }
-}
-
-function exportBackup() {
-  openBackupExport()
-}
-
-function importBackup() {
-  openBackupImport()
-}
-
-async function importJsonAccounts() {
-  try {
-    const filePath = await open({
-      filters: [{ name: 'JSON', extensions: ['json'] }],
+      filters: [{ name: 'OpenOTP Backup', extensions: ['openotp'] }],
       multiple: false,
     })
 
     if (!filePath) return
 
     const fileContent = await readTextFile(filePath)
-    const accounts = JSON.parse(fileContent)
-
-    for (const account of accounts) {
-      account.id = generateId()
-      accountStore.addAccount(account)
+    
+    let payload: any
+    try {
+      payload = JSON.parse(fileContent)
+    } catch {
+      showToast(t('errors.importFailed', { error: 'Invalid backup file' }), true)
+      return
     }
 
-    backupMessage.value = `成功导入 ${accounts.length} 个账户`
-    showBackupModal.value = true
-    setTimeout(() => {
-      showBackupModal.value = false
-    }, 2000)
+    if (!payload.data || !payload.data.iv) {
+      showToast(t('errors.importFailed', { error: 'Invalid backup format' }), true)
+      return
+    }
+
+    importFilePath.value = filePath
+    importFileContent.value = fileContent
+    importPassword.value = ''
+    importPasswordError.value = ''
+    showImportPasswordModal.value = true
   } catch (err) {
-    backupError.value = `导入失败：${String(err)}`
-    showBackupModal.value = true
+    showToast(t('errors.importFailed', { error: String(err) }), true)
   }
 }
 
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2)
+async function handleImportPasswordConfirm() {
+  importPasswordError.value = ''
+
+  if (!importPassword.value) {
+    importPasswordError.value = t('errors.backupPasswordRequired')
+    return
+  }
+
+  try {
+    const { manifest, accounts } = await restoreBackup(importFileContent.value, importPassword.value)
+
+    for (const account of accounts) {
+      accountStore.addAccount(account)
+    }
+
+    showImportPasswordModal.value = false
+    showToast(t('errors.importSuccess', { count: manifest.accountCount }))
+  } catch {
+    importPasswordError.value = t('errors.passwordError')
+  }
 }
 
 async function importAndOTPAccounts() {
@@ -437,14 +457,9 @@ async function importAndOTPAccounts() {
       accountStore.addAccount(account)
     }
 
-    backupMessage.value = t('errors.andOTPImportSuccess', { count: accounts.length })
-    showBackupModal.value = true
-    setTimeout(() => {
-      showBackupModal.value = false
-    }, 2000)
+    showToast(t('errors.andOTPImportSuccess', { count: accounts.length }))
   } catch (err) {
-    backupError.value = t('errors.andOTPImportFailed', { error: String(err) })
-    showBackupModal.value = true
+    showToast(t('errors.andOTPImportFailed', { error: String(err) }), true)
   }
 }
 
@@ -455,6 +470,10 @@ function lockApp() {
 
 function goBack() {
   router.back()
+}
+
+function openSourceCode() {
+  window.open('https://github.com/openotp/openotp', '_blank')
 }
 </script>
 
@@ -471,7 +490,7 @@ function goBack() {
         <div class="setting-item setting-row">
           <span class="setting-label">{{ t('settings.language') }}</span>
           <div class="setting-control">
-            <select :value="languagePreference" @change="handleLanguageChange(($event.target as HTMLSelectElement).value as 'auto' | 'zh-CN' | 'en-US')">
+            <select class="lang-select" :value="languagePreference" @change="handleLanguageChange(($event.target as HTMLSelectElement).value as 'auto' | 'zh-CN' | 'en-US')">
               <option value="auto">{{ t('settings.languageAuto') }}</option>
               <option value="zh-CN">{{ t('settings.languageZhCN') }}</option>
               <option value="en-US">{{ t('settings.languageEnUS') }}</option>
@@ -483,19 +502,37 @@ function goBack() {
       <div class="divider"></div>
 
       <section class="section">
+        <h2 class="section-title">{{ t('settings.dataManagement') }}</h2>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="openExportSheet">{{ t('settings.exportBackup') }}</button>
+        </div>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="handleImportBackup">{{ t('settings.importBackup') }}</button>
+        </div>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="importAndOTPAccounts">{{ t('settings.importAndOTP') }}</button>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="section">
         <h2 class="section-title">{{ t('settings.securitySettings') }}</h2>
 
         <div class="setting-item setting-action">
-          <button 
-            v-if="!settingsStore.hasPassword" 
-            class="setting-btn" 
+          <button
+            v-if="!settingsStore.hasPassword"
+            class="setting-btn"
             @click="openSetPassword"
           >
             {{ t('settings.setPassword') }}
           </button>
-          <button 
-            v-else 
-            class="setting-btn danger" 
+          <button
+            v-else
+            class="setting-btn danger"
             @click="openChangePassword"
           >
             {{ t('settings.changePassword') }}
@@ -527,12 +564,6 @@ function goBack() {
             </template>
           </div>
         </div>
-      </section>
-
-      <div class="divider"></div>
-
-      <section class="section">
-        <h2 class="section-title">{{ t('settings.securityOptions') }}</h2>
 
         <div class="setting-item setting-row">
           <span class="setting-label">{{ t('settings.biometricUnlock') }}</span>
@@ -591,28 +622,6 @@ function goBack() {
             </select>
           </div>
         </div>
-      </section>
-
-      <div class="divider"></div>
-
-      <section class="section">
-        <h2 class="section-title">{{ t('settings.dataManagement') }}</h2>
-
-        <div class="setting-item setting-action">
-          <button class="setting-btn" @click="exportBackup">{{ t('settings.exportBackup') }}</button>
-        </div>
-
-        <div class="setting-item setting-action">
-          <button class="setting-btn" @click="importBackup">{{ t('settings.importBackup') }}</button>
-        </div>
-
-        <div class="setting-item setting-action">
-          <button class="setting-btn" @click="importJsonAccounts">导入 JSON 账号</button>
-        </div>
-
-        <div class="setting-item setting-action">
-          <button class="setting-btn" @click="importAndOTPAccounts">{{ t('settings.importAndOTP') }}</button>
-        </div>
 
         <div class="setting-item setting-action">
           <button class="setting-btn" @click="lockApp">{{ t('settings.lockApp') }}</button>
@@ -624,86 +633,80 @@ function goBack() {
       <section class="section about-section">
         <h2 class="section-title">{{ t('settings.about') }}</h2>
         <p class="about-line">{{ t('settings.version') }}</p>
-        <p class="about-line">{{ t('settings.sourceCode') }}</p>
+        <p class="about-line about-link" @click="openSourceCode">{{ t('settings.sourceCode') }}</p>
       </section>
     </div>
 
-    <div v-if="showBackupModal" class="modal-overlay" @click.self="closeBackupModal">
+    <BottomSheet
+      :visible="showExportSheet"
+      :title="t('settings.exportBackup')"
+      :confirm-text="t('settings.startExport')"
+      cancel-text="取消"
+      @close="showExportSheet = false"
+      @confirm="handleExportConfirm"
+    >
+      <div class="export-options">
+        <label class="radio-item" :class="{ active: exportMode === 'none' }">
+          <input v-model="exportMode" type="radio" value="none" />
+          <span>{{ t('settings.exportNoPassword') }}</span>
+        </label>
+        <label class="radio-item" :class="{ active: exportMode === 'custom' }">
+          <input v-model="exportMode" type="radio" value="custom" />
+          <span>{{ t('settings.exportCustomPassword') }}</span>
+        </label>
+        <label class="radio-item" :class="{ active: exportMode === 'app' }">
+          <input v-model="exportMode" type="radio" value="app" />
+          <span>{{ t('settings.exportAppPassword') }}</span>
+        </label>
+      </div>
+    </BottomSheet>
+
+    <div v-if="showExportPasswordModal" class="modal-overlay" @click.self="showExportPasswordModal = false">
       <div class="modal">
-        <h3 class="modal-title">{{ backupMode === 'export' ? t('settings.exportBackup') : t('settings.importBackup') }}</h3>
-
-        <template v-if="backupMode === 'export'">
-          <div class="form-group">
-            <label>{{ t('settings.exportBackup') }}</label>
-            <input
-              v-model="backupPassword"
-              type="password"
-              :placeholder="t('errors.backupPasswordLength')"
-              class="form-input"
-            />
-          </div>
-          <div class="form-group">
-            <label>{{ t('common.confirm') }}</label>
-            <input
-              v-model="backupConfirmPassword"
-              type="password"
-              :placeholder="t('setup.confirmPlaceholder')"
-              class="form-input"
-            />
-          </div>
-        </template>
-
-        <template v-if="backupMode === 'import'">
-          <div class="form-group">
-            <label>{{ t('settings.importBackup') }}</label>
-            <input
-              v-model="backupPassword"
-              type="password"
-              :placeholder="t('errors.backupPasswordRequired')"
-              class="form-input"
-            />
-          </div>
-        </template>
-
-        <p v-if="backupError" class="form-error">{{ backupError }}</p>
-        <p v-if="backupMessage" class="form-success">{{ backupMessage }}</p>
-
+        <h3 class="modal-title">{{ t('settings.setExportPassword') }}</h3>
+        <div class="form-group">
+          <label>{{ t('setup.masterPassword') }}</label>
+          <PinInput v-model="exportCustomPassword" />
+        </div>
+        <div class="form-group">
+          <label>{{ t('setup.confirmPassword') }}</label>
+          <PinInput v-model="exportConfirmPassword" />
+        </div>
+        <p v-if="exportPasswordError" class="form-error">{{ exportPasswordError }}</p>
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeBackupModal">{{ t('common.cancel') }}</button>
-          <button
-            class="btn btn-primary"
-            @click="backupMode === 'export' ? confirmBackupExport() : confirmBackupImport()"
-          >
-            {{ backupMode === 'export' ? t('settings.exportBackup') : t('settings.importBackup') }}
-          </button>
+          <button class="btn btn-secondary" @click="showExportPasswordModal = false">取消</button>
+          <button class="btn btn-primary" @click="handleExportPasswordConfirm">{{ t('settings.startExport') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showImportPasswordModal" class="modal-overlay" @click.self="showImportPasswordModal = false">
+      <div class="modal">
+        <h3 class="modal-title">{{ t('settings.importBackup') }}</h3>
+        <div class="form-group">
+          <label>{{ t('settings.backupPassword') }}</label>
+          <PinInput v-model="importPassword" />
+        </div>
+        <p v-if="importPasswordError" class="form-error">{{ importPasswordError }}</p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" @click="showImportPasswordModal = false">取消</button>
+          <button class="btn btn-primary" @click="handleImportPasswordConfirm">{{ t('common.confirm') }}</button>
         </div>
       </div>
     </div>
 
     <div v-if="showPasswordModal" class="modal-overlay" @click.self="closePasswordModal">
       <div class="modal">
-        <h3 class="modal-title">{{ t('settings.changePassword') }}</h3>
+        <h3 class="modal-title">{{ passwordModalPurpose === 'export' ? t('settings.verifyPassword') : t('settings.changePassword') }}</h3>
 
         <template v-if="passwordStep === 'verify'">
           <div class="form-group">
-            <label>{{ t('setup.setPassword') }}</label>
-            <input
-              v-model="currentPassword"
-              type="password"
-              maxlength="6"
-              :placeholder="t('errors.changePasswordVerify')"
-              class="form-input"
-            />
+            <label>{{ t('unlock.enterPassword') }}</label>
+            <PinInput v-model="currentPassword" />
           </div>
-
-          <p v-if="settingsStore.settings.biometricEnabled && biometricAvailable" class="biometric-hint">
-            {{ t('setup.enableBiometric', { biometric: biometricLabel }) }}
-          </p>
-
           <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
-
           <div class="modal-actions">
-            <button class="btn btn-secondary" @click="closePasswordModal">{{ t('common.cancel') }}</button>
+            <button class="btn btn-secondary" @click="closePasswordModal">取消</button>
             <button class="btn btn-primary" @click="verifyCurrentPassword">{{ t('common.confirm') }}</button>
           </div>
         </template>
@@ -711,31 +714,16 @@ function goBack() {
         <template v-if="passwordStep === 'change'">
           <div class="form-group">
             <label>{{ t('setup.masterPassword') }}</label>
-            <input
-              v-model="newPassword"
-              type="password"
-              maxlength="6"
-              :placeholder="t('setup.passwordPlaceholder')"
-              class="form-input"
-            />
+            <PinInput v-model="newPassword" />
           </div>
-
           <div class="form-group">
             <label>{{ t('setup.confirmPassword') }}</label>
-            <input
-              v-model="confirmNewPassword"
-              type="password"
-              maxlength="6"
-              :placeholder="t('setup.confirmPlaceholder')"
-              class="form-input"
-            />
+            <PinInput v-model="confirmNewPassword" />
           </div>
-
           <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
           <p v-if="passwordSuccess" class="form-success">{{ passwordSuccess }}</p>
-
           <div class="modal-actions">
-            <button class="btn btn-secondary" @click="closePasswordModal">{{ t('common.cancel') }}</button>
+            <button class="btn btn-secondary" @click="closePasswordModal">取消</button>
             <button class="btn btn-primary" @click="submitNewPassword">{{ t('common.save') }}</button>
           </div>
         </template>
@@ -745,29 +733,14 @@ function goBack() {
     <div v-if="showSetPasswordModal" class="modal-overlay" @click.self="closeSetPasswordModal">
       <div class="modal">
         <h3 class="modal-title">{{ t('settings.setPassword') }}</h3>
-
         <div class="form-group">
           <label>{{ t('setup.masterPassword') }}</label>
-          <input
-            v-model="setNewPassword"
-            type="password"
-            maxlength="6"
-            :placeholder="t('setup.passwordPlaceholder')"
-            class="form-input"
-          />
+          <PinInput v-model="setNewPassword" />
         </div>
-
         <div class="form-group">
           <label>{{ t('setup.confirmPassword') }}</label>
-          <input
-            v-model="setConfirmPassword"
-            type="password"
-            maxlength="6"
-            :placeholder="t('setup.confirmPlaceholder')"
-            class="form-input"
-          />
+          <PinInput v-model="setConfirmPassword" />
         </div>
-
         <div class="form-group">
           <label>{{ t('setup.passwordHint') }}</label>
           <input
@@ -778,22 +751,23 @@ function goBack() {
             class="form-input"
           />
         </div>
-
         <div v-if="biometricAvailable" class="form-group checkbox">
           <label>
             <input v-model="setEnableBiometric" type="checkbox" />
             {{ t('setup.enableBiometric', { biometric: biometricLabel }) }}
           </label>
         </div>
-
         <p v-if="setPasswordError" class="form-error">{{ setPasswordError }}</p>
         <p v-if="setPasswordSuccess" class="form-success">{{ setPasswordSuccess }}</p>
-
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeSetPasswordModal">{{ t('common.cancel') }}</button>
+          <button class="btn btn-secondary" @click="closeSetPasswordModal">取消</button>
           <button class="btn btn-primary" @click="submitSetPassword">{{ t('common.save') }}</button>
         </div>
       </div>
+    </div>
+
+    <div v-if="toastMessage" class="toast" :class="{ error: toastError }">
+      {{ toastMessage }}
     </div>
   </div>
 </template>
@@ -839,11 +813,11 @@ function goBack() {
 }
 
 .section-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #888;
+  color: #999;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   margin: 0 0 12px 0;
 }
 
@@ -883,16 +857,17 @@ function goBack() {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 10px;
   background: white;
   font-size: 14px;
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background 0.2s;
 }
 
 .setting-btn:hover {
   border-color: #4a90d9;
+  background: #f8fbff;
 }
 
 .setting-btn.danger {
@@ -901,19 +876,40 @@ function goBack() {
 }
 
 .setting-btn.danger:hover {
-  background: #e74c3c;
-  color: white;
+  background: #fff5f5;
 }
 
 select {
-  padding: 6px 12px;
+  padding: 8px 12px;
   border: 1px solid #ddd;
-  border-radius: 6px;
+  border-radius: 10px;
   background: white;
   font-size: 14px;
   color: #333;
   cursor: pointer;
   outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.lang-select {
+  padding: 8px 32px 8px 14px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #f8f8f8;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 
 select:focus {
@@ -1011,6 +1007,38 @@ select:focus {
   color: #999;
 }
 
+.export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.radio-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 15px;
+  color: #333;
+}
+
+.radio-item:hover {
+  background: #f5f5f5;
+}
+
+.radio-item.active {
+  background: #eef4ff;
+}
+
+.radio-item input[type="radio"] {
+  accent-color: #4a90d9;
+  width: 18px;
+  height: 18px;
+}
+
 .about-section {
   padding-bottom: 24px;
 }
@@ -1019,6 +1047,12 @@ select:focus {
   margin: 4px 0;
   font-size: 13px;
   color: #999;
+}
+
+.about-link {
+  color: #4a90d9;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .modal-overlay {
@@ -1031,23 +1065,23 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 300;
   padding: 24px;
 }
 
 .modal {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 24px;
   width: 100%;
-  max-width: 320px;
+  max-width: 340px;
+  text-align: center;
 }
 
 .modal-title {
   font-size: 18px;
   font-weight: 600;
   margin: 0 0 20px 0;
-  text-align: center;
 }
 
 .form-group {
@@ -1058,14 +1092,14 @@ select:focus {
   display: block;
   font-size: 13px;
   color: #666;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .form-input {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 16px;
   box-sizing: border-box;
   outline: none;
@@ -1078,32 +1112,32 @@ select:focus {
 .form-error {
   color: #e74c3c;
   font-size: 13px;
-  margin: -8px 0 12px 0;
+  margin: 8px 0;
 }
 
 .form-success {
   color: #27ae60;
   font-size: 13px;
-  margin: -8px 0 12px 0;
+  margin: 8px 0;
 }
 
-.biometric-hint {
-  font-size: 12px;
-  color: #999;
-  margin-bottom: 12px;
+.checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .modal-actions {
   display: flex;
   gap: 12px;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .btn {
   flex: 1;
-  padding: 10px;
+  padding: 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   cursor: pointer;
 }
@@ -1120,5 +1154,24 @@ select:focus {
 
 .btn-primary:hover {
   background: #3a7bc8;
+}
+
+.toast {
+  position: fixed;
+  bottom: 40px;
+  left: 24px;
+  right: 24px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  z-index: 400;
+  text-align: center;
+  pointer-events: none;
+}
+
+.toast.error {
+  background: rgba(231, 76, 60, 0.9);
 }
 </style>

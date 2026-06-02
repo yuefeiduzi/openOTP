@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
 import { invoke } from '@tauri-apps/api/core'
+import PinInput from '@/components/PinInput.vue'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
@@ -98,27 +99,17 @@ async function handleSkipSetup() {
     <form @submit.prevent="handleSetupWithPassword">
       <div class="form-group">
         <label>{{ t('setup.masterPassword') }}</label>
-        <input 
-          v-model="password"
-          type="password"
-          maxlength="6"
-          :placeholder="t('setup.passwordPlaceholder')"
-        />
+        <PinInput v-model="password" />
       </div>
 
       <div class="form-group">
         <label>{{ t('setup.confirmPassword') }}</label>
-        <input 
-          v-model="confirmPassword"
-          type="password"
-          maxlength="6"
-          :placeholder="t('setup.confirmPlaceholder')"
-        />
+        <PinInput v-model="confirmPassword" />
       </div>
 
       <div class="form-group">
         <label>{{ t('setup.passwordHint') }}</label>
-        <input 
+        <input
           v-model="passwordHint"
           type="text"
           maxlength="50"
@@ -165,12 +156,12 @@ form {
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   font-size: 14px;
   color: #333;
 }
@@ -204,7 +195,7 @@ form {
   width: 100%;
   padding: 14px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #4a90d9;
   color: white;
   font-size: 16px;
@@ -220,7 +211,7 @@ form {
   width: 100%;
   padding: 14px;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 10px;
   background: white;
   color: #666;
   font-size: 16px;
