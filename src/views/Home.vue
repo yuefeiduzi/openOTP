@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAccountStore } from '@/stores'
 import type { Account } from '@/types'
+import { getRandomBgColor } from '@/utils/icons'
 import AccountCard from '@/components/AccountCard.vue'
 import AddAccount from '@/components/AddAccount.vue'
 import DeleteConfirm from '@/components/DeleteConfirm.vue'
@@ -19,7 +20,6 @@ const showEdit = ref(false)
 const showToast = ref(false)
 const deletingAccount = ref<Account | null>(null)
 const editingAccount = ref<Account | null>(null)
-const copiedCode = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
 const dragIndex = ref<number | null>(null)
@@ -43,7 +43,6 @@ function goToSettings() {
 
 function handleCopy(code: string) {
   navigator.clipboard.writeText(code)
-  copiedCode.value = code
   showToast.value = true
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => {
@@ -104,11 +103,14 @@ function onDragEnd() {
 }
 
 function handleAddAccount(data: Partial<Account>) {
+  const displayName = data.name || data.issuer || ''
+  const initial = displayName ? displayName.charAt(0).toUpperCase() : '?'
+
   const newAccount: Account = {
     id: '',
     name: data.name || '',
     issuer: data.issuer || '',
-    icon: data.icon || { type: 'emoji', value: '🔑', bgColor: '' },
+    icon: data.icon || { type: 'initial', value: initial, bgColor: getRandomBgColor() },
     type: 'totp',
     secret: data.secret || '',
     algorithm: data.algorithm || 'sha1',
@@ -167,7 +169,7 @@ function handleEditSave(data: Partial<Account>) {
           :account="account"
           @copy="handleCopy"
           @delete="handleDelete(account)"
-          @refresh="handleEdit(account)"
+          @edit="handleEdit(account)"
         />
         <div
           v-if="dragOverIndex === index && dragIndex !== null && dragIndex < index"
@@ -179,7 +181,7 @@ function handleEditSave(data: Partial<Account>) {
     <button class="add-btn" @click="showAdd = true">+</button>
 
     <div v-if="showToast" class="toast">
-      {{ t('home.copied', { code: copiedCode }) }}
+      {{ t('home.copied') }}
     </div>
 
     <AddAccount

@@ -173,8 +173,9 @@ describe('importAndOTPBackup', () => {
   it('should set default icon for each account', () => {
     const json = JSON.stringify([validAccounts[0]])
     const result = importAndOTPBackup(json)
-    expect(result[0].icon.type).toBe('emoji')
-    expect(result[0].icon.value).toBe('🔑')
+    expect(result[0].icon.type).toBe('initial')
+    expect(result[0].icon.bgColor).toBeTruthy()
+    expect(result[0].icon.value).toBeTruthy()
   })
 
   it('should set correct order for multiple accounts', () => {

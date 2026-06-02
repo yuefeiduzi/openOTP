@@ -12,7 +12,7 @@ export default {
     title: 'OpenOTP',
     totp: 'TOTP',
     noAccounts: '暂无 {type} 账号',
-    copied: '已复制 {code}',
+    copied: '已复制',
   },
   setup: {
     welcome: '欢迎使用 OpenOTP',

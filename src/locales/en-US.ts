@@ -12,7 +12,7 @@ export default {
     title: 'OpenOTP',
     totp: 'TOTP',
     noAccounts: 'No {type} accounts',
-    copied: 'Copied {code}',
+    copied: 'Copied',
   },
   setup: {
     welcome: 'Welcome to OpenOTP',

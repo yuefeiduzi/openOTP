@@ -1,4 +1,5 @@
 import type { Account } from '@/types'
+import { getRandomBgColor } from '@/utils/icons'
 
 interface AndOTPAccount {
   secret: string
@@ -41,10 +42,13 @@ function convertAndOTPAccount(andotp: AndOTPAccount, order: number): Account {
 
   const issuer = andotp.issuer || parsedIssuer
 
+  // TODO: 映射 thumbnail 到图标
+  const displayName = name || issuer || '?'
+  const initial = displayName.charAt(0).toUpperCase()
   const icon = {
-    type: 'emoji' as const,
-    value: '\uD83D\uDD11',
-    bgColor: ''
+    type: 'initial' as const,
+    value: initial,
+    bgColor: getRandomBgColor()
   }
 
   return {
