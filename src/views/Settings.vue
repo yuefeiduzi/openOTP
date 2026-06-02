@@ -51,6 +51,8 @@ const exportCustomPassword = ref('')
 const exportConfirmPassword = ref('')
 const exportPasswordError = ref('')
 
+const showLangSheet = ref(false)
+
 const showImportPasswordModal = ref(false)
 const importFilePath = ref('')
 const importFileContent = ref('')
@@ -515,15 +517,11 @@ async function exportDebugLogs() {
     <div class="content">
       <section class="section">
         <h2 class="section-title">{{ t('settings.languageSettings') }}</h2>
-        <div class="setting-item setting-row">
-          <span class="setting-label">{{ t('settings.language') }}</span>
-          <div class="setting-control">
-            <select class="lang-select" :value="languagePreference" @change="handleLanguageChange(($event.target as HTMLSelectElement).value as 'auto' | 'zh-CN' | 'en-US')">
-              <option value="auto">{{ t('settings.languageAuto') }}</option>
-              <option value="zh-CN">{{ t('settings.languageZhCN') }}</option>
-              <option value="en-US">{{ t('settings.languageEnUS') }}</option>
-            </select>
-          </div>
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="showLangSheet = true">
+            {{ languagePreference === 'auto' ? t('settings.languageAuto') : languagePreference === 'zh-CN' ? t('settings.languageZhCN') : t('settings.languageEnUS') }}
+            <span class="btn-arrow">›</span>
+          </button>
         </div>
       </section>
 
@@ -560,99 +558,34 @@ async function exportDebugLogs() {
           </button>
           <button
             v-else
-            class="setting-btn danger"
+            class="setting-btn"
             @click="openChangePassword"
           >
             {{ t('settings.changePassword') }}
           </button>
         </div>
 
-        <div class="setting-item setting-row">
-          <span class="setting-label">{{ t('settings.passwordHint') }}</span>
-          <div class="setting-control hint-control">
-            <template v-if="editingHint">
-              <input
-                v-model="hintValue"
-                type="text"
-                maxlength="50"
-                class="hint-input"
-                @keydown="handleHintKeydown"
-                @blur="saveHint"
-                autofocus
-              />
-            </template>
-            <template v-else>
-              <span
-                class="hint-text"
-                :class="{ empty: !settingsStore.settings.passwordHint }"
-                @click="startEditingHint"
-              >
-                {{ settingsStore.settings.passwordHint || t('settings.clickToSet') }}
-              </span>
-            </template>
-          </div>
-        </div>
-
-        <div class="setting-item setting-row">
-          <span class="setting-label">{{ t('settings.biometricUnlock') }}</span>
-          <div class="setting-control">
-            <label class="toggle" :class="{ disabled: !biometricAvailable }">
-              <input
-                type="checkbox"
-                :checked="settingsStore.settings.biometricEnabled"
-                :disabled="!biometricAvailable"
-                @change="toggleBiometric"
-              />
-              <span class="toggle-slider"></span>
-            </label>
-            <span v-if="!biometricAvailable" class="status-text">{{ t('settings.biometricNotAvailable') }}</span>
-          </div>
-        </div>
-
-        <div class="setting-item setting-row">
-          <span class="setting-label">{{ t('settings.autoCopy') }}</span>
-          <div class="setting-control">
-            <label class="toggle">
-              <input
-                type="checkbox"
-                :checked="settingsStore.settings.autoCopy"
-                @change="toggleAutoCopy"
-              />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="setting-item setting-row">
-          <span class="setting-label">{{ t('settings.clipboardClearTime') }}</span>
-          <div class="setting-control">
-            <select
-              :value="settingsStore.settings.clipboardClearTime"
-              @change="setClipboardClearTime(Number(($event.target as HTMLSelectElement).value))"
-            >
-              <option :value="30">{{ t('settings.clipboard30s') }}</option>
-              <option :value="60">{{ t('settings.clipboard60s') }}</option>
-              <option :value="0">{{ t('settings.clipboardNever') }}</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="setting-item setting-row">
-          <span class="setting-label">{{ t('settings.lockTimeout') }}</span>
-          <div class="setting-control">
-            <select
-              :value="settingsStore.settings.lockTimeout"
-              @change="setLockTimeout(Number(($event.target as HTMLSelectElement).value))"
-            >
-              <option :value="0">{{ t('settings.lockImmediate') }}</option>
-              <option :value="1">{{ t('settings.lock1min') }}</option>
-              <option :value="5">{{ t('settings.lock5min') }}</option>
-            </select>
-          </div>
-        </div>
-
         <div class="setting-item setting-action">
-          <button class="setting-btn" @click="lockApp">{{ t('settings.lockApp') }}</button>
+          <button class="setting-btn" @click="startEditingHint">
+            {{ t('settings.passwordHint') }}<span v-if="settingsStore.settings.passwordHint" class="setting-hint-val">{{ settingsStore.settings.passwordHint }}</span>
+            <span v-else class="setting-hint-empty">{{ t('settings.clickToSet') }}</span>
+          </button>
+        </div>
+
+        <div v-if="editingHint" class="hint-editor">
+          <input
+            v-model="hintValue"
+            type="text"
+            maxlength="50"
+            class="hint-input"
+            :placeholder="t('setup.hintPlaceholder')"
+            @keydown="handleHintKeydown"
+            autofocus
+          />
+          <div class="hint-actions">
+            <button class="btn btn-sm btn-secondary" @click="cancelHint">取消</button>
+            <button class="btn btn-sm btn-primary" @click="saveHint">保存</button>
+          </div>
         </div>
       </section>
 
@@ -661,12 +594,15 @@ async function exportDebugLogs() {
       <section class="section about-section">
         <h2 class="section-title">{{ t('settings.about') }}</h2>
         <p class="about-line">{{ t('settings.version') }}</p>
+        <p class="about-line about-copy" @click="navigator.clipboard.writeText('https://github.com/openotp/openotp'); showToast('已复制')">
+          github.com/openotp/openotp
+        </p>
+      </section>
 
-        <div class="setting-item setting-action">
-          <button class="setting-btn about-btn" @click="openSourceCode">
-            {{ t('settings.sourceCode') }}
-          </button>
-        </div>
+      <div class="divider"></div>
+
+      <section class="section">
+        <h2 class="section-title">{{ t('settings.debugMode') }}</h2>
 
         <div class="setting-item setting-row">
           <span class="setting-label">{{ t('settings.debugMode') }}</span>
@@ -685,6 +621,28 @@ async function exportDebugLogs() {
         </div>
       </section>
     </div>
+
+    <BottomSheet
+      :visible="showLangSheet"
+      :title="t('settings.language')"
+      cancel-text="取消"
+      confirm-text=""
+      @close="showLangSheet = false"
+      @confirm="showLangSheet = false"
+    >
+      <div class="lang-options">
+        <button
+          v-for="opt in [{ value: 'auto', label: t('settings.languageAuto') }, { value: 'zh-CN', label: t('settings.languageZhCN') }, { value: 'en-US', label: t('settings.languageEnUS') }]"
+          :key="opt.value"
+          class="lang-option"
+          :class="{ active: languagePreference === opt.value }"
+          @click="handleLanguageChange(opt.value as 'auto' | 'zh-CN' | 'en-US'); showLangSheet = false"
+        >
+          {{ opt.label }}
+          <span v-if="languagePreference === opt.value" class="lang-check">✓</span>
+        </button>
+      </div>
+    </BottomSheet>
 
     <BottomSheet
       :visible="showExportSheet"
@@ -912,11 +870,36 @@ async function exportDebugLogs() {
   cursor: pointer;
   text-align: left;
   transition: border-color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
 }
 
 .setting-btn:hover {
   border-color: #4a90d9;
   background: #f8fbff;
+}
+
+.btn-arrow {
+  margin-left: auto;
+  font-size: 18px;
+  color: #ccc;
+}
+
+.setting-hint-val {
+  margin-left: auto;
+  font-size: 12px;
+  color: #999;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-hint-empty {
+  margin-left: auto;
+  font-size: 12px;
+  color: #bbb;
+  font-style: italic;
 }
 
 .setting-btn.danger {
@@ -993,9 +976,9 @@ select:focus {
 
 .hint-input {
   width: 100%;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border: 1px solid #4a90d9;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   outline: none;
   box-sizing: border-box;
@@ -1098,13 +1081,36 @@ select:focus {
   color: #999;
 }
 
-.about-btn {
-  color: #4a90d9;
-  border-color: #4a90d9;
+.about-copy {
+  color: #666;
+  cursor: pointer;
+  user-select: all;
 }
 
-.about-btn:hover {
-  background: #eef4ff;
+.about-copy:hover {
+  color: #4a90d9;
+}
+
+.hint-editor {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 10px;
+}
+
+.hint-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+.btn-sm {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .modal-overlay {
@@ -1210,20 +1216,58 @@ select:focus {
 
 .toast {
   position: fixed;
-  bottom: 40px;
-  left: 24px;
-  right: 24px;
-  background: rgba(0, 0, 0, 0.85);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
   color: #fff;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 13px;
+  padding: 14px 24px;
+  border-radius: 10px;
+  font-size: 14px;
   z-index: 400;
   text-align: center;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .toast.error {
   background: rgba(231, 76, 60, 0.9);
+}
+
+.lang-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 15px;
+  color: #333;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.lang-option:hover {
+  background: #f5f5f5;
+}
+
+.lang-option.active {
+  background: #eef4ff;
+  color: #4a90d9;
+  font-weight: 500;
+}
+
+.lang-check {
+  color: #4a90d9;
+  font-size: 16px;
 }
 </style>
