@@ -27,12 +27,17 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const settingsStore = useSettingsStore()
+  await settingsStore.checkSetup()
 
   if (!settingsStore.isSetup && to.name !== 'setup') {
     next({ name: 'setup' })
     return
+  }
+
+  if (!settingsStore.hasPassword && settingsStore.isLocked) {
+    settingsStore.unlock()
   }
 
   if (settingsStore.isLocked && to.name !== 'unlock' && to.name !== 'setup') {
