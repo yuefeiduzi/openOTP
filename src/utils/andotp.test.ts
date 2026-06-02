@@ -117,6 +117,28 @@ describe('importAndOTPBackup', () => {
     expect(result[0].name).toBe('demo@Epic Games')
   })
 
+  it('should strip duplicate issuer prefix from label name', () => {
+    const accounts: AndOTPAccount[] = [
+      {
+        secret: 'TEST12345',
+        issuer: '',
+        label: 'Microsoft:Microsoft:user@example.com',
+        digits: 6,
+        type: 'TOTP',
+        algorithm: 'SHA1',
+        thumbnail: 'Default',
+        last_used: 0,
+        used_frequency: 0,
+        period: 30,
+        tags: [],
+      },
+    ]
+    const json = JSON.stringify(accounts)
+    const result = importAndOTPBackup(json)
+    expect(result[0].issuer).toBe('Microsoft')
+    expect(result[0].name).toBe('user@example.com')
+  })
+
   it('should parse colon-separated label', () => {
     const accounts: AndOTPAccount[] = [
       {

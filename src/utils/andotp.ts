@@ -26,7 +26,7 @@ function parseAndOTPLabel(label: string): { issuer: string; name: string } {
     const potentialIssuer = label.substring(0, colonIndex).trim()
     name = label.substring(colonIndex + 1).trim()
     if (name.startsWith(potentialIssuer + ':') || name.startsWith(potentialIssuer + ' - ')) {
-      name = name.substring(potentialIssuer.length + 2).trim()
+      name = name.substring(potentialIssuer.length + 1).trim()
     }
     issuer = potentialIssuer
   } else if (dashIndex > 0) {
