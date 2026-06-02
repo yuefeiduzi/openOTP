@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 import { save, open } from '@tauri-apps/plugin-dialog'
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeFile } from '@tauri-apps/plugin-fs'
 import { useSettingsStore, useAccountStore } from '@/stores'
 import { createBackup, restoreBackup } from '@/utils/backup'
 import { importAndOTPBackup } from '@/utils/andotp'
@@ -350,6 +350,7 @@ async function handleExportWithAppPassword() {
 async function doExport(password: string) {
   try {
     const filePath = await save({
+      title: t('settings.exportBackup'),
       defaultPath: 'openotp-backup.openotp',
       filters: [{ name: 'OpenOTP Backup', extensions: ['openotp'] }],
     })
@@ -357,7 +358,8 @@ async function doExport(password: string) {
     if (!filePath) return
 
     const json = await createBackup(accountStore.accounts, password)
-    await writeTextFile(filePath, json)
+    const encoder = new TextEncoder()
+    await writeFile(filePath, encoder.encode(json))
     showToast(t('settings.exportSuccess', { path: filePath }))
   } catch (err) {
     showToast(t('errors.exportFailed', { error: String(err) }), true)
@@ -488,12 +490,14 @@ function toggleDebug() {
 async function exportDebugLogs() {
   try {
     const filePath = await save({
+      title: t('settings.exportLogs'),
       defaultPath: 'openotp-debug.log',
       filters: [{ name: 'Log File', extensions: ['log', 'txt'] }],
     })
     if (!filePath) return
     const text = exportLogsText()
-    await writeTextFile(filePath, text)
+    const encoder = new TextEncoder()
+    await writeFile(filePath, encoder.encode(text))
     showToast(t('settings.logExported', { path: filePath }))
   } catch (err) {
     showToast(t('errors.exportFailed', { error: String(err) }), true)
