@@ -7,6 +7,7 @@ import { save, open } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { useSettingsStore, useAccountStore } from '@/stores'
 import { createBackup, restoreBackup } from '@/utils/backup'
+import { importAndOTPBackup } from '@/utils/andotp'
 import { setLocale, getSavedLocalePreference } from '@/locales'
 
 const router = useRouter()
@@ -420,6 +421,33 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2)
 }
 
+async function importAndOTPAccounts() {
+  try {
+    const filePath = await open({
+      filters: [{ name: 'andOTP Backup', extensions: ['json'] }],
+      multiple: false,
+    })
+
+    if (!filePath) return
+
+    const fileContent = await readTextFile(filePath)
+    const accounts = importAndOTPBackup(fileContent)
+
+    for (const account of accounts) {
+      accountStore.addAccount(account)
+    }
+
+    backupMessage.value = t('errors.andOTPImportSuccess', { count: accounts.length })
+    showBackupModal.value = true
+    setTimeout(() => {
+      showBackupModal.value = false
+    }, 2000)
+  } catch (err) {
+    backupError.value = t('errors.andOTPImportFailed', { error: String(err) })
+    showBackupModal.value = true
+  }
+}
+
 function lockApp() {
   settingsStore.lock()
   router.push('/unlock')
@@ -580,6 +608,10 @@ function goBack() {
 
         <div class="setting-item setting-action">
           <button class="setting-btn" @click="importJsonAccounts">导入 JSON 账号</button>
+        </div>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="importAndOTPAccounts">{{ t('settings.importAndOTP') }}</button>
         </div>
 
         <div class="setting-item setting-action">
