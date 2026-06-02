@@ -226,7 +226,7 @@ function handleEditSave(data: Partial<Account>) {
 .settings-btn {
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 24px;
   cursor: pointer;
 }
 
