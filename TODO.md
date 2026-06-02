@@ -35,4 +35,11 @@
 - PinInput 焦点态动画
 - 错误提示动画（抖动？）
 - 生物认证按钮样式优化
-- 密码提示展示方式优化
+  - 密码提示展示方式优化
+
+## 8. 梳理全局通用组件，抽象成单独模块
+- 盘点所有可复用组件：`BottomSheet`、`PinInput`、`EmojiPicker`、`GlobalToast`、`DeleteConfirm`
+- 统一导出入口 `src/components/index.ts`
+- 确保各组件 props / emits 命名一致
+- 补全组件缺少的 TypeScript 类型导出
+- 可考虑按功能分子目录：`components/ui/`（通用）、`components/account/`（业务）
