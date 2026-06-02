@@ -11,7 +11,6 @@ export default {
   home: {
     title: 'openOTP',
     totp: 'TOTP',
-    hotp: 'HOTP',
     noAccounts: '暂无 {type} 账号',
     copied: '已复制 {code}',
   },

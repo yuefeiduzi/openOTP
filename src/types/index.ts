@@ -11,12 +11,11 @@ export interface Account {
   name: string
   issuer: string
   icon: AccountIcon
-  type: 'totp' | 'hotp'
+  type: 'totp'
   secret: string
   algorithm: 'sha1' | 'sha256' | 'sha512'
   digits: 6 | 7 | 8
   period: number
-  counter: number
   createdAt: number
   order: number
 }

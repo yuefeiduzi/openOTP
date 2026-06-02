@@ -24,7 +24,6 @@ const manualMode = ref(false)
 const manualName = ref('')
 const manualIssuer = ref('')
 const manualSecret = ref('')
-const manualType = ref<'totp' | 'hotp'>('totp')
 const manualAlgorithm = ref<'sha1' | 'sha256' | 'sha512'>('sha1')
 const manualDigits = ref<6 | 7 | 8>(6)
 const manualPeriod = ref(30)
@@ -58,7 +57,6 @@ watch(() => props.visible, (val) => {
     manualName.value = ''
     manualIssuer.value = ''
     manualSecret.value = ''
-    manualType.value = 'totp'
     manualAlgorithm.value = 'sha1'
     manualDigits.value = 6
     manualPeriod.value = 30
@@ -168,11 +166,10 @@ function handleAdd() {
       name: manualName.value,
       issuer: manualIssuer.value,
       secret: manualSecret.value,
-      type: manualType.value,
+      type: 'totp',
       algorithm: manualAlgorithm.value,
       digits: manualDigits.value,
       period: manualPeriod.value,
-      counter: manualType.value === 'hotp' ? 0 : undefined,
     }
   } else {
     return
@@ -190,9 +187,8 @@ function handleAdd() {
 
   if (!data.algorithm) data.algorithm = 'sha1'
   if (!data.digits) data.digits = 6
-  if (!data.period && data.type === 'totp') data.period = 30
-  if (data.counter === undefined && data.type === 'hotp') data.counter = 0
-  if (!data.type) data.type = 'totp'
+  if (!data.period) data.period = 30
+  data.type = 'totp'
 
   emit('add', data)
 }
@@ -202,7 +198,6 @@ function useParsedData() {
     manualName.value = parsedPreview.value.name || ''
     manualIssuer.value = parsedPreview.value.issuer || ''
     manualSecret.value = parsedPreview.value.secret || ''
-    manualType.value = parsedPreview.value.type || 'totp'
     manualAlgorithm.value = parsedPreview.value.algorithm || 'sha1'
     manualDigits.value = parsedPreview.value.digits || 6
     manualPeriod.value = parsedPreview.value.period || 30
@@ -325,14 +320,6 @@ function useParsedData() {
 
         <div class="field-row">
           <div class="field-group">
-            <label class="field-label">{{ t('addAccount.type') }}</label>
-            <select v-model="manualType" class="input">
-              <option value="totp">TOTP</option>
-              <option value="hotp">HOTP</option>
-            </select>
-          </div>
-
-          <div class="field-group">
             <label class="field-label">{{ t('addAccount.algorithm') }}</label>
             <select v-model="manualAlgorithm" class="input">
               <option value="sha1">SHA1</option>
@@ -340,9 +327,7 @@ function useParsedData() {
               <option value="sha512">SHA512</option>
             </select>
           </div>
-        </div>
 
-        <div class="field-row">
           <div class="field-group">
             <label class="field-label">{{ t('addAccount.digits') }}</label>
             <select v-model="manualDigits" class="input">
@@ -351,8 +336,10 @@ function useParsedData() {
               <option :value="8">8</option>
             </select>
           </div>
+        </div>
 
-          <div v-if="manualType === 'totp'" class="field-group">
+        <div class="field-row">
+          <div class="field-group">
             <label class="field-label">{{ t('addAccount.period') }}</label>
             <input v-model.number="manualPeriod" type="number" class="input" min="1" />
           </div>

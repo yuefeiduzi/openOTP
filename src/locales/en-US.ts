@@ -11,7 +11,6 @@ export default {
   home: {
     title: 'openOTP',
     totp: 'TOTP',
-    hotp: 'HOTP',
     noAccounts: 'No {type} accounts',
     copied: 'Copied {code}',
   },

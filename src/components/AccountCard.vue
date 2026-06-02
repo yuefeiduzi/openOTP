@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import type { Account } from '@/types'
-import { generateTOTP, generateHOTP, getTOTPRemainingSeconds } from '@/utils/otp'
+import { generateTOTP, getTOTPRemainingSeconds } from '@/utils/otp'
 import { getInitialStyle } from '@/utils/icons'
 
 const props = defineProps<{
@@ -11,7 +11,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   copy: [code: string]
   delete: []
-  refresh: []
 }>()
 
 const currentCode = ref('')
@@ -19,7 +18,6 @@ const progress = ref(100)
 const isLongPress = ref(false)
 let timerInterval: ReturnType<typeof setInterval> | null = null
 let pressTimer: ReturnType<typeof setTimeout> | null = null
-let pendingRefresh = false
 
 function getCodeSpacing(code: string): string {
   if (code.length <= 6) {
@@ -50,27 +48,9 @@ async function updateTOTP() {
   }
 }
 
-async function updateHOTP() {
-  try {
-    const code = await generateHOTP(
-      props.account.secret,
-      props.account.counter,
-      props.account.algorithm || 'sha1',
-      props.account.digits || 6,
-    )
-    currentCode.value = getCodeSpacing(code)
-  } catch {
-    currentCode.value = '000 000'
-  }
-}
-
 function startTimer() {
-  if (props.account.type === 'totp') {
-    updateTOTP()
-    timerInterval = setInterval(updateTOTP, 1000)
-  } else {
-    updateHOTP()
-  }
+  updateTOTP()
+  timerInterval = setInterval(updateTOTP, 1000)
 }
 
 function stopTimer() {
@@ -83,15 +63,6 @@ function stopTimer() {
 function handleCopy() {
   const raw = currentCode.value.replace(/\s/g, '')
   emit('copy', raw)
-}
-
-function handleRefresh() {
-  pendingRefresh = true
-  emit('refresh')
-  setTimeout(() => {
-    updateHOTP()
-    pendingRefresh = false
-  }, 100)
 }
 
 function startLongPress() {
@@ -161,7 +132,6 @@ onUnmounted(() => {
     </div>
 
     <div
-      v-if="account.type === 'totp'"
       class="progress-bar"
       :class="{
         'progress-green': progress > 50,
@@ -170,15 +140,6 @@ onUnmounted(() => {
       }"
       :style="{ width: progress + '%' }"
     />
-
-    <button
-      v-else
-      class="refresh-btn"
-      @click.stop="handleRefresh"
-      :disabled="pendingRefresh"
-    >
-      🔄
-    </button>
   </div>
 </template>
 
@@ -295,26 +256,5 @@ onUnmounted(() => {
 
 .progress-red {
   background-color: #F44336;
-}
-
-.refresh-btn {
-  width: 100%;
-  margin-top: 8px;
-  padding: 6px 0;
-  border: none;
-  background: #f5f5f5;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: #e8e8e8;
-}
-
-.refresh-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

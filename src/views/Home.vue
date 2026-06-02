@@ -12,7 +12,7 @@ import EditAccount from '@/components/EditAccount.vue'
 const router = useRouter()
 const accountStore = useAccountStore()
 const { t } = useI18n()
-const activeTab = ref<'totp' | 'hotp'>('totp')
+const activeTab = ref<'totp'>('totp')
 
 const showAdd = ref(false)
 const showDelete = ref(false)
@@ -30,24 +30,9 @@ function byOrder(a: Account, b: Account): number {
   return a.order - b.order
 }
 
-const totpSorted = computed(() =>
+const displayedAccounts = computed(() =>
   accountStore.accounts.filter(a => a.type === 'totp').sort(byOrder)
 )
-const hotpSorted = computed(() =>
-  accountStore.accounts.filter(a => a.type === 'hotp').sort(byOrder)
-)
-
-const displayedAccounts = ref<Account[]>([])
-
-function syncDisplayed() {
-  displayedAccounts.value = activeTab.value === 'totp'
-    ? [...totpSorted.value]
-    : [...hotpSorted.value]
-}
-
-watch(activeTab, () => {
-  syncDisplayed()
-})
 
 watch([totpSorted, hotpSorted], () => {
   if (dragIndex.value === null) {
@@ -127,7 +112,7 @@ function onDragEnd() {
   if (dragIndex.value === null) return
 
   const orderedIds = displayedAccounts.value.map(a => a.id)
-  accountStore.reorderAccounts(activeTab.value, orderedIds)
+  accountStore.reorderAccounts('totp', orderedIds)
   dragIndex.value = null
   dragOverIndex.value = null
 }
@@ -138,12 +123,12 @@ function handleAddAccount(data: Partial<Account>) {
     name: data.name || '',
     issuer: data.issuer || '',
     icon: data.icon || { type: 'emoji', value: '🔑', bgColor: '' },
-    type: data.type || 'totp',
+    type: 'totp',
     secret: data.secret || '',
     algorithm: data.algorithm || 'sha1',
     digits: data.digits || 6,
     period: data.period || 30,
-    counter: data.counter || 0,
+    counter: 0,
     createdAt: Date.now(),
     order: accountStore.accounts.length,
   }
@@ -169,24 +154,9 @@ function handleEditSave(data: Partial<Account>) {
       </button>
     </header>
 
-    <div class="tabs">
-      <button
-        :class="['tab', { active: activeTab === 'totp' }]"
-        @click="activeTab = 'totp'"
-      >
-        {{ t('home.totp') }}
-      </button>
-      <button
-        :class="['tab', { active: activeTab === 'hotp' }]"
-        @click="activeTab = 'hotp'"
-      >
-        {{ t('home.hotp') }}
-      </button>
-    </div>
-
     <div class="account-list">
       <p v-if="displayedAccounts.length === 0" class="empty">
-        {{ t('home.noAccounts', { type: activeTab.toUpperCase() }) }}
+        {{ t('home.noAccounts', { type: 'TOTP' }) }}
       </p>
       <div
         v-for="(account, index) in displayedAccounts"
@@ -273,26 +243,6 @@ function handleEditSave(data: Partial<Account>) {
   border: none;
   font-size: 20px;
   cursor: pointer;
-}
-
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.tab {
-  flex: 1;
-  padding: 8px;
-  border: none;
-  border-radius: 8px;
-  background: #f0f0f0;
-  cursor: pointer;
-}
-
-.tab.active {
-  background: #4a90d9;
-  color: white;
 }
 
 .account-list {
