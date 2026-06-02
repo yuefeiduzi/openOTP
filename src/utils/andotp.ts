@@ -62,6 +62,7 @@ function convertAndOTPAccount(andotp: AndOTPAccount, order: number): Account {
     digits: andotp.digits,
     period: andotp.period,
     counter: 0,
+    notes: '',
     createdAt: Date.now(),
     order
   }

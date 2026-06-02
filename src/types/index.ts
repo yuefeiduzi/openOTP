@@ -17,6 +17,7 @@ export interface Account {
   digits: 6 | 7 | 8
   period: number
   counter: number
+  notes: string
   createdAt: number
   order: number
 }

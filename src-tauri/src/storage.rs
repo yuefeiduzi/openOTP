@@ -25,6 +25,7 @@ pub struct Account {
     pub digits: u8,
     pub period: u32,
     pub counter: u32,
+    pub notes: String,
     #[serde(rename = "createdAt")]
     pub created_at: u64,
     pub order: u32,

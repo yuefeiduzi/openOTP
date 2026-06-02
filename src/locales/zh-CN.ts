@@ -111,9 +111,11 @@ export default {
     editAndAdd: '修改并添加',
   },
   editAccount: {
-    title: '编辑账号',
+    title: '编辑',
     accountName: '账号名称',
     issuer: '发行方',
+    notes: '备注',
+    notesPlaceholder: '添加备注...',
     icon: '图标',
     changeIcon: '修改图标',
     emoji: 'Emoji',

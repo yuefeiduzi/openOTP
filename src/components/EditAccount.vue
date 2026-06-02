@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Account, AccountIcon, IconType } from '@/types'
+import EmojiPicker from '@/components/EmojiPicker.vue'
 
 const props = defineProps<{
   visible: boolean
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const editName = ref('')
 const editIssuer = ref('')
+const editNotes = ref('')
 const showIconEditor = ref(false)
 const iconType = ref<IconType>('emoji')
 const emojiValue = ref('')
@@ -31,10 +33,11 @@ watch(() => props.visible, (val) => {
   if (val && props.account) {
     editName.value = props.account.name
     editIssuer.value = props.account.issuer
+    editNotes.value = props.account.notes || ''
     iconType.value = props.account.icon.type === 'image'
       ? 'emoji'
       : props.account.icon.type
-    emojiValue.value = props.account.icon.type === 'emoji' ? props.account.icon.value : ''
+    emojiValue.value = props.account.icon.type === 'emoji' ? props.account.icon.value : '🔑'
     bgColor.value = props.account.icon.bgColor || '#4A90D9'
     showIconEditor.value = false
   }
@@ -53,6 +56,7 @@ function handleSave() {
     id: props.account.id,
     name: editName.value,
     issuer: editIssuer.value,
+    notes: editNotes.value,
     icon,
   })
 }
@@ -80,9 +84,19 @@ function handleCancel() {
       </div>
 
       <div class="field-group">
+        <label class="field-label">{{ t('editAccount.notes') }}</label>
+        <textarea
+          v-model="editNotes"
+          class="input textarea"
+          rows="2"
+          :placeholder="t('editAccount.notesPlaceholder')"
+        />
+      </div>
+
+      <div class="field-group">
         <label class="field-label">{{ t('editAccount.icon') }}</label>
         <div class="current-icon" @click="showIconEditor = !showIconEditor">
-          <span v-if="iconType === 'emoji'" class="icon-emoji">{{ emojiValue || (account?.icon.type === 'emoji' ? account.icon.value : '🔑') }}</span>
+          <span v-if="iconType === 'emoji'" class="icon-emoji">{{ emojiValue || '&#x1F511;' }}</span>
           <div
             v-else
             class="icon-initial"
@@ -111,7 +125,7 @@ function handleCancel() {
 
           <div v-if="iconType === 'emoji'" class="field-group">
             <label class="field-label">{{ t('editAccount.emoji') }}</label>
-            <input v-model="emojiValue" type="text" class="input" :placeholder="t('editAccount.emojiPlaceholder')" maxlength="2" />
+            <EmojiPicker v-model="emojiValue" />
           </div>
 
           <div v-if="iconType === 'initial'" class="field-group">
@@ -191,11 +205,17 @@ function handleCancel() {
   background: #fff;
   box-sizing: border-box;
   transition: border-color 0.15s;
+  font-family: inherit;
 }
 
 .input:focus {
   outline: none;
   border-color: #4A90D9;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 44px;
 }
 
 .current-icon {

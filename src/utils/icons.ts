@@ -1,4 +1,4 @@
-import type { AccountIcon } from '@/types'
+import type { AccountIcon, IconType } from '@/types'
 
 const PRESET_COLORS = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
@@ -37,5 +37,73 @@ export function getInitialStyle(icon: AccountIcon): Record<string, string> {
     fontSize: '16px',
     fontWeight: 'bold',
     textTransform: 'uppercase',
+  }
+}
+
+export interface IconProvider {
+  type: IconType
+  renderIcon(icon: AccountIcon, name?: string): IconRenderResult
+  editorComponent?: string
+}
+
+export interface IconRenderResult {
+  type: 'text' | 'image' | 'component'
+  value?: string
+  style?: Record<string, string>
+}
+
+const providers = new Map<IconType, IconProvider>()
+
+export function registerIconProvider(provider: IconProvider): void {
+  providers.set(provider.type, provider)
+}
+
+export function getIconProvider(type: IconType): IconProvider | undefined {
+  return providers.get(type)
+}
+
+const emojiProvider: IconProvider = {
+  type: 'emoji',
+  renderIcon(icon) {
+    return { type: 'text', value: icon.value }
+  },
+}
+
+const initialProvider: IconProvider = {
+  type: 'initial',
+  renderIcon(icon, name) {
+    const initial = name ? name.charAt(0).toUpperCase() : icon.value.toUpperCase()
+    return {
+      type: 'text',
+      value: initial,
+      style: getInitialStyle(icon),
+    }
+  },
+}
+
+const presetProvider: IconProvider = {
+  type: 'preset',
+  renderIcon(icon) {
+    return { type: 'text', value: icon.value || '?' }
+  },
+}
+
+const imageProvider: IconProvider = {
+  type: 'image',
+  renderIcon(icon) {
+    return { type: 'image', value: icon.value }
+  },
+}
+
+registerIconProvider(emojiProvider)
+registerIconProvider(initialProvider)
+registerIconProvider(presetProvider)
+registerIconProvider(imageProvider)
+
+export function createDefaultIcon(name: string): AccountIcon {
+  return {
+    type: 'initial',
+    value: name.charAt(0).toUpperCase(),
+    bgColor: getRandomBgColor(),
   }
 }

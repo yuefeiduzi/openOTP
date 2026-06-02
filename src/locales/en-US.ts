@@ -111,9 +111,11 @@ export default {
     editAndAdd: 'Edit and Add',
   },
   editAccount: {
-    title: 'Edit Account',
+    title: 'Edit',
     accountName: 'Account Name',
     issuer: 'Issuer',
+    notes: 'Notes',
+    notesPlaceholder: 'Add notes...',
     icon: 'Icon',
     changeIcon: 'Change Icon',
     emoji: 'Emoji',

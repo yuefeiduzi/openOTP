@@ -21,6 +21,7 @@ const mockAccount: Account = {
   digits: 6,
   period: 30,
   counter: 0,
+  notes: '',
   createdAt: 1700000000000,
   order: 0,
 }
@@ -134,7 +135,7 @@ describe('createBackup', () => {
 
 describe('restoreBackup', () => {
   it('should restore backup correctly', async () => {
-    const accounts = [{ name: 'test', issuer: 'Test', type: 'totp', secret: 'JBSWY3DPEHPK3PXP', algorithm: 'sha1', digits: 6, period: 30, icon: { type: 'emoji', value: '🔑', bgColor: '' }, createdAt: 1700000000000, order: 0, counter: 0, id: 'test1' }]
+    const accounts = [{ name: 'test', issuer: 'Test', type: 'totp', secret: 'JBSWY3DPEHPK3PXP', algorithm: 'sha1', digits: 6, period: 30, icon: { type: 'emoji', value: '🔑', bgColor: '' }, createdAt: 1700000000000, order: 0, counter: 0, notes: '', id: 'test1' }]
     vi.mocked(decryptData).mockResolvedValue(JSON.stringify(accounts))
 
     const payload = {

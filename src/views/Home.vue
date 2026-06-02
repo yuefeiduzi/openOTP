@@ -117,6 +117,7 @@ function handleAddAccount(data: Partial<Account>) {
     digits: data.digits || 6,
     period: data.period || 30,
     counter: 0,
+    notes: '',
     createdAt: Date.now(),
     order: accountStore.accounts.length,
   }
