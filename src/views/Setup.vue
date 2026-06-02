@@ -40,7 +40,7 @@ onMounted(async () => {
   }
 })
 
-async function handleSubmit() {
+async function handleSetupWithPassword() {
   if (password.value.length !== 6) {
     error.value = t('errors.passwordLength')
     return
@@ -65,7 +65,7 @@ async function handleSubmit() {
     })
     await settingsStore.savePassword(password.value)
     await settingsStore.saveSettings()
-    settingsStore.completeSetup()
+    settingsStore.completeSetup(true)
     router.replace('/')
   } catch (e) {
     const err = e as { type: string }
@@ -78,6 +78,16 @@ async function handleSubmit() {
     }
   }
 }
+
+async function handleSkipSetup() {
+  settingsStore.updateSettings({
+    passwordHint: '',
+    biometricEnabled: false
+  })
+  await settingsStore.saveSettings()
+  settingsStore.completeSetup(false)
+  router.replace('/')
+}
 </script>
 
 <template>
@@ -85,7 +95,7 @@ async function handleSubmit() {
     <h1>{{ t('setup.welcome') }}</h1>
     <p class="subtitle">{{ t('setup.setPassword') }}</p>
 
-    <form @submit.prevent="handleSubmit">
+    <form @submit.prevent="handleSetupWithPassword">
       <div class="form-group">
         <label>{{ t('setup.masterPassword') }}</label>
         <input 
@@ -125,14 +135,19 @@ async function handleSubmit() {
 
       <p v-if="error" class="error">{{ error }}</p>
 
-      <button type="submit" class="submit-btn">{{ t('setup.completeSetup') }}</button>
+      <button type="submit" class="submit-btn primary">{{ t('setup.setupPassword') }}</button>
     </form>
+
+    <button class="skip-btn" @click="handleSkipSetup">{{ t('setup.skipSetup') }}</button>
   </div>
 </template>
 
 <style scoped>
 .setup {
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 h1 {
@@ -143,6 +158,10 @@ h1 {
 .subtitle {
   color: #666;
   margin-bottom: 32px;
+}
+
+form {
+  flex: 1;
 }
 
 .form-group {
@@ -183,12 +202,32 @@ h1 {
 
 .submit-btn {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   border: none;
   border-radius: 8px;
   background: #4a90d9;
   color: white;
   font-size: 16px;
   cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.submit-btn:hover {
+  background: #3a7bc8;
+}
+
+.skip-btn {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.skip-btn:hover {
+  background: #f5f5f5;
 }
 </style>
