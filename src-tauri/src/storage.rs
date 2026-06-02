@@ -124,7 +124,12 @@ pub fn load_password_hash(app: &AppHandle) -> Option<String> {
     fs::read_to_string(&path).ok()
 }
 
-/// Checks whether the user has completed initial setup by verifying password.dat exists.
+/// Checks whether the user has completed initial setup by verifying settings.json exists.
 pub fn has_setup(app: &AppHandle) -> bool {
+    get_data_dir(app).join("settings.json").exists()
+}
+
+/// Checks whether the user has set a password by verifying password.dat exists.
+pub fn has_password_hash(app: &AppHandle) -> bool {
     get_data_dir(app).join("password.dat").exists()
 }

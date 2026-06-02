@@ -3,7 +3,14 @@ mod crypto;
 mod biometric;
 mod biometric_status;
 
+use serde::Serialize;
 use tauri::AppHandle;
+
+#[derive(Serialize)]
+struct SetupStatus {
+    is_setup: bool,
+    has_password: bool,
+}
 
 #[tauri::command]
 fn get_accounts(app: AppHandle) -> Vec<storage::Account> {
@@ -86,8 +93,10 @@ fn reset_biometric_failures(app: AppHandle) {
 }
 
 #[tauri::command]
-fn has_setup(app: AppHandle) -> bool {
-    storage::has_setup(&app)
+fn has_setup(app: AppHandle) -> SetupStatus {
+    let is_setup = storage::has_setup(&app);
+    let has_password = storage::has_password_hash(&app);
+    SetupStatus { is_setup, has_password }
 }
 
 #[tauri::command]
