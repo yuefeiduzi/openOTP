@@ -25,6 +25,14 @@ const passwordError = ref('')
 const passwordSuccess = ref('')
 const passwordHash = ref('')
 
+const showSetPasswordModal = ref(false)
+const setNewPassword = ref('')
+const setConfirmPassword = ref('')
+const setPasswordHint = ref('')
+const setEnableBiometric = ref(true)
+const setPasswordError = ref('')
+const setPasswordSuccess = ref('')
+
 const showBackupModal = ref(false)
 const backupMode = ref<'export' | 'import'>('export')
 const backupPassword = ref('')
@@ -159,6 +167,57 @@ function openChangePassword() {
 
 function closePasswordModal() {
   showPasswordModal.value = false
+}
+
+function openSetPassword() {
+  setNewPassword.value = ''
+  setConfirmPassword.value = ''
+  setPasswordHint.value = settingsStore.settings.passwordHint
+  setEnableBiometric.value = biometricAvailable.value
+  setPasswordError.value = ''
+  setPasswordSuccess.value = ''
+  showSetPasswordModal.value = true
+}
+
+function closeSetPasswordModal() {
+  showSetPasswordModal.value = false
+}
+
+async function submitSetPassword() {
+  setPasswordError.value = ''
+  setPasswordSuccess.value = ''
+
+  if (setNewPassword.value.length !== 6) {
+    setPasswordError.value = t('errors.passwordLength')
+    return
+  }
+  if (setNewPassword.value !== setConfirmPassword.value) {
+    setPasswordError.value = t('errors.passwordMismatch')
+    return
+  }
+
+  try {
+    if (setEnableBiometric.value && biometricAvailable.value) {
+      const success = await invoke<boolean>('biometric_auth', { reason: t('biometric.setup') })
+      if (!success) {
+        setPasswordError.value = t('errors.biometricFailed')
+        return
+      }
+    }
+
+    settingsStore.updateSettings({
+      passwordHint: setPasswordHint.value,
+      biometricEnabled: setEnableBiometric.value
+    })
+    await settingsStore.savePassword(setNewPassword.value)
+    await settingsStore.saveSettings()
+    setPasswordSuccess.value = t('errors.changePasswordSuccess')
+    setTimeout(() => {
+      closeSetPasswordModal()
+    }, 1500)
+  } catch {
+    setPasswordError.value = t('errors.changePasswordFailed')
+  }
 }
 
 async function verifyCurrentPassword() {
@@ -399,7 +458,18 @@ function goBack() {
         <h2 class="section-title">{{ t('settings.securitySettings') }}</h2>
 
         <div class="setting-item setting-action">
-          <button class="setting-btn danger" @click="openChangePassword">
+          <button 
+            v-if="!settingsStore.hasPassword" 
+            class="setting-btn" 
+            @click="openSetPassword"
+          >
+            {{ t('settings.setPassword') }}
+          </button>
+          <button 
+            v-else 
+            class="setting-btn danger" 
+            @click="openChangePassword"
+          >
             {{ t('settings.changePassword') }}
           </button>
         </div>
@@ -637,6 +707,60 @@ function goBack() {
             <button class="btn btn-primary" @click="submitNewPassword">{{ t('common.save') }}</button>
           </div>
         </template>
+      </div>
+    </div>
+
+    <div v-if="showSetPasswordModal" class="modal-overlay" @click.self="closeSetPasswordModal">
+      <div class="modal">
+        <h3 class="modal-title">{{ t('settings.setPassword') }}</h3>
+
+        <div class="form-group">
+          <label>{{ t('setup.masterPassword') }}</label>
+          <input
+            v-model="setNewPassword"
+            type="password"
+            maxlength="6"
+            :placeholder="t('setup.passwordPlaceholder')"
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>{{ t('setup.confirmPassword') }}</label>
+          <input
+            v-model="setConfirmPassword"
+            type="password"
+            maxlength="6"
+            :placeholder="t('setup.confirmPlaceholder')"
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>{{ t('setup.passwordHint') }}</label>
+          <input
+            v-model="setPasswordHint"
+            type="text"
+            maxlength="50"
+            :placeholder="t('setup.hintPlaceholder')"
+            class="form-input"
+          />
+        </div>
+
+        <div v-if="biometricAvailable" class="form-group checkbox">
+          <label>
+            <input v-model="setEnableBiometric" type="checkbox" />
+            {{ t('setup.enableBiometric', { biometric: biometricLabel }) }}
+          </label>
+        </div>
+
+        <p v-if="setPasswordError" class="form-error">{{ setPasswordError }}</p>
+        <p v-if="setPasswordSuccess" class="form-success">{{ setPasswordSuccess }}</p>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" @click="closeSetPasswordModal">{{ t('common.cancel') }}</button>
+          <button class="btn btn-primary" @click="submitSetPassword">{{ t('common.save') }}</button>
+        </div>
       </div>
     </div>
   </div>
