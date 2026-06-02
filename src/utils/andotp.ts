@@ -57,6 +57,7 @@ function convertAndOTPAccount(andotp: AndOTPAccount, order: number): Account {
     algorithm: andotp.algorithm.toLowerCase() as 'sha1' | 'sha256' | 'sha512',
     digits: andotp.digits,
     period: andotp.period,
+    counter: 0,
     createdAt: Date.now(),
     order
   }

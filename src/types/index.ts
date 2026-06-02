@@ -16,6 +16,7 @@ export interface Account {
   algorithm: 'sha1' | 'sha256' | 'sha512'
   digits: 6 | 7 | 8
   period: number
+  counter: number
   createdAt: number
   order: number
 }
