@@ -132,7 +132,7 @@ export function parseOtpauthUrl(url: string): Partial<Account> {
   }
 
   const result: Partial<Account> = {
-    type,
+    type: 'totp',
     secret,
     name: name || issuer || 'Unknown',
     issuer: issuer || '',
@@ -159,14 +159,6 @@ export function parseOtpauthUrl(url: string): Partial<Account> {
     const p = parseInt(periodStr, 10)
     if (!isNaN(p) && p > 0) {
       result.period = p
-    }
-  }
-
-  const counterStr = params.get('counter')
-  if (counterStr) {
-    const c = parseInt(counterStr, 10)
-    if (!isNaN(c) && c >= 0) {
-      result.counter = c
     }
   }
 

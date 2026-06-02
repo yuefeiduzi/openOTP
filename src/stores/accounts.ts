@@ -10,10 +10,6 @@ export const useAccountStore = defineStore('accounts', () => {
     accounts.value.filter(a => a.type === 'totp').sort((a, b) => a.order - b.order)
   )
 
-  const hotpAccounts = computed(() =>
-    accounts.value.filter(a => a.type === 'hotp').sort((a, b) => a.order - b.order)
-  )
-
   async function loadAccounts(): Promise<void> {
     try {
       const saved = await invoke('get_accounts') as Account[]
@@ -57,11 +53,11 @@ export const useAccountStore = defineStore('accounts', () => {
     }
   }
 
-  function reorderAccounts(type: 'totp' | 'hotp', orderedIds: string[]) {
+  function reorderAccounts(orderedIds: string[]) {
     let order = 0
     for (const id of orderedIds) {
       const account = accounts.value.find(a => a.id === id)
-      if (account && account.type === type) {
+      if (account) {
         account.order = order++
       }
     }
@@ -79,7 +75,6 @@ export const useAccountStore = defineStore('accounts', () => {
   return {
     accounts,
     totpAccounts,
-    hotpAccounts,
     loadAccounts,
     addAccount,
     removeAccount,

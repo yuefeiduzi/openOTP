@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAccountStore } from '@/stores'
@@ -12,7 +12,6 @@ import EditAccount from '@/components/EditAccount.vue'
 const router = useRouter()
 const accountStore = useAccountStore()
 const { t } = useI18n()
-const activeTab = ref<'totp'>('totp')
 
 const showAdd = ref(false)
 const showDelete = ref(false)
@@ -34,15 +33,8 @@ const displayedAccounts = computed(() =>
   accountStore.accounts.filter(a => a.type === 'totp').sort(byOrder)
 )
 
-watch([totpSorted, hotpSorted], () => {
-  if (dragIndex.value === null) {
-    syncDisplayed()
-  }
-}, { deep: true })
-
 onMounted(async () => {
   await accountStore.loadAccounts()
-  syncDisplayed()
 })
 
 function goToSettings() {
@@ -91,12 +83,6 @@ function onDragOver(index: number, event: DragEvent) {
   event.dataTransfer!.dropEffect = 'move'
 
   dragOverIndex.value = index
-
-  const items = [...displayedAccounts.value]
-  const dragged = items.splice(dragIndex.value, 1)[0]
-  items.splice(index, 0, dragged)
-  displayedAccounts.value = items
-  dragIndex.value = index
 }
 
 function onDragLeave() {
@@ -112,7 +98,7 @@ function onDragEnd() {
   if (dragIndex.value === null) return
 
   const orderedIds = displayedAccounts.value.map(a => a.id)
-  accountStore.reorderAccounts('totp', orderedIds)
+  accountStore.reorderAccounts(orderedIds)
   dragIndex.value = null
   dragOverIndex.value = null
 }
@@ -128,7 +114,6 @@ function handleAddAccount(data: Partial<Account>) {
     algorithm: data.algorithm || 'sha1',
     digits: data.digits || 6,
     period: data.period || 30,
-    counter: 0,
     createdAt: Date.now(),
     order: accountStore.accounts.length,
   }

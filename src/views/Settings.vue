@@ -329,6 +329,38 @@ function importBackup() {
   openBackupImport()
 }
 
+async function importJsonAccounts() {
+  try {
+    const filePath = await open({
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      multiple: false,
+    })
+
+    if (!filePath) return
+
+    const fileContent = await readTextFile(filePath)
+    const accounts = JSON.parse(fileContent)
+
+    for (const account of accounts) {
+      account.id = generateId()
+      accountStore.addAccount(account)
+    }
+
+    backupMessage.value = `成功导入 ${accounts.length} 个账户`
+    showBackupModal.value = true
+    setTimeout(() => {
+      showBackupModal.value = false
+    }, 2000)
+  } catch (err) {
+    backupError.value = `导入失败：${String(err)}`
+    showBackupModal.value = true
+  }
+}
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2)
+}
+
 function lockApp() {
   settingsStore.lock()
   router.push('/unlock')
@@ -474,6 +506,10 @@ function goBack() {
 
         <div class="setting-item setting-action">
           <button class="setting-btn" @click="importBackup">{{ t('settings.importBackup') }}</button>
+        </div>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="importJsonAccounts">导入 JSON 账号</button>
         </div>
 
         <div class="setting-item setting-action">
