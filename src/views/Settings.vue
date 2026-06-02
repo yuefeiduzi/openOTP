@@ -471,10 +471,6 @@ function goBack() {
   router.back()
 }
 
-function openSourceCode() {
-  window.open('https://github.com/openotp/openotp', '_blank')
-}
-
 const debugEnabled = ref(isDebugEnabled())
 
 function toggleDebug() {
@@ -891,6 +887,29 @@ async function exportDebugLogs() {
   background: #f8fbff;
 }
 
+.btn-arrow {
+  margin-left: auto;
+  font-size: 18px;
+  color: #ccc;
+}
+
+.setting-hint-val {
+  margin-left: auto;
+  font-size: 12px;
+  color: #999;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-hint-empty {
+  margin-left: auto;
+  font-size: 12px;
+  color: #bbb;
+  font-style: italic;
+}
+
 .toggle {
   position: relative;
   display: inline-block;
@@ -998,6 +1017,55 @@ async function exportDebugLogs() {
   color: #4a90d9;
 }
 
+.hint-current {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.hint-current-label {
+  font-size: 11px;
+  color: #999;
+}
+
+.hint-current-text {
+  font-size: 14px;
+  color: #333;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 24px;
+}
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+}
+
 .form-group {
   margin-bottom: 16px;
 }
@@ -1007,6 +1075,7 @@ async function exportDebugLogs() {
   font-size: 13px;
   color: #666;
   margin-bottom: 8px;
+  text-align: left;
 }
 
 .form-input {
