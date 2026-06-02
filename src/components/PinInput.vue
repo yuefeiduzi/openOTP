@@ -124,15 +124,15 @@ defineExpose({ focus })
 .pin-input {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .pin-box {
-  width: 44px;
-  height: 52px;
+  width: 40px;
+  height: 48px;
   border: 2px solid #ddd;
-  border-radius: 10px;
-  font-size: 22px;
+  border-radius: 8px;
+  font-size: 20px;
   text-align: center;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;

@@ -38,7 +38,7 @@ const setEnableBiometric = ref(true)
 const setPasswordError = ref('')
 const setPasswordSuccess = ref('')
 
-const editingHint = ref(false)
+const showHintModal = ref(false)
 const hintValue = ref('')
 
 const biometricAvailable = ref(false)
@@ -155,9 +155,13 @@ function setLockTimeout(value: number) {
   saveSettings()
 }
 
-function startEditingHint() {
+function openHintModal() {
   hintValue.value = settingsStore.settings.passwordHint
-  editingHint.value = true
+  showHintModal.value = true
+}
+
+function closeHintModal() {
+  showHintModal.value = false
 }
 
 function saveHint() {
@@ -165,17 +169,13 @@ function saveHint() {
     hintValue.value = hintValue.value.slice(0, 50)
   }
   settingsStore.settings.passwordHint = hintValue.value
-  editingHint.value = false
+  showHintModal.value = false
   saveSettings()
-}
-
-function cancelHint() {
-  editingHint.value = false
 }
 
 function handleHintKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter') saveHint()
-  else if (e.key === 'Escape') cancelHint()
+  else if (e.key === 'Escape') closeHintModal()
 }
 
 function openChangePassword() {
@@ -566,26 +566,10 @@ async function exportDebugLogs() {
         </div>
 
         <div class="setting-item setting-action">
-          <button class="setting-btn" @click="startEditingHint">
+          <button class="setting-btn" @click="openHintModal">
             {{ t('settings.passwordHint') }}<span v-if="settingsStore.settings.passwordHint" class="setting-hint-val">{{ settingsStore.settings.passwordHint }}</span>
             <span v-else class="setting-hint-empty">{{ t('settings.clickToSet') }}</span>
           </button>
-        </div>
-
-        <div v-if="editingHint" class="hint-editor">
-          <input
-            v-model="hintValue"
-            type="text"
-            maxlength="50"
-            class="hint-input"
-            :placeholder="t('setup.hintPlaceholder')"
-            @keydown="handleHintKeydown"
-            autofocus
-          />
-          <div class="hint-actions">
-            <button class="btn btn-sm btn-secondary" @click="cancelHint">取消</button>
-            <button class="btn btn-sm btn-primary" @click="saveHint">保存</button>
-          </div>
         </div>
       </section>
 
@@ -773,6 +757,34 @@ async function exportDebugLogs() {
       </div>
     </div>
 
+    <div v-if="showHintModal" class="modal-overlay" @click.self="closeHintModal">
+      <div class="modal">
+        <h3 class="modal-title">{{ t('settings.passwordHint') }}</h3>
+
+        <div v-if="settingsStore.settings.passwordHint" class="hint-current">
+          <span class="hint-current-label">当前提示</span>
+          <span class="hint-current-text">{{ settingsStore.settings.passwordHint }}</span>
+        </div>
+
+        <div class="form-group">
+          <input
+            v-model="hintValue"
+            type="text"
+            maxlength="50"
+            class="form-input"
+            :placeholder="t('setup.hintPlaceholder')"
+            @keydown="handleHintKeydown"
+            autofocus
+          />
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" @click="closeHintModal">取消</button>
+          <button class="btn btn-primary" @click="saveHint">{{ t('common.save') }}</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="toastMessage" class="toast" :class="{ error: toastError }">
       {{ toastMessage }}
     </div>
@@ -877,111 +889,6 @@ async function exportDebugLogs() {
 .setting-btn:hover {
   border-color: #4a90d9;
   background: #f8fbff;
-}
-
-.btn-arrow {
-  margin-left: auto;
-  font-size: 18px;
-  color: #ccc;
-}
-
-.setting-hint-val {
-  margin-left: auto;
-  font-size: 12px;
-  color: #999;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.setting-hint-empty {
-  margin-left: auto;
-  font-size: 12px;
-  color: #bbb;
-  font-style: italic;
-}
-
-.setting-btn.danger {
-  border-color: #e74c3c;
-  color: #e74c3c;
-}
-
-.setting-btn.danger:hover {
-  background: #fff5f5;
-}
-
-select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  background: white;
-  font-size: 14px;
-  color: #333;
-  cursor: pointer;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 32px;
-}
-
-.lang-select {
-  padding: 8px 32px 8px 14px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  background: #f8f8f8;
-  font-size: 14px;
-  color: #333;
-  cursor: pointer;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-}
-
-select:focus {
-  border-color: #4a90d9;
-}
-
-.hint-control {
-  flex: 1;
-  max-width: 200px;
-  justify-content: flex-end;
-}
-
-.hint-text {
-  font-size: 14px;
-  color: #666;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background 0.2s;
-  word-break: break-all;
-  text-align: right;
-}
-
-.hint-text:hover {
-  background: #f0f0f0;
-}
-
-.hint-text.empty {
-  color: #bbb;
-  font-style: italic;
-}
-
-.hint-input {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #4a90d9;
-  border-radius: 8px;
-  font-size: 14px;
-  outline: none;
-  box-sizing: border-box;
 }
 
 .toggle {
@@ -1089,57 +996,6 @@ select:focus {
 
 .about-copy:hover {
   color: #4a90d9;
-}
-
-.hint-editor {
-  margin-top: 8px;
-  padding: 12px;
-  background: #f9f9f9;
-  border-radius: 10px;
-}
-
-.hint-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  justify-content: flex-end;
-}
-
-.btn-sm {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 300;
-  padding: 24px;
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  width: 100%;
-  max-width: 340px;
-  text-align: center;
-}
-
-.modal-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 20px 0;
 }
 
 .form-group {
