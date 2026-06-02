@@ -75,7 +75,12 @@ export default {
     exportSuccess: 'Exported to {path}',
     about: 'About',
     version: 'OpenOTP v0.1.0',
-    sourceCode: 'Source: github.com/openotp/openotp',
+    sourceCode: 'Source Code',
+    debugMode: 'Debug Mode',
+    debugEnabled: 'Debug mode enabled',
+    debugDisabled: 'Debug mode disabled',
+    exportLogs: 'Export Logs',
+    logExported: 'Logs exported to {path}',
   },
   addAccount: {
     title: 'Add Account',

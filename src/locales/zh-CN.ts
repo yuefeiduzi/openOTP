@@ -75,7 +75,12 @@ export default {
     exportSuccess: '已导出到 {path}',
     about: '关于',
     version: 'OpenOTP v0.1.0',
-    sourceCode: '开源地址：github.com/openotp/openotp',
+    sourceCode: '开源地址',
+    debugMode: '调试模式',
+    debugEnabled: '调试模式已开启',
+    debugDisabled: '调试模式已关闭',
+    exportLogs: '导出日志',
+    logExported: '日志已导出到 {path}',
   },
   addAccount: {
     title: '添加账号',

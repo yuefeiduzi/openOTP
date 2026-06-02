@@ -24,7 +24,9 @@ pub struct Account {
     pub algorithm: String,
     pub digits: u8,
     pub period: u32,
+    #[serde(default)]
     pub counter: u32,
+    #[serde(default)]
     pub notes: String,
     #[serde(rename = "createdAt")]
     pub created_at: u64,

@@ -11,6 +11,7 @@ import { importAndOTPBackup } from '@/utils/andotp'
 import { setLocale, getSavedLocalePreference } from '@/locales'
 import PinInput from '@/components/PinInput.vue'
 import BottomSheet from '@/components/BottomSheet.vue'
+import { enableDebugLog, disableDebugLog, isDebugEnabled, exportLogsText } from '@/utils/debug'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
@@ -469,6 +470,35 @@ function goBack() {
 function openSourceCode() {
   window.open('https://github.com/openotp/openotp', '_blank')
 }
+
+const debugEnabled = ref(isDebugEnabled())
+
+function toggleDebug() {
+  if (isDebugEnabled()) {
+    disableDebugLog()
+    debugEnabled.value = false
+    showToast(t('settings.debugDisabled'))
+  } else {
+    enableDebugLog()
+    debugEnabled.value = true
+    showToast(t('settings.debugEnabled'))
+  }
+}
+
+async function exportDebugLogs() {
+  try {
+    const filePath = await save({
+      defaultPath: 'openotp-debug.log',
+      filters: [{ name: 'Log File', extensions: ['log', 'txt'] }],
+    })
+    if (!filePath) return
+    const text = exportLogsText()
+    await writeTextFile(filePath, text)
+    showToast(t('settings.logExported', { path: filePath }))
+  } catch (err) {
+    showToast(t('errors.exportFailed', { error: String(err) }), true)
+  }
+}
 </script>
 
 <template>
@@ -627,7 +657,28 @@ function openSourceCode() {
       <section class="section about-section">
         <h2 class="section-title">{{ t('settings.about') }}</h2>
         <p class="about-line">{{ t('settings.version') }}</p>
-        <p class="about-line about-link" @click="openSourceCode">{{ t('settings.sourceCode') }}</p>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn about-btn" @click="openSourceCode">
+            {{ t('settings.sourceCode') }}
+          </button>
+        </div>
+
+        <div class="setting-item setting-row">
+          <span class="setting-label">{{ t('settings.debugMode') }}</span>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" :checked="debugEnabled" @change="toggleDebug" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div v-if="debugEnabled" class="setting-item setting-action">
+          <button class="setting-btn" @click="exportDebugLogs">
+            {{ t('settings.exportLogs') }}
+          </button>
+        </div>
       </section>
     </div>
 
@@ -1043,10 +1094,13 @@ select:focus {
   color: #999;
 }
 
-.about-link {
+.about-btn {
   color: #4a90d9;
-  cursor: pointer;
-  text-decoration: underline;
+  border-color: #4a90d9;
+}
+
+.about-btn:hover {
+  background: #eef4ff;
 }
 
 .modal-overlay {
