@@ -66,7 +66,9 @@ export const useAccountStore = defineStore('accounts', () => {
 
   async function persistAccounts(): Promise<void> {
     try {
-      await invoke('save_account', { account: accounts.value })
+      for (const account of accounts.value) {
+        await invoke('save_account', { account })
+      }
     } catch {
       // silently fail
     }
