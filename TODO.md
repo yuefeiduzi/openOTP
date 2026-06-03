@@ -1,18 +1,22 @@
 # TODO
 
-## 1. 修复 Bug — 语言下拉框
-- 语言选择 BottomSheet 点击选项后不生效 / 样式错位
-- 需排查 `handleLanguageChange` 绑定和 `showLangSheet` 关闭时序
+## 1. ~~修复 Bug — 语言下拉框~~ ✅ 已解决 (2026-06-03)
+- ~~语言选择 BottomSheet 点击选项后不生效 / 样式错位~~
+- ~~需排查 `handleLanguageChange` 绑定和 `showLangSheet` 关闭时序~~
+- 根因：`handleLanguageChange` 调用本地 `saveSettings()`（遗漏 `language` 字段）；`.lang-option` CSS 未定义
+- 修复：统一使用 `settingsStore.saveSettings()`；新增语言选项完整样式
 
-## 2. 设计 macOS 菜单栏图标弹出框
-- 点击菜单栏图标时弹出简化版主页面（仅显示 TOTP 码，无设置入口）
-- 弹出框样式参考 1Password / Bartender 的 Panel 风格
-- 要求：小巧、圆角、跟随菜单栏定位
+## 2. ~~设计 macOS 菜单栏图标弹出框~~ ✅ 已解决 (2026-06-03)
+- ~~点击菜单栏图标时弹出简化版主页面（仅显示 TOTP 码，无设置入口）~~
+- ~~弹出框样式参考 1Password / Bartender 的 Panel 风格~~
+- ~~要求：小巧、圆角、跟随菜单栏定位~~
+- 实现：320×480 无标题栏窗口，AccountCodeList 共享组件，popover/main 窗口互斥，Rust 端 show_main_window 命令
 
-## 3. 深色模式
-- 全局 CSS 变量支持 light / dark 主题切换
-- 跟随系统外观设置（`prefers-color-scheme`）
-- 所有组件（Setup、Unlock、Home、Settings、弹窗）适配暗色
+## 3. ~~深色模式~~ ✅ 已解决 (2026-06-03)
+- ~~全局 CSS 变量支持 light / dark 主题切换~~
+- ~~跟随系统外观设置（`prefers-color-scheme`）~~
+- ~~所有组件（Setup、Unlock、Home、Settings、弹窗）适配暗色~~
+- 实现：17 个 CSS 变量（light/dark），useTheme composable，设置页浅色/深色/跟随系统三选一，所有组件 CSS 变量化
 
 ## 4. 应用名称与图标设计
 - 确定最终 App 名称（目前 OpenOTP）
