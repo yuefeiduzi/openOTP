@@ -23,11 +23,21 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: () => import('@/views/Settings.vue')
+    },
+    {
+      path: '/popover',
+      name: 'popover',
+      component: () => import('@/views/PopoverView.vue')
     }
   ]
 })
 
 router.beforeEach(async (to, _from, next) => {
+  if (to.name === 'popover') {
+    next()
+    return
+  }
+
   const settingsStore = useSettingsStore()
   await settingsStore.checkSetup()
 
