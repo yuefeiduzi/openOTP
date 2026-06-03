@@ -81,13 +81,15 @@ onMounted(async () => {
       clipboard_clear_time: number
       lock_timeout: number
       password_hint: string
+      language: string
     }>('get_settings')
     settingsStore.updateSettings({
       biometricEnabled: settings.biometric_enabled,
       autoCopy: settings.auto_copy,
       clipboardClearTime: settings.clipboard_clear_time,
       lockTimeout: settings.lock_timeout,
-      passwordHint: settings.password_hint
+      passwordHint: settings.password_hint,
+      language: settings.language as 'auto' | 'zh-CN' | 'en-US'
     })
   } catch {
   }
@@ -102,46 +104,31 @@ onMounted(async () => {
   }
 })
 
-async function saveSettings() {
-  try {
-    await invoke('save_settings', {
-      settings: {
-        biometric_enabled: settingsStore.settings.biometricEnabled,
-        auto_copy: settingsStore.settings.autoCopy,
-        clipboard_clear_time: settingsStore.settings.clipboardClearTime,
-        lock_timeout: settingsStore.settings.lockTimeout,
-        password_hint: settingsStore.settings.passwordHint
-      }
-    })
-  } catch {
-  }
+function toggleBiometric() {
+  settingsStore.settings.biometricEnabled = !settingsStore.settings.biometricEnabled
+  settingsStore.saveSettings()
+}
+
+function toggleAutoCopy() {
+  settingsStore.settings.autoCopy = !settingsStore.settings.autoCopy
+  settingsStore.saveSettings()
+}
+
+function setClipboardClearTime(value: number) {
+  settingsStore.settings.clipboardClearTime = value
+  settingsStore.saveSettings()
+}
+
+function setLockTimeout(value: number) {
+  settingsStore.settings.lockTimeout = value
+  settingsStore.saveSettings()
 }
 
 function handleLanguageChange(value: 'auto' | 'zh-CN' | 'en-US') {
   languagePreference.value = value
   setLocale(value)
   settingsStore.updateSettings({ language: value })
-  saveSettings()
-}
-
-function toggleBiometric() {
-  settingsStore.settings.biometricEnabled = !settingsStore.settings.biometricEnabled
-  saveSettings()
-}
-
-function toggleAutoCopy() {
-  settingsStore.settings.autoCopy = !settingsStore.settings.autoCopy
-  saveSettings()
-}
-
-function setClipboardClearTime(value: number) {
-  settingsStore.settings.clipboardClearTime = value
-  saveSettings()
-}
-
-function setLockTimeout(value: number) {
-  settingsStore.settings.lockTimeout = value
-  saveSettings()
+  settingsStore.saveSettings()
 }
 
 function openHintModal() {
@@ -159,7 +146,7 @@ function saveHint() {
   }
   settingsStore.settings.passwordHint = hintValue.value
   showHintModal.value = false
-  saveSettings()
+  settingsStore.saveSettings()
   showToast(t('settings.hintSaved'))
 }
 
@@ -595,10 +582,8 @@ async function exportDebugLogs() {
     <BottomSheet
       :visible="showLangSheet"
       :title="t('settings.language')"
-      cancel-text="取消"
-      confirm-text=""
+      hide-actions
       @close="showLangSheet = false"
-      @confirm="showLangSheet = false"
     >
       <div class="lang-options">
         <button
@@ -795,7 +780,7 @@ async function exportDebugLogs() {
   cursor: pointer;
   padding: 0;
   margin-right: 12px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .header h1 {
@@ -817,7 +802,7 @@ async function exportDebugLogs() {
 .section-title {
   font-size: 13px;
   font-weight: 600;
-  color: #999;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin: 0 0 12px 0;
@@ -825,7 +810,7 @@ async function exportDebugLogs() {
 
 .divider {
   height: 1px;
-  background: #eee;
+  background: var(--border-color);
   margin: 8px 0 16px 0;
 }
 
@@ -846,7 +831,7 @@ async function exportDebugLogs() {
 
 .setting-label {
   font-size: 15px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .setting-control {
@@ -858,9 +843,9 @@ async function exportDebugLogs() {
 .setting-btn {
   width: 100%;
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: white;
+  background: var(--card-bg);
   font-size: 14px;
   cursor: pointer;
   text-align: left;
@@ -870,20 +855,20 @@ async function exportDebugLogs() {
 }
 
 .setting-btn:hover {
-  border-color: #4a90d9;
-  background: #f8fbff;
+  border-color: var(--accent);
+  background: var(--bg-secondary);
 }
 
 .btn-arrow {
   margin-left: auto;
   font-size: 18px;
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .setting-hint-val {
   margin-left: auto;
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -893,7 +878,7 @@ async function exportDebugLogs() {
 .setting-hint-empty {
   margin-left: auto;
   font-size: 12px;
-  color: #bbb;
+  color: var(--text-secondary);
   font-style: italic;
 }
 
@@ -922,7 +907,7 @@ async function exportDebugLogs() {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: var(--toggle-track-off);
   border-radius: 24px;
   transition: background-color 0.3s;
 }
@@ -940,7 +925,7 @@ async function exportDebugLogs() {
 }
 
 .toggle input:checked + .toggle-slider {
-  background-color: #4a90d9;
+  background-color: var(--accent);
 }
 
 .toggle input:checked + .toggle-slider::before {
@@ -949,7 +934,7 @@ async function exportDebugLogs() {
 
 .status-text {
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .export-options {
@@ -967,21 +952,56 @@ async function exportDebugLogs() {
   cursor: pointer;
   transition: background 0.2s;
   font-size: 15px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .radio-item:hover {
-  background: #f5f5f5;
+  background: var(--bg-secondary);
 }
 
 .radio-item.active {
-  background: #eef4ff;
+  background: rgba(74, 144, 217, 0.1);
 }
 
 .radio-item input[type="radio"] {
-  accent-color: #4a90d9;
+  accent-color: var(--accent);
   width: 18px;
   height: 18px;
+}
+
+.lang-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  border: none;
+  background: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text-primary);
+  transition: background 0.2s;
+  width: 100%;
+}
+
+.lang-option:hover {
+  background: var(--bg-secondary);
+}
+
+.lang-option.active {
+  background: rgba(74, 144, 217, 0.1);
+  color: var(--accent);
+}
+
+.lang-check {
+  font-size: 16px;
+  color: var(--accent);
 }
 
 .about-section {
@@ -991,17 +1011,17 @@ async function exportDebugLogs() {
 .about-line {
   margin: 4px 0;
   font-size: 13px;
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .about-copy {
-  color: #666;
+  color: var(--btn-secondary-text);
   cursor: pointer;
   user-select: all;
 }
 
 .about-copy:hover {
-  color: #4a90d9;
+  color: var(--accent);
 }
 
 .hint-current {
@@ -1009,19 +1029,19 @@ async function exportDebugLogs() {
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
-  background: #f5f5f5;
+  background: var(--bg-secondary);
   border-radius: 8px;
   margin-bottom: 12px;
 }
 
 .hint-current-label {
   font-size: 11px;
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .hint-current-text {
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .modal-overlay {
@@ -1030,7 +1050,7 @@ async function exportDebugLogs() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1039,7 +1059,8 @@ async function exportDebugLogs() {
 }
 
 .modal {
-  background: white;
+  background: var(--card-bg);
+  color: var(--text-primary);
   border-radius: 16px;
   padding: 24px;
   width: 100%;
@@ -1060,7 +1081,7 @@ async function exportDebugLogs() {
 .form-group label {
   display: block;
   font-size: 13px;
-  color: #666;
+  color: var(--btn-secondary-text);
   margin-bottom: 8px;
   text-align: left;
 }
@@ -1068,25 +1089,27 @@ async function exportDebugLogs() {
 .form-input {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   font-size: 16px;
   box-sizing: border-box;
   outline: none;
+  background: var(--card-bg);
+  color: var(--text-primary);
 }
 
 .form-input:focus {
-  border-color: #4a90d9;
+  border-color: var(--accent);
 }
 
 .form-error {
-  color: #e74c3c;
+  color: var(--progress-red);
   font-size: 13px;
   margin: 8px 0;
 }
 
 .form-success {
-  color: #27ae60;
+  color: var(--progress-green);
   font-size: 13px;
   margin: 8px 0;
 }
@@ -1113,16 +1136,16 @@ async function exportDebugLogs() {
 }
 
 .btn-secondary {
-  background: #f0f0f0;
-  color: #666;
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
 }
 
 .btn-primary {
-  background: #4a90d9;
+  background: var(--accent);
   color: white;
 }
 
 .btn-primary:hover {
-  background: #3a7bc8;
+  opacity: 0.85;
 }
 </style>
