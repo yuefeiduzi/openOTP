@@ -117,20 +117,22 @@ async function useBiometric() {
 .unlock {
   padding: 48px 24px;
   text-align: center;
+  background: var(--bg-primary);
 }
 
 h1 {
   font-size: 28px;
   margin-bottom: 8px;
+  color: var(--text-primary);
 }
 
 .subtitle {
-  color: #666;
+  color: var(--text-secondary);
   margin-bottom: 32px;
 }
 
 .error {
-  color: #e74c3c;
+  color: var(--progress-red);
   font-size: 14px;
   margin: 12px 0 0;
 }
@@ -141,7 +143,7 @@ h1 {
   margin-top: 24px;
   border: none;
   border-radius: 10px;
-  background: #4a90d9;
+  background: var(--accent);
   color: white;
   font-size: 16px;
   cursor: pointer;
@@ -151,23 +153,23 @@ h1 {
   width: 100%;
   padding: 12px;
   margin-top: 12px;
-  border: 1px solid #4a90d9;
+  border: 1px solid var(--accent);
   border-radius: 10px;
-  background: white;
-  color: #4a90d9;
+  background: var(--card-bg);
+  color: var(--accent);
   font-size: 16px;
   cursor: pointer;
 }
 
 .biometric-error {
-  color: #e74c3c;
+  color: var(--progress-red);
   font-size: 14px;
   margin-top: 12px;
 }
 
 .hint {
   margin-top: 24px;
-  color: #999;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 </style>

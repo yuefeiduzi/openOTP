@@ -139,15 +139,17 @@ async function handleSkipSetup() {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background: var(--bg-primary);
 }
 
 h1 {
   font-size: 24px;
   margin-bottom: 8px;
+  color: var(--text-primary);
 }
 
 .subtitle {
-  color: #666;
+  color: var(--text-secondary);
   margin-bottom: 32px;
 }
 
@@ -163,16 +165,18 @@ form {
   display: block;
   margin-bottom: 10px;
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .form-group input {
   width: 100%;
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 16px;
   box-sizing: border-box;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .checkbox label {
@@ -186,7 +190,7 @@ form {
 }
 
 .error {
-  color: #e74c3c;
+  color: var(--progress-red);
   font-size: 14px;
   margin-bottom: 16px;
 }
@@ -196,7 +200,7 @@ form {
   padding: 14px;
   border: none;
   border-radius: 10px;
-  background: #4a90d9;
+  background: var(--accent);
   color: white;
   font-size: 16px;
   cursor: pointer;
@@ -204,21 +208,21 @@ form {
 }
 
 .submit-btn:hover {
-  background: #3a7bc8;
+  opacity: 0.85;
 }
 
 .skip-btn {
   width: 100%;
   padding: 14px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: white;
-  color: #666;
+  background: var(--card-bg);
+  color: var(--btn-secondary-text);
   font-size: 16px;
   cursor: pointer;
 }
 
 .skip-btn:hover {
-  background: #f5f5f5;
+  background: var(--bg-secondary);
 }
 </style>

@@ -155,7 +155,7 @@ function handleCancel() {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -163,7 +163,8 @@ function handleCancel() {
 }
 
 .modal {
-  background: #fff;
+  background: var(--card-bg);
+  color: var(--text-primary);
   border-radius: 12px;
   padding: 20px;
   width: 400px;
@@ -181,7 +182,7 @@ function handleCancel() {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
-  color: #222;
+  color: var(--text-primary);
 }
 
 .field-group {
@@ -191,18 +192,18 @@ function handleCancel() {
 .field-label {
   display: block;
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
 .input {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
-  color: #333;
-  background: #fff;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
   box-sizing: border-box;
   transition: border-color 0.15s;
   font-family: inherit;
@@ -210,7 +211,7 @@ function handleCancel() {
 
 .input:focus {
   outline: none;
-  border-color: #4A90D9;
+  border-color: var(--accent);
 }
 
 .textarea {
@@ -223,7 +224,7 @@ function handleCancel() {
   align-items: center;
   gap: 10px;
   padding: 8px;
-  background: #f9f9f9;
+  background: var(--bg-secondary);
   border-radius: 8px;
   cursor: pointer;
 }
@@ -236,24 +237,24 @@ function handleCancel() {
 .edit-icon-btn {
   margin-left: auto;
   padding: 4px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  background: #fff;
+  background: var(--card-bg);
   font-size: 12px;
-  color: #666;
+  color: var(--btn-secondary-text);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .edit-icon-btn:hover {
-  border-color: #4A90D9;
-  color: #4A90D9;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .icon-editor {
   margin-top: 10px;
   padding: 12px;
-  background: #f9f9f9;
+  background: var(--bg-secondary);
   border-radius: 8px;
 }
 
@@ -261,7 +262,7 @@ function handleCancel() {
   display: flex;
   margin-bottom: 12px;
   border-radius: 6px;
-  background: #eee;
+  background: var(--border-color);
   padding: 2px;
 }
 
@@ -271,15 +272,15 @@ function handleCancel() {
   border: none;
   background: transparent;
   font-size: 12px;
-  color: #666;
+  color: var(--btn-secondary-text);
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.15s;
 }
 
 .icon-type-btn.active {
-  background: #fff;
-  color: #333;
+  background: var(--card-bg);
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -303,7 +304,7 @@ function handleCancel() {
 }
 
 .color-item.selected {
-  border-color: #333;
+  border-color: var(--text-primary);
   transform: scale(1.1);
 }
 
@@ -313,7 +314,7 @@ function handleCancel() {
   gap: 10px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color);
 }
 
 .btn {
@@ -325,22 +326,22 @@ function handleCancel() {
 }
 
 .btn-cancel {
-  border: 1px solid #ddd;
-  background: #fff;
-  color: #666;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--btn-secondary-text);
 }
 
 .btn-cancel:hover {
-  background: #f5f5f5;
+  background: var(--bg-secondary);
 }
 
 .btn-save {
   border: none;
-  background: #4A90D9;
+  background: var(--accent);
   color: #fff;
 }
 
 .btn-save:hover {
-  background: #3a7bc8;
+  opacity: 0.85;
 }
 </style>

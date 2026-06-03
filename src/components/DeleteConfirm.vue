@@ -34,7 +34,7 @@ const { t } = useI18n()
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -42,7 +42,8 @@ const { t } = useI18n()
 }
 
 .dialog {
-  background: #fff;
+  background: var(--card-bg);
+  color: var(--text-primary);
   border-radius: 12px;
   padding: 24px 20px 20px;
   width: 320px;
@@ -61,18 +62,18 @@ const { t } = useI18n()
 
 .message {
   font-size: 15px;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 6px;
   line-height: 1.5;
 }
 
 .message strong {
-  color: #222;
+  color: var(--text-primary);
 }
 
 .subtitle {
   font-size: 13px;
-  color: #999;
+  color: var(--text-secondary);
   margin: 0 0 20px;
 }
 
@@ -91,18 +92,18 @@ const { t } = useI18n()
 }
 
 .btn-cancel {
-  border: 1px solid #ddd;
-  background: #fff;
-  color: #666;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--btn-secondary-text);
 }
 
 .btn-cancel:hover {
-  background: #f5f5f5;
+  background: var(--bg-secondary);
 }
 
 .btn-delete {
   border: none;
-  background: #F44336;
+  background: var(--progress-red);
   color: #fff;
 }
 

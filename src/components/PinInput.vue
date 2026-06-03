@@ -130,25 +130,25 @@ defineExpose({ focus })
 .pin-box {
   width: 40px;
   height: 48px;
-  border: 2px solid #ddd;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   font-size: 20px;
   text-align: center;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
-  background: #fafafa;
-  color: #333;
+  background: var(--card-bg);
+  color: var(--text-primary);
 }
 
 .pin-box:focus {
-  border-color: #4a90d9;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
-  background: #fff;
+  background: var(--card-bg);
 }
 
 .pin-box.filled {
   border-color: #b0b0b0;
-  background: #fff;
+  background: var(--card-bg);
 }
 
 .pin-box:disabled {

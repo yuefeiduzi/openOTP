@@ -358,7 +358,7 @@ function useParsedData() {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -366,7 +366,8 @@ function useParsedData() {
 }
 
 .modal {
-  background: #fff;
+  background: var(--card-bg);
+  color: var(--text-primary);
   border-radius: 12px;
   padding: 20px;
   width: 420px;
@@ -384,14 +385,14 @@ function useParsedData() {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
-  color: #222;
+  color: var(--text-primary);
 }
 
 .tab-bar {
   display: flex;
   margin-bottom: 16px;
   border-radius: 8px;
-  background: #f5f5f5;
+  background: var(--bg-secondary);
   padding: 3px;
 }
 
@@ -401,7 +402,7 @@ function useParsedData() {
   border: none;
   background: transparent;
   font-size: 12px;
-  color: #666;
+  color: var(--btn-secondary-text);
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.15s;
@@ -409,8 +410,8 @@ function useParsedData() {
 }
 
 .tab-btn.active {
-  background: #fff;
-  color: #333;
+  background: var(--card-bg);
+  color: var(--text-primary);
   font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -434,16 +435,16 @@ function useParsedData() {
   align-items: center;
   gap: 12px;
   padding: 32px 48px;
-  border: 2px dashed #ddd;
+  border: 2px dashed var(--border-color);
   border-radius: 12px;
-  background: #fafafa;
+  background: var(--bg-secondary);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .scan-btn:hover {
-  border-color: #4A90D9;
-  background: #f0f6ff;
+  border-color: var(--accent);
+  background: rgba(74, 144, 217, 0.1);
 }
 
 .scan-btn:disabled {
@@ -453,7 +454,7 @@ function useParsedData() {
 
 .scan-label {
   font-size: 14px;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .qr-preview {
@@ -467,36 +468,36 @@ function useParsedData() {
   max-width: 200px;
   max-height: 200px;
   border-radius: 8px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-color);
 }
 
 .qr-status {
   font-size: 13px;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .qr-success {
   font-size: 13px;
-  color: #4CAF50;
+  color: var(--progress-green);
 }
 
 .qr-fail {
   font-size: 13px;
-  color: #F44336;
+  color: var(--progress-red);
 }
 
 .scan-btn.retry {
   padding: 8px 20px;
   font-size: 13px;
-  border: 1px solid #ddd;
-  background: #fff;
-  color: #666;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--btn-secondary-text);
   border-radius: 6px;
   cursor: pointer;
 }
 
 .scan-btn.retry:hover {
-  background: #f5f5f5;
+  background: var(--bg-secondary);
 }
 
 .field-group {
@@ -506,25 +507,25 @@ function useParsedData() {
 .field-label {
   display: block;
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
 .input {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
-  color: #333;
-  background: #fff;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
   box-sizing: border-box;
   transition: border-color 0.15s;
 }
 
 .input:focus {
   outline: none;
-  border-color: #4A90D9;
+  border-color: var(--accent);
 }
 
 .field-row {
@@ -538,12 +539,12 @@ function useParsedData() {
 
 .parse-error {
   font-size: 12px;
-  color: #F44336;
+  color: var(--progress-red);
   margin-bottom: 12px;
 }
 
 .preview-section {
-  background: #f9f9f9;
+  background: var(--bg-secondary);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 12px;
@@ -557,11 +558,11 @@ function useParsedData() {
 }
 
 .preview-label {
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .preview-value {
-  color: #333;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -569,17 +570,17 @@ function useParsedData() {
   width: 100%;
   margin-top: 10px;
   padding: 8px 0;
-  border: 1px solid #4A90D9;
+  border: 1px solid var(--accent);
   border-radius: 6px;
-  background: #fff;
-  color: #4A90D9;
+  background: var(--card-bg);
+  color: var(--accent);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .edit-fields-btn:hover {
-  background: #4A90D9;
+  background: var(--accent);
   color: #fff;
 }
 
@@ -589,7 +590,7 @@ function useParsedData() {
   gap: 10px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color);
 }
 
 .btn {
@@ -601,22 +602,22 @@ function useParsedData() {
 }
 
 .btn-cancel {
-  border: 1px solid #ddd;
-  background: #fff;
-  color: #666;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--btn-secondary-text);
 }
 
 .btn-cancel:hover {
-  background: #f5f5f5;
+  background: var(--bg-secondary);
 }
 
 .btn-add {
   border: none;
-  background: #4A90D9;
+  background: var(--accent);
   color: #fff;
 }
 
 .btn-add:hover {
-  background: #3a7bc8;
+  opacity: 0.85;
 }
 </style>
