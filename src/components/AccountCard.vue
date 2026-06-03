@@ -157,9 +157,9 @@ onUnmounted(() => {
 
 <style scoped>
 .account-card {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--card-shadow);
   padding: 12px;
   margin-bottom: 8px;
   position: relative;
@@ -208,7 +208,7 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #f0f0f0;
+  background: var(--bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -224,13 +224,13 @@ onUnmounted(() => {
   font-size: 22px;
   font-weight: 600;
   letter-spacing: 1px;
-  color: #222;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .issuer-name {
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -242,7 +242,7 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border: none;
-  background: #f5f5f5;
+  background: var(--bg-secondary);
   border-radius: 8px;
   font-size: 16px;
   cursor: pointer;
@@ -250,10 +250,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   transition: background 0.15s;
+  color: var(--text-secondary);
 }
 
 .copy-btn:hover {
-  background: #e8e8e8;
+  background: var(--border-color);
 }
 
 .progress-bar {
@@ -266,14 +267,14 @@ onUnmounted(() => {
 }
 
 .progress-green {
-  background-color: #4CAF50;
+  background-color: var(--progress-green);
 }
 
 .progress-yellow {
-  background-color: #FF9800;
+  background-color: var(--progress-yellow);
 }
 
 .progress-red {
-  background-color: #F44336;
+  background-color: var(--progress-red);
 }
 </style>
