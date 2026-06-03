@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAccountStore } from '@/stores'
 import type { Account } from '@/types'
 import { getRandomBgColor } from '@/utils/icons'
-import { useToast } from '@/composables/useToast'
-import AccountCard from '@/components/AccountCard.vue'
+import AccountCodeList from '@/components/AccountCodeList.vue'
 import AddAccount from '@/components/AddAccount.vue'
 import DeleteConfirm from '@/components/DeleteConfirm.vue'
 import EditAccount from '@/components/EditAccount.vue'
@@ -14,24 +13,11 @@ import EditAccount from '@/components/EditAccount.vue'
 const router = useRouter()
 const accountStore = useAccountStore()
 const { t } = useI18n()
-const { show: showToast } = useToast()
-
 const showAdd = ref(false)
 const showDelete = ref(false)
 const showEdit = ref(false)
 const deletingAccount = ref<Account | null>(null)
 const editingAccount = ref<Account | null>(null)
-
-const dragIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
-
-function byOrder(a: Account, b: Account): number {
-  return a.order - b.order
-}
-
-const displayedAccounts = computed(() =>
-  accountStore.accounts.filter(a => a.type === 'totp').sort(byOrder)
-)
 
 onMounted(async () => {
   await accountStore.loadAccounts()
@@ -39,11 +25,6 @@ onMounted(async () => {
 
 function goToSettings() {
   router.push('/settings')
-}
-
-function handleCopy(code: string) {
-  navigator.clipboard.writeText(code)
-  showToast(t('home.copied'))
 }
 
 function handleDelete(account: Account) {
@@ -62,40 +43,6 @@ function confirmDelete() {
 function handleEdit(account: Account) {
   editingAccount.value = account
   showEdit.value = true
-}
-
-function onDragStart(index: number, event: DragEvent) {
-  dragIndex.value = index
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', String(index))
-  }
-}
-
-function onDragOver(index: number, event: DragEvent) {
-  event.preventDefault()
-  if (dragIndex.value === null || dragIndex.value === index) return
-  event.dataTransfer!.dropEffect = 'move'
-
-  dragOverIndex.value = index
-}
-
-function onDragLeave() {
-  dragOverIndex.value = null
-}
-
-function onDrop(event: DragEvent) {
-  event.preventDefault()
-  dragOverIndex.value = null
-}
-
-function onDragEnd() {
-  if (dragIndex.value === null) return
-
-  const orderedIds = displayedAccounts.value.map(a => a.id)
-  accountStore.reorderAccounts(orderedIds)
-  dragIndex.value = null
-  dragOverIndex.value = null
 }
 
 function handleAddAccount(data: Partial<Account>) {
@@ -139,41 +86,7 @@ function handleEditSave(data: Partial<Account>) {
       </button>
     </header>
 
-    <div class="account-list">
-      <p v-if="displayedAccounts.length === 0" class="empty">
-        {{ t('home.noAccounts', { type: 'TOTP' }) }}
-      </p>
-      <div
-        v-for="(account, index) in displayedAccounts"
-        :key="account.id"
-        class="account-wrapper"
-        :class="{
-          dragging: dragIndex === index,
-          'drag-over': dragOverIndex === index,
-        }"
-        draggable="true"
-        @dragstart="onDragStart(index, $event)"
-        @dragover="onDragOver(index, $event)"
-        @dragleave="onDragLeave"
-        @drop="onDrop"
-        @dragend="onDragEnd"
-      >
-        <div
-          v-if="dragOverIndex === index && dragIndex !== null && dragIndex > index"
-          class="drop-indicator drop-before"
-        />
-        <AccountCard
-          :account="account"
-          @copy="handleCopy"
-          @delete="handleDelete(account)"
-          @edit="handleEdit(account)"
-        />
-        <div
-          v-if="dragOverIndex === index && dragIndex !== null && dragIndex < index"
-          class="drop-indicator drop-after"
-        />
-      </div>
-    </div>
+    <AccountCodeList />
 
     <button class="add-btn" @click="showAdd = true">+</button>
 
@@ -228,17 +141,6 @@ function handleEditSave(data: Partial<Account>) {
   cursor: pointer;
 }
 
-.account-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.empty {
-  text-align: center;
-  color: var(--text-secondary);
-  padding: 32px;
-}
-
 .add-btn {
   position: fixed;
   bottom: 24px;
@@ -265,37 +167,5 @@ function handleEditSave(data: Partial<Account>) {
   font-size: 13px;
   z-index: 300;
   pointer-events: none;
-}
-
-.account-wrapper {
-  position: relative;
-  transition: transform 0.15s, opacity 0.15s;
-}
-
-.account-wrapper.dragging {
-  opacity: 0.4;
-}
-
-.account-wrapper.drag-over {
-  transform: scale(1.02);
-}
-
-.drop-indicator {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background: var(--accent);
-  border-radius: 2px;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.drop-before {
-  top: -1px;
-}
-
-.drop-after {
-  bottom: -1px;
 }
 </style>
