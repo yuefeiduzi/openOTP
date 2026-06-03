@@ -5,6 +5,7 @@ defineProps<{
   confirmText?: string
   cancelText?: string
   confirmDisabled?: boolean
+  hideActions?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -26,7 +27,7 @@ const emit = defineEmits<{
             <slot />
           </div>
 
-          <div class="sheet-actions">
+          <div v-if="!hideActions" class="sheet-actions">
             <button class="sheet-btn cancel" @click="emit('close')">
               {{ cancelText || '取消' }}
             </button>
@@ -51,7 +52,7 @@ const emit = defineEmits<{
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay);
   z-index: 200;
   display: flex;
   align-items: flex-end;
@@ -61,7 +62,7 @@ const emit = defineEmits<{
 .bottom-sheet {
   width: 100%;
   max-height: 66vh;
-  background: #fff;
+  background: var(--sheet-bg);
   border-radius: 20px 20px 0 0;
   display: flex;
   flex-direction: column;
@@ -77,6 +78,7 @@ const emit = defineEmits<{
   font-weight: 600;
   margin: 0;
   text-align: center;
+  color: var(--text-primary);
 }
 
 .sheet-content {
@@ -103,12 +105,12 @@ const emit = defineEmits<{
 }
 
 .sheet-btn.cancel {
-  background: #f0f0f0;
-  color: #666;
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
 }
 
 .sheet-btn.confirm {
-  background: #4a90d9;
+  background: var(--accent);
   color: #fff;
 }
 
@@ -118,11 +120,11 @@ const emit = defineEmits<{
 }
 
 .sheet-btn.confirm:not(:disabled):hover {
-  background: #3a7bc8;
+  opacity: 0.85;
 }
 
 .sheet-btn.cancel:hover {
-  background: #e4e4e4;
+  opacity: 0.85;
 }
 
 .sheet-enter-active,

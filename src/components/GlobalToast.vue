@@ -20,8 +20,8 @@ const { toast } = useToast()
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
+  background: var(--toast-bg);
+  color: var(--toast-text);
   padding: 14px 28px;
   border-radius: 10px;
   font-size: 14px;
