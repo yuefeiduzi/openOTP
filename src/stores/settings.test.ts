@@ -96,4 +96,39 @@ describe('settings store', () => {
       expect(store.settings.biometricEnabled).toBe(true)
     })
   })
+
+  describe('theme settings', () => {
+    it('should default theme to auto', () => {
+      const store = useSettingsStore()
+      expect(store.settings.theme).toBe('auto')
+    })
+
+    it('should include theme when saving settings', async () => {
+      const store = useSettingsStore()
+      store.updateSettings({ theme: 'dark' })
+
+      await store.saveSettings()
+
+      const callArgs = vi.mocked(invoke).mock.calls[0]
+      const settings = (callArgs[1] as { settings: Record<string, unknown> }).settings
+      expect(settings.theme).toBe('dark')
+    })
+
+    it('should persist all three theme values', async () => {
+      const themes: Array<'light' | 'dark' | 'auto'> = ['light', 'dark', 'auto']
+
+      for (const theme of themes) {
+        vi.clearAllMocks()
+        setActivePinia(createPinia())
+        const store = useSettingsStore()
+        store.updateSettings({ theme })
+
+        await store.saveSettings()
+
+        const callArgs = vi.mocked(invoke).mock.calls[0]
+        const settings = (callArgs[1] as { settings: Record<string, unknown> }).settings
+        expect(settings.theme).toBe(theme)
+      }
+    })
+  })
 })
