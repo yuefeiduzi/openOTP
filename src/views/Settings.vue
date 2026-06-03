@@ -13,14 +13,19 @@ import PinInput from '@/components/PinInput.vue'
 import BottomSheet from '@/components/BottomSheet.vue'
 import { enableDebugLog, disableDebugLog, isDebugEnabled, exportLogsText } from '@/utils/debug'
 import { useToast } from '@/composables/useToast'
+import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
 const accountStore = useAccountStore()
 const { t } = useI18n()
 const { show: showToast } = useToast()
+const { setTheme } = useTheme()
 
 const languagePreference = ref<'auto' | 'zh-CN' | 'en-US'>('auto')
+
+const themePreference = ref<'light' | 'dark' | 'auto'>('auto')
+const showThemeSheet = ref(false)
 
 const showPasswordModal = ref(false)
 const passwordStep = ref<'verify' | 'change'>('verify')
@@ -73,6 +78,7 @@ const biometricLabel = computed(() => {
 
 onMounted(async () => {
   languagePreference.value = getSavedLocalePreference()
+  themePreference.value = settingsStore.settings.theme
 
   try {
     const settings = await invoke<{
@@ -82,6 +88,7 @@ onMounted(async () => {
       lock_timeout: number
       password_hint: string
       language: string
+      theme: string
     }>('get_settings')
     settingsStore.updateSettings({
       biometricEnabled: settings.biometric_enabled,
@@ -89,7 +96,8 @@ onMounted(async () => {
       clipboardClearTime: settings.clipboard_clear_time,
       lockTimeout: settings.lock_timeout,
       passwordHint: settings.password_hint,
-      language: settings.language as 'auto' | 'zh-CN' | 'en-US'
+      language: settings.language as 'auto' | 'zh-CN' | 'en-US',
+      theme: settings.theme as 'light' | 'dark' | 'auto'
     })
   } catch {
   }
@@ -129,6 +137,11 @@ function handleLanguageChange(value: 'auto' | 'zh-CN' | 'en-US') {
   setLocale(value)
   settingsStore.updateSettings({ language: value })
   settingsStore.saveSettings()
+}
+
+function handleThemeChange(value: 'light' | 'dark' | 'auto') {
+  themePreference.value = value
+  setTheme(value)
 }
 
 function openHintModal() {
@@ -501,6 +514,18 @@ async function exportDebugLogs() {
       <div class="divider"></div>
 
       <section class="section">
+        <h2 class="section-title">{{ t('settings.appearanceSettings') }}</h2>
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="showThemeSheet = true">
+            {{ themePreference === 'auto' ? t('settings.themeAuto') : themePreference === 'light' ? t('settings.themeLight') : t('settings.themeDark') }}
+            <span class="btn-arrow">›</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="section">
         <h2 class="section-title">{{ t('settings.dataManagement') }}</h2>
 
         <div class="setting-item setting-action">
@@ -595,6 +620,26 @@ async function exportDebugLogs() {
         >
           {{ opt.label }}
           <span v-if="languagePreference === opt.value" class="lang-check">✓</span>
+        </button>
+      </div>
+    </BottomSheet>
+
+    <BottomSheet
+      :visible="showThemeSheet"
+      :title="t('settings.theme')"
+      hide-actions
+      @close="showThemeSheet = false"
+    >
+      <div class="lang-options">
+        <button
+          v-for="opt in [{ value: 'auto', label: t('settings.themeAuto') }, { value: 'light', label: t('settings.themeLight') }, { value: 'dark', label: t('settings.themeDark') }]"
+          :key="opt.value"
+          class="lang-option"
+          :class="{ active: themePreference === opt.value }"
+          @click="handleThemeChange(opt.value as 'light' | 'dark' | 'auto'); showThemeSheet = false"
+        >
+          {{ opt.label }}
+          <span v-if="themePreference === opt.value" class="lang-check">✓</span>
         </button>
       </div>
     </BottomSheet>
