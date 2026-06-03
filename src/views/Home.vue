@@ -205,6 +205,7 @@ function handleEditSave(data: Partial<Account>) {
   flex-direction: column;
   height: 100%;
   padding: 16px;
+  background: var(--bg-primary);
 }
 
 .header {
@@ -217,6 +218,7 @@ function handleEditSave(data: Partial<Account>) {
 .header h1 {
   font-size: 20px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .settings-btn {
@@ -233,7 +235,7 @@ function handleEditSave(data: Partial<Account>) {
 
 .empty {
   text-align: center;
-  color: #999;
+  color: var(--text-secondary);
   padding: 32px;
 }
 
@@ -245,7 +247,7 @@ function handleEditSave(data: Partial<Account>) {
   height: 48px;
   border-radius: 50%;
   border: none;
-  background: #4a90d9;
+  background: var(--accent);
   color: white;
   font-size: 24px;
   cursor: pointer;
@@ -256,8 +258,8 @@ function handleEditSave(data: Partial<Account>) {
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
+  background: var(--toast-bg);
+  color: var(--toast-text);
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
@@ -283,7 +285,7 @@ function handleEditSave(data: Partial<Account>) {
   left: 8px;
   right: 8px;
   height: 2px;
-  background: #4a90d9;
+  background: var(--accent);
   border-radius: 2px;
   z-index: 10;
   pointer-events: none;
