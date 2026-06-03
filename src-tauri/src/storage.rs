@@ -47,6 +47,8 @@ pub struct AppSettings {
     pub password_hint: String,
     #[serde(rename = "language")]
     pub language: String,
+    #[serde(rename = "theme")]
+    pub theme: String,
 }
 
 impl Default for AppSettings {
@@ -58,6 +60,7 @@ impl Default for AppSettings {
             lock_timeout: 60,
             password_hint: String::new(),
             language: String::from("auto"),
+            theme: String::from("auto"),
         }
     }
 }

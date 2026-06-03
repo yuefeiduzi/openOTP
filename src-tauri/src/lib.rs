@@ -5,7 +5,9 @@ mod biometric_status;
 
 use serde::Serialize;
 use tauri::AppHandle;
+use tauri::LogicalPosition;
 use tauri::Manager;
+use tauri::WebviewWindowBuilder;
 use tauri::tray::TrayIconBuilder;
 
 #[derive(Serialize)]
@@ -116,6 +118,18 @@ fn is_macos() -> bool {
     cfg!(target_os = "macos")
 }
 
+#[tauri::command]
+fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(popover) = app.get_webview_window("popover") {
+        popover.hide().map_err(|e| e.to_string())?;
+    }
+    if let Some(main) = app.get_webview_window("main") {
+        main.show().map_err(|e| e.to_string())?;
+        main.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -136,11 +150,54 @@ pub fn run() {
                     .tooltip("OpenOTP")
                     .icon(app.default_window_icon().unwrap().clone())
                     .on_tray_icon_event(|tray, event| {
-                        if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
+                        if let tauri::tray::TrayIconEvent::Click {
+                            button: tauri::tray::MouseButton::Left,
+                            rect,
+                            ..
+                        } = event {
                             let app = tray.app_handle();
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
+
+                            if let Some(popover) = app.get_webview_window("popover") {
+                                if popover.is_visible().unwrap_or(false) {
+                                    let _ = popover.hide();
+                                    return;
+                                }
+                            }
+
+                            if let Some(main) = app.get_webview_window("main") {
+                                if main.is_visible().unwrap_or(false) {
+                                    let _ = main.hide();
+                                }
+                            }
+
+                            if let Some(popover) = app.get_webview_window("popover") {
+                                let pos = rect.position.to_logical::<f64>(1.0);
+                                let sz = rect.size.to_logical::<f64>(1.0);
+                                let x = pos.x + (sz.width / 2.0) - 160.0;
+                                let y = pos.y + sz.height + 4.0;
+                                let _ = popover.set_position(LogicalPosition::new(x, y));
+                                let _ = popover.show();
+                                let _ = popover.set_focus();
+                                return;
+                            }
+
+                            if let Ok(popover) = WebviewWindowBuilder::new(app, "popover", tauri::WebviewUrl::App("index.html".into()))
+                                .title("OpenOTP")
+                                .inner_size(320.0, 480.0)
+                                .decorations(false)
+                                .resizable(false)
+                                .always_on_top(true)
+                                .visible(false)
+                                .build()
+                            {
+                                let _ = popover.eval("window.location.hash = '#/popover'");
+                                let pos = rect.position.to_logical::<f64>(1.0);
+                                let sz = rect.size.to_logical::<f64>(1.0);
+                                let x = pos.x + (sz.width / 2.0) - 160.0;
+                                let y = pos.y + sz.height + 4.0;
+                                let _ = popover.set_position(LogicalPosition::new(x, y));
+                                let _ = popover.show();
+                                let _ = popover.set_focus();
                             }
                         }
                     })
@@ -152,9 +209,17 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             #[cfg(target_os = "macos")]
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                window.hide().ok();
-                api.prevent_close();
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    window.hide().ok();
+                    api.prevent_close();
+                }
+            }
+
+            if window.label() == "popover" {
+                if let tauri::WindowEvent::Focused(false) = event {
+                    window.hide().ok();
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -176,6 +241,7 @@ pub fn run() {
             save_password_hash,
             load_password_hash,
             is_macos,
+            show_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
