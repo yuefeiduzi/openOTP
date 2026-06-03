@@ -2,12 +2,18 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAccountStore } from '@/stores'
+import type { Account } from '@/types'
 import AccountCard from '@/components/AccountCard.vue'
 import { useToast } from '@/composables/useToast'
 
 const accountStore = useAccountStore()
 const { t } = useI18n()
 const { show: showToast } = useToast()
+
+const emit = defineEmits<{
+  (e: 'delete', account: Account): void
+  (e: 'edit', account: Account): void
+}>()
 
 const accounts = computed(() =>
   accountStore.accounts
@@ -31,6 +37,8 @@ function handleCopy(code: string) {
       :key="account.id"
       :account="account"
       @copy="handleCopy"
+      @delete="emit('delete', account)"
+      @edit="emit('edit', account)"
     />
   </div>
 </template>

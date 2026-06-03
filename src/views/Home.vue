@@ -86,7 +86,10 @@ function handleEditSave(data: Partial<Account>) {
       </button>
     </header>
 
-    <AccountCodeList />
+    <AccountCodeList
+      @delete="handleDelete"
+      @edit="handleEdit"
+    />
 
     <button class="add-btn" @click="showAdd = true">+</button>
 
