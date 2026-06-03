@@ -38,6 +38,11 @@ export default {
   },
   settings: {
     title: '设置',
+    appearanceSettings: '外观设置',
+    theme: '主题',
+    themeAuto: '跟随系统',
+    themeLight: '浅色',
+    themeDark: '深色',
     languageSettings: '语言设置',
     language: '语言偏好',
     languageAuto: '跟随系统',

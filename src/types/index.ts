@@ -29,4 +29,5 @@ export interface AppSettings {
   lockTimeout: number
   passwordHint: string
   language: 'auto' | 'zh-CN' | 'en-US'
+  theme: 'light' | 'dark' | 'auto'
 }

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { useSettingsStore } from '@/stores'
+import { useTheme } from '@/composables/useTheme'
 import GlobalToast from '@/components/GlobalToast.vue'
+
+useTheme()
 
 const settingsStore = useSettingsStore()
 let hiddenTime: number | null = null

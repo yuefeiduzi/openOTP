@@ -10,7 +10,8 @@ export const useSettingsStore = defineStore('settings', () => {
     clipboardClearTime: 30,
     lockTimeout: 1,
     passwordHint: '',
-    language: 'auto'
+    language: 'auto',
+    theme: 'auto'
   })
 
   const isSetup = ref(false)

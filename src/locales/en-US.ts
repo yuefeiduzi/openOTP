@@ -38,6 +38,11 @@ export default {
   },
   settings: {
     title: 'Settings',
+    appearanceSettings: 'Appearance',
+    theme: 'Theme',
+    themeAuto: 'Auto',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     languageSettings: 'Language Settings',
     language: 'Language Preference',
     languageAuto: 'Follow System',
