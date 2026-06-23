@@ -47,3 +47,21 @@
 - 确保各组件 props / emits 命名一致
 - 补全组件缺少的 TypeScript 类型导出
 - 可考虑按功能分子目录：`components/ui/`（通用）、`components/account/`（业务）
+
+## 9. 修复 Bug — 生物认证丢失
+- 重新打开 app 后生物认证（Touch ID / Face ID）设置丢失或未生效
+- 排查 `biometricEnabled` 持久化链路（前端 store → Rust save_settings → settings.json → load_settings）
+
+## 10. 新账号添加置顶
+- 新增账号时插入列表顶部而非末尾
+- `order` 字段生成规则调整：新账号 order = 最小 order - 1（或 0 置顶其余全部 +1）
+
+## 11. 相同网站不同账号折叠
+- 同一 issuer 下多个账号合并显示为一个折叠组
+- 展开/折叠切换（类似 1Password 的 vault 分组）
+- 默认显示主账号，点击展开显示同 issuer 其他账号
+
+## 12. macOS 悬浮窗修复 + 最小化按钮
+- 悬浮窗当前呈现失败（需排查创建/显示逻辑）
+- 排查 Rust 端 popover 窗口 `WebviewWindowBuilder` 创建及 `#/popover` 路由加载
+- App 主页面需添加"最小化到菜单栏"按钮（类似隐藏到托盘）
