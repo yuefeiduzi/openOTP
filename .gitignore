@@ -47,4 +47,8 @@ coverage/
 # Git worktrees
 .worktrees/
 
-self
+# Local data (real TOTP secrets, backups)
+self/
+
+# Design documents (local only, not in git)
+docs/
