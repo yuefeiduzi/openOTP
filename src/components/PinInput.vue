@@ -115,7 +115,7 @@ defineExpose({ focus })
       @input="handleInput(index, $event)"
       @keydown="handleKeydown(index, $event)"
       @paste="handlePaste"
-      @focus="$event.target?.select()"
+      @focus="($event.target as HTMLInputElement)?.select()"
     />
   </div>
 </template>

@@ -112,25 +112,7 @@ onMounted(async () => {
   }
 })
 
-function toggleBiometric() {
-  settingsStore.settings.biometricEnabled = !settingsStore.settings.biometricEnabled
-  settingsStore.saveSettings()
-}
 
-function toggleAutoCopy() {
-  settingsStore.settings.autoCopy = !settingsStore.settings.autoCopy
-  settingsStore.saveSettings()
-}
-
-function setClipboardClearTime(value: number) {
-  settingsStore.settings.clipboardClearTime = value
-  settingsStore.saveSettings()
-}
-
-function setLockTimeout(value: number) {
-  settingsStore.settings.lockTimeout = value
-  settingsStore.saveSettings()
-}
 
 function handleLanguageChange(value: 'auto' | 'zh-CN' | 'en-US') {
   languagePreference.value = value
@@ -452,9 +434,9 @@ async function importAndOTPAccounts() {
   }
 }
 
-function lockApp() {
-  settingsStore.lock()
-  router.push('/unlock')
+function copyGithubLink() {
+  navigator.clipboard.writeText('https://github.com/openotp/openotp')
+  showToast('已复制')
 }
 
 function goBack() {
@@ -576,7 +558,7 @@ async function exportDebugLogs() {
       <section class="section about-section">
         <h2 class="section-title">{{ t('settings.about') }}</h2>
         <p class="about-line">{{ t('settings.version') }}</p>
-        <p class="about-line about-copy" @click="navigator.clipboard.writeText('https://github.com/openotp/openotp'); showToast('已复制')">
+        <p class="about-line about-copy" @click="copyGithubLink()">
           github.com/openotp/openotp
         </p>
       </section>
