@@ -39,8 +39,8 @@ src-tauri/
 └── tauri.conf.json # Tauri 配置
 ```
 
-## 设计文档
-详细设计文档位于：`docs/superpowers/specs/2026-05-18-openotp-design.md`
+## 文档
+设计文档位于项目 `docs/` 目录（仅本地，未纳入 git 管理）
 
 ## 支持平台
 - macOS (桌面端)
