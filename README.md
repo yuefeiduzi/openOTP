@@ -13,10 +13,10 @@
 
 ## 技术栈
 
-- **前端**：Vue 3 + TypeScript + Pinia
+- **前端**：Vue 3 + TypeScript + Pinia + vue-i18n
 - **桌面端**：Tauri 2.0 (Rust)
-- **数据库**：SQLite (SQLCipher 加密)
-- **加密**：AES-256-GCM
+- **存储**：JSON 文件存储（非数据库）
+- **加密**：AES-256-GCM + PBKDF2-HMAC-SHA256
 
 ## 开发
 
@@ -32,6 +32,9 @@ pnpm tauri:dev
 
 # 构建生产版本
 pnpm tauri:build
+
+# 运行测试
+pnpm test
 ```
 
 ## 项目结构
@@ -42,6 +45,8 @@ openOTP/
 │   ├── views/              # 页面
 │   ├── components/         # 组件
 │   ├── stores/             # Pinia 状态管理
+│   ├── composables/        # 组合式函数
+│   ├── locales/            # 国际化
 │   ├── router/             # Vue Router
 │   ├── types/              # TypeScript 类型
 │   └── utils/              # 工具函数
