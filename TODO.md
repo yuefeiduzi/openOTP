@@ -49,7 +49,11 @@
 ## 11. 相同网站不同账号折叠 — ❌ 此前未做
 - ✅ 本次补全：AccountCodeList 按 issuer 分组，默认显示主账号，可展开/收起同 issuer 其余账号
 
-## 12. macOS 悬浮窗修复 + 最小化按钮 — 🟡 部分完成
-- ✅ popover 创建/定位/互斥/失焦隐藏逻辑完整（呈现失败已修复）
-- 主页面最终不设最小化按钮（按需求移除）；主窗口关闭即隐藏到托盘，Rust 端保留 hide_main_window 命令备用
-- ✅ 本次补全：设置页「纯菜单栏模式」开关（macOS，ActivationPolicy::Accessory 切换，持久化 menuBarOnly，启动时自动应用）
+## 12. ~~macOS 悬浮窗修复 + 纯菜单栏模式~~ ✅ 已解决 (2026-08-03)
+- ✅ popover 创建/定位/互斥/失焦隐藏逻辑完整
+- ✅ 修复弹窗闪现：macOS 一次物理点击触发两次 Click 事件（mouseDown+mouseUp），只处理 `MouseButtonState::Up`
+- ✅ 修复弹窗定位：托盘 rect 为物理像素，按所在显示器缩放因子转换；改用 builder `position()` 创建时定位（macOS 26 运行时 set_position 不可靠，窗口偏移 ~50px）
+- ✅ 修复圆角边框：Cargo feature `macos-private-api` + conf `app.macOSPrivateApi` + 透明窗口 + CSS 圆角 16px 面板
+- ✅ Home 页「纯菜单栏模式」入口按钮；弹窗头部「返回 App 模式」按钮；托盘右键菜单（返回 App 模式 / 退出）；启动时 menuBarOnly 自动隐藏主窗口
+- ✅ 设置页「纯菜单栏模式」开关（ActivationPolicy::Accessory 切换，持久化 menuBarOnly）
+- 主页面不设最小化按钮（按需求移除）；主窗口关闭即隐藏到托盘，Rust 端保留 hide_main_window 命令备用

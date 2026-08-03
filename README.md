@@ -9,6 +9,7 @@
 - AES-256-GCM 加密存储
 - 生物识别解锁（指纹/面容）
 - 加密备份导入导出（.openotp）
+- macOS 菜单栏模式：托盘弹窗查看验证码，纯菜单模式隐藏主窗口
 - 跨平台：macOS / Windows / iOS / Android
 
 ## 技术栈

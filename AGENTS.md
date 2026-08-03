@@ -3,6 +3,11 @@
 ## 项目概述
 开源、跨平台、纯本地的二步验证器，基于 Tauri 2.0 + Vue 3 + TypeScript
 
+## 功能
+- TOTP 验证码生成、二维码扫描 / 手动输入添加账号
+- 密码 + 生物识别解锁，AES-256-GCM 加密存储
+- **macOS 菜单栏模式**：托盘图标弹窗快速查看验证码；纯菜单模式隐藏主窗口，仅通过托盘访问
+
 ## 技术栈
 - 前端：Vue 3 + TypeScript + Pinia + Vue Router + vue-i18n
 - 桌面端：Tauri 2.0 (Rust)
@@ -24,7 +29,7 @@
 - 使用 Composition API
 - 状态管理使用 Pinia
 - 路径别名：`@/` 指向 `src/`
-- 前端与 Rust 通过 Tauri `invoke` 通信，命令命名以 `_cmd` 结尾
+- 前端与 Rust 通过 Tauri `invoke` 通信；Rust 命令以 `#[tauri::command]` 注册（命名无统一后缀，个别历史命令带 `_cmd`）
 - Rust 后端遵循标准 Rust 格式规范（`cargo fmt`）
 - 测试使用 vitest + @vue/test-utils + happy-dom
 
@@ -45,14 +50,20 @@ src/
 
 src-tauri/
 ├── src/
-│   ├── lib.rs               # Tauri 命令入口 + 托盘图标 + 悬浮窗窗口
+│   ├── lib.rs               # Tauri 命令入口 + 托盘图标/右键菜单 + 悬浮窗窗口 + 纯菜单模式
 │   ├── storage.rs           # JSON 文件读写 (data.json / settings.json / password.dat)
 │   ├── crypto.rs            # AES-256-GCM 加解密 + PBKDF2 密钥派生
 │   ├── biometric.rs         # 生物识别可用性检测与认证
 │   └── biometric_status.rs  # 生物识别失败计数与锁定状态
 ├── capabilities/  # Tauri 权限配置 (default.json)
-└── tauri.conf.json # Tauri 配置
+└── tauri.conf.json # Tauri 配置（app.macOSPrivateApi: true 启用透明窗口私有 API）
 ```
+
+## 平台已知坑（macOS）
+- 托盘 `Click` 事件一次物理点击触发两次（mouseDown + mouseUp 各一次）；处理时须匹配 `button_state: MouseButtonState::Up`，否则 toggle 逻辑会立即翻转（弹窗闪现）
+- 运行时 `set_position` 在 macOS 26 上不可靠（窗口偏移 ~50px）；弹窗位置必须用 `WebviewWindowBuilder::position()` 创建时定位
+- 透明窗口需双层开关：Cargo.toml 的 `tauri` feature `macos-private-api` + tauri.conf.json 的 `app.macOSPrivateApi: true`
+- 直接运行 `target/debug/openotp` 时 webview 加载 devUrl（http://localhost:5173），vite 未启动则页面空白；调试必须 `pnpm tauri:dev` 或先起 `pnpm dev`
 
 ## 数据与安全
 - 账户数据存于 app data 目录下的 `data.json`，设置存于 `settings.json`，密码哈希存于 `password.dat`
