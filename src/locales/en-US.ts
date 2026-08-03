@@ -13,9 +13,14 @@ export default {
     totp: 'TOTP',
     noAccounts: 'No {type} accounts',
     copied: 'Copied',
-    minimizeToTray: 'Minimize to menu bar',
     sameIssuerMore: 'Show {count} more account(s) for this site',
     collapseGroup: 'Collapse same-site accounts',
+    menuBarMode: 'Menu bar only mode',
+    menuBarModeDesc: 'Hide the main window, access via the menu bar icon',
+  },
+  popover: {
+    returnToApp: 'Back to app mode',
+    openMain: 'Open main window',
   },
   setup: {
     welcome: 'Welcome to OpenOTP',
@@ -60,6 +65,7 @@ export default {
     clickToSet: 'Click to set',
     securityOptions: 'Security Options',
     biometricUnlock: 'Biometric Unlock',
+    menuBarOnly: 'Menu bar only mode',
     biometricNotAvailable: 'Not available',
     autoCopy: 'Auto-copy verification code',
     clipboardClearTime: 'Clipboard clear time',

@@ -51,4 +51,5 @@
 
 ## 12. macOS 悬浮窗修复 + 最小化按钮 — 🟡 部分完成
 - ✅ popover 创建/定位/互斥/失焦隐藏逻辑完整（呈现失败已修复）
-- ✅ 本次补全：主页面新增「最小化到菜单栏」按钮（仅 macOS，Rust 端 hide_main_window 命令）
+- 主页面最终不设最小化按钮（按需求移除）；主窗口关闭即隐藏到托盘，Rust 端保留 hide_main_window 命令备用
+- ✅ 本次补全：设置页「纯菜单栏模式」开关（macOS，ActivationPolicy::Accessory 切换，持久化 menuBarOnly，启动时自动应用）

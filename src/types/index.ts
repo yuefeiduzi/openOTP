@@ -30,4 +30,5 @@ export interface AppSettings {
   passwordHint: string
   language: 'auto' | 'zh-CN' | 'en-US'
   theme: 'light' | 'dark' | 'auto'
+  menuBarOnly: boolean
 }

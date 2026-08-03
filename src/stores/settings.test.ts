@@ -53,6 +53,7 @@ describe('settings store', () => {
           passwordHint: 'test hint',
           language: 'zh-CN',
           theme: 'auto',
+          menuBarOnly: false,
         },
       })
     })
@@ -72,7 +73,8 @@ describe('settings store', () => {
       expect(Object.keys(settings)).toContain('lockTimeout')
       expect(Object.keys(settings)).toContain('passwordHint')
       expect(Object.keys(settings)).toContain('theme')
-      expect(Object.keys(settings)).toHaveLength(7)
+      expect(Object.keys(settings)).toContain('menuBarOnly')
+      expect(Object.keys(settings)).toHaveLength(8)
     })
 
     it('should default language to auto', async () => {

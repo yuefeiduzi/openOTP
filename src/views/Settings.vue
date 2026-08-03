@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { save, open } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeFile } from '@tauri-apps/plugin-fs'
 import { useSettingsStore, useAccountStore } from '@/stores'
+import type { AppSettings } from '@/types'
 import { createBackup, restoreBackup } from '@/utils/backup'
 import { importAndOTPBackup } from '@/utils/andotp'
 import { setLocale, getSavedLocalePreference } from '@/locales'
@@ -49,6 +50,7 @@ const showHintModal = ref(false)
 const hintValue = ref('')
 
 const biometricAvailable = ref(false)
+const isMac = ref(false)
 const biometricType = ref('')
 
 const showExportSheet = ref(false)
@@ -81,25 +83,16 @@ onMounted(async () => {
   themePreference.value = settingsStore.settings.theme
 
   try {
-    const settings = await invoke<{
-      biometric_enabled: boolean
-      auto_copy: boolean
-      clipboard_clear_time: number
-      lock_timeout: number
-      password_hint: string
-      language: string
-      theme: string
-    }>('get_settings')
-    settingsStore.updateSettings({
-      biometricEnabled: settings.biometric_enabled,
-      autoCopy: settings.auto_copy,
-      clipboardClearTime: settings.clipboard_clear_time,
-      lockTimeout: settings.lock_timeout,
-      passwordHint: settings.password_hint,
-      language: settings.language as 'auto' | 'zh-CN' | 'en-US',
-      theme: settings.theme as 'light' | 'dark' | 'auto'
-    })
+    const settings = await invoke<AppSettings>('get_settings')
+    settingsStore.updateSettings(settings)
+    themePreference.value = settings.theme
   } catch {
+  }
+
+  try {
+    isMac.value = await invoke<boolean>('is_macos')
+  } catch {
+    isMac.value = false
   }
 
   try {
@@ -439,6 +432,13 @@ function copyGithubLink() {
   showToast('已复制')
 }
 
+function handleMenuBarOnlyToggle(event: Event) {
+  const enabled = (event.target as HTMLInputElement).checked
+  settingsStore.updateSettings({ menuBarOnly: enabled })
+  settingsStore.saveSettings()
+  invoke('set_menu_bar_only', { enabled })
+}
+
 function handleBiometricToggle(event: Event) {
   const enabled = (event.target as HTMLInputElement).checked
   settingsStore.updateSettings({ biometricEnabled: enabled })
@@ -508,6 +508,20 @@ async function exportDebugLogs() {
             {{ themePreference === 'auto' ? t('settings.themeAuto') : themePreference === 'light' ? t('settings.themeLight') : t('settings.themeDark') }}
             <span class="btn-arrow">›</span>
           </button>
+        </div>
+
+        <div v-if="isMac" class="setting-item setting-row">
+          <span class="setting-label">{{ t('settings.menuBarOnly') }}</span>
+          <div class="setting-control">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                :checked="settingsStore.settings.menuBarOnly"
+                @change="handleMenuBarOnlyToggle"
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
       </section>
 

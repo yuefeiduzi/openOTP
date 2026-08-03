@@ -11,7 +11,8 @@ export const useSettingsStore = defineStore('settings', () => {
     lockTimeout: 1,
     passwordHint: '',
     language: 'auto',
-    theme: 'auto'
+    theme: 'auto',
+    menuBarOnly: false
   })
 
   const isSetup = ref(false)

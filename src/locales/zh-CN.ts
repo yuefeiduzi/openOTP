@@ -13,9 +13,14 @@ export default {
     totp: 'TOTP',
     noAccounts: '暂无 {type} 账号',
     copied: '已复制',
-    minimizeToTray: '最小化到菜单栏',
     sameIssuerMore: '展开其余 {count} 个同站点账号',
     collapseGroup: '收起同站点账号',
+    menuBarMode: '纯菜单栏模式',
+    menuBarModeDesc: '隐藏主窗口，仅通过菜单栏图标访问',
+  },
+  popover: {
+    returnToApp: '返回 App 模式',
+    openMain: '打开主窗口',
   },
   setup: {
     welcome: '欢迎使用 OpenOTP',
@@ -60,6 +65,7 @@ export default {
     clickToSet: '点击设置',
     securityOptions: '安全选项',
     biometricUnlock: '生物识别解锁',
+    menuBarOnly: '纯菜单栏模式',
     biometricNotAvailable: '设备不支持',
     autoCopy: '自动复制验证码',
     clipboardClearTime: '剪贴板清除时间',

@@ -49,6 +49,8 @@ pub struct AppSettings {
     pub language: String,
     #[serde(rename = "theme")]
     pub theme: String,
+    #[serde(rename = "menuBarOnly", default)]
+    pub menu_bar_only: bool,
 }
 
 impl Default for AppSettings {
@@ -61,6 +63,7 @@ impl Default for AppSettings {
             password_hint: String::new(),
             language: String::from("auto"),
             theme: String::from("auto"),
+            menu_bar_only: false,
         }
     }
 }

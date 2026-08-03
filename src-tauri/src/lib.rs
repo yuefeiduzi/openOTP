@@ -119,6 +119,21 @@ fn is_macos() -> bool {
 }
 
 #[tauri::command]
+fn set_menu_bar_only(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let policy = if enabled {
+            tauri::ActivationPolicy::Accessory
+        } else {
+            tauri::ActivationPolicy::Regular
+        };
+        app.set_activation_policy(policy)
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(popover) = app.get_webview_window("popover") {
         popover.hide().map_err(|e| e.to_string())?;
@@ -154,19 +169,59 @@ pub fn run() {
 
             #[cfg(target_os = "macos")]
             {
+                let settings = storage::load_settings(app.handle());
+                if settings.menu_bar_only {
+                    let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    if let Some(main) = app.get_webview_window("main") {
+                        let _ = main.hide();
+                    }
+                }
+
                 let tray_icon = tauri::image::Image::new(
                     include_bytes!("../icons/tray-template.rgba"),
                     22,
                     22,
                 );
+                let en = settings.language == "en-US";
+                let return_item = tauri::menu::MenuItem::with_id(
+                    app,
+                    "tray_return_app",
+                    if en { "Back to App Mode" } else { "返回 App 模式" },
+                    true,
+                    None::<&str>,
+                )?;
+                let quit_item =
+                    tauri::menu::PredefinedMenuItem::quit(app, Some(if en { "Quit" } else { "退出" }))?;
+                let tray_menu = tauri::menu::Menu::with_items(app, &[&return_item, &quit_item])?;
+
                 let _tray = TrayIconBuilder::with_id("main-tray")
                     .tooltip("OpenOTP")
                     .icon(tray_icon)
                     .icon_as_template(true)
+                    .menu(&tray_menu)
+                    .on_menu_event(|tray, event| {
+                        if event.id().0 == "tray_return_app" {
+                            let app = tray.app_handle();
+                            let mut settings = storage::load_settings(app);
+                            settings.menu_bar_only = false;
+                            let _ = storage::save_settings(app, &settings);
+                            let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                            if let Some(popover) = app.get_webview_window("popover") {
+                                let _ = popover.hide();
+                            }
+                            if let Some(main) = app.get_webview_window("main") {
+                                let _ = main.show();
+                                let _ = main.set_focus();
+                            }
+                        }
+                    })
                     .on_tray_icon_event(|tray, event| {
+                        // macOS fires a Click event for both mouseDown and mouseUp;
+                        // only handle the Up event so one physical click toggles once.
                         if let tauri::tray::TrayIconEvent::Click {
                             button: tauri::tray::MouseButton::Left,
-                            rect,
+                            button_state: tauri::tray::MouseButtonState::Up,
+                            position,
                             ..
                         } = event {
                             let app = tray.app_handle();
@@ -184,13 +239,34 @@ pub fn run() {
                                 }
                             }
 
+                            // The click position is in physical pixels (the cursor is on
+                            // the tray icon); find the monitor under it for the scale factor.
+                            let scale = app
+                                .available_monitors()
+                                .unwrap_or_default()
+                                .into_iter()
+                                .find(|m| {
+                                    let p = m.position();
+                                    let sz = m.size();
+                                    position.x >= p.x as f64
+                                        && position.x < p.x as f64 + sz.width as f64
+                                        && position.y >= p.y as f64
+                                        && position.y < p.y as f64 + sz.height as f64
+                                })
+                                .map(|m| m.scale_factor())
+                                .unwrap_or(1.0);
+                            let pos = position.to_logical::<f64>(scale);
+                            // Center the popover under the cursor, slightly below it.
+                            let x = pos.x - 160.0;
+                            let y = pos.y + 12.0;
+                            let target = LogicalPosition::new(x, y);
+
                             if let Some(popover) = app.get_webview_window("popover") {
-                                let pos = rect.position.to_logical::<f64>(1.0);
-                                let sz = rect.size.to_logical::<f64>(1.0);
-                                let x = pos.x + (sz.width / 2.0) - 160.0;
-                                let y = pos.y + sz.height + 4.0;
-                                let _ = popover.set_position(LogicalPosition::new(x, y));
+                                // NOTE: runtime set_position on this window is unreliable on
+                                // macOS 26 (the window ends up offset); the position set at
+                                // creation time sticks, so only show/hide here.
                                 let _ = popover.show();
+                                let _ = app.show();
                                 let _ = popover.set_focus();
                                 return;
                             }
@@ -198,19 +274,17 @@ pub fn run() {
                             if let Ok(popover) = WebviewWindowBuilder::new(app, "popover", tauri::WebviewUrl::App("index.html".into()))
                                 .title("OpenOTP")
                                 .inner_size(320.0, 480.0)
+                                .position(target.x, target.y)
                                 .decorations(false)
                                 .resizable(false)
                                 .always_on_top(true)
-                                .visible(false)
+                                .transparent(true)
+                                .visible(true)
                                 .build()
                             {
                                 let _ = popover.eval("window.location.hash = '#/popover'");
-                                let pos = rect.position.to_logical::<f64>(1.0);
-                                let sz = rect.size.to_logical::<f64>(1.0);
-                                let x = pos.x + (sz.width / 2.0) - 160.0;
-                                let y = pos.y + sz.height + 4.0;
-                                let _ = popover.set_position(LogicalPosition::new(x, y));
                                 let _ = popover.show();
+                                let _ = app.show();
                                 let _ = popover.set_focus();
                             }
                         }
@@ -232,7 +306,13 @@ pub fn run() {
 
             if window.label() == "popover" {
                 if let tauri::WindowEvent::Focused(false) = event {
-                    window.hide().ok();
+                    let w = window.clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(200));
+                        if w.is_visible().unwrap_or(false) && !w.is_focused().unwrap_or(false) {
+                            let _ = w.hide();
+                        }
+                    });
                 }
             }
         })
@@ -257,6 +337,7 @@ pub fn run() {
             is_macos,
             show_main_window,
             hide_main_window,
+            set_menu_bar_only,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

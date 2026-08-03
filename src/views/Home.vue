@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useAccountStore } from '@/stores'
+import { invoke } from '@tauri-apps/api/core'
+import { useAccountStore, useSettingsStore } from '@/stores'
 import type { Account } from '@/types'
 import { getRandomBgColor } from '@/utils/icons'
 import AccountCodeList from '@/components/AccountCodeList.vue'
@@ -13,6 +13,7 @@ import EditAccount from '@/components/EditAccount.vue'
 
 const router = useRouter()
 const accountStore = useAccountStore()
+const settingsStore = useSettingsStore()
 const { t } = useI18n()
 const showAdd = ref(false)
 const isMac = ref(false)
@@ -23,10 +24,14 @@ const editingAccount = ref<Account | null>(null)
 
 onMounted(async () => {
   await accountStore.loadAccounts()
+  await settingsStore.loadSettings()
   isMac.value = await invoke<boolean>('is_macos')
 })
 
-async function minimizeToTray() {
+async function enterMenuBarMode() {
+  settingsStore.updateSettings({ menuBarOnly: true })
+  await settingsStore.saveSettings()
+  await invoke('set_menu_bar_only', { enabled: true })
   await invoke('hide_main_window')
 }
 
@@ -87,20 +92,44 @@ function handleEditSave(data: Partial<Account>) {
   <div class="home">
     <header class="header">
       <h1>{{ t('home.title') }}</h1>
-      <div class="header-actions">
-        <button
-          v-if="isMac"
-          class="settings-btn"
-          :title="t('home.minimizeToTray')"
-          @click="minimizeToTray"
+      <button class="settings-btn" :title="t('settings.title')" @click="goToSettings">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
         >
-          <span>–</span>
-        </button>
-        <button class="settings-btn" @click="goToSettings">
-          <span>⚙</span>
-        </button>
-      </div>
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+        </svg>
+      </button>
     </header>
+
+    <button v-if="isMac" class="menu-bar-entry" @click="enterMenuBarMode">
+      <svg
+        class="menu-bar-entry-icon"
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <line x1="3" y1="5" x2="21" y2="5" stroke-width="3" />
+        <rect x="8" y="10" width="8" height="9" rx="2" />
+      </svg>
+      <span class="menu-bar-entry-text">
+        <span class="menu-bar-entry-title">{{ t('home.menuBarMode') }}</span>
+        <span class="menu-bar-entry-desc">{{ t('home.menuBarModeDesc') }}</span>
+      </span>
+      <span class="menu-bar-entry-arrow">›</span>
+    </button>
 
     <AccountCodeList
       @delete="handleDelete"
@@ -153,16 +182,13 @@ function handleEditSave(data: Partial<Account>) {
   color: var(--text-primary);
 }
 
-.header-actions {
+.settings-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.settings-btn {
+  justify-content: center;
   background: none;
   border: none;
-  font-size: 24px;
+  padding: 4px;
   cursor: pointer;
   color: var(--text-primary);
   transition: opacity 0.2s;
@@ -170,6 +196,58 @@ function handleEditSave(data: Partial<Account>) {
 
 .settings-btn:hover {
   opacity: 0.7;
+}
+
+.menu-bar-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--text-primary);
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.menu-bar-entry:hover {
+  background: var(--btn-secondary-bg);
+  border-color: var(--accent);
+}
+
+.menu-bar-entry-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.menu-bar-entry-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.menu-bar-entry-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.menu-bar-entry-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-bar-entry-arrow {
+  margin-left: auto;
+  font-size: 20px;
+  color: var(--text-secondary);
 }
 
 .add-btn {
