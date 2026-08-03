@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "openOTP",
+  "productName": "OpenOTP",
   "version": "0.1.0",
   "identifier": "com.openotp.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "openOTP",
+        "title": "OpenOTP",
         "label": "main",
         "width": 350,
         "height": 600,

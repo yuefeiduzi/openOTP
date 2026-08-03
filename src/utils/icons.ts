@@ -1,4 +1,5 @@
 import type { AccountIcon, IconType } from '@/types'
+import { getPresetIconUrl } from './presetIcons'
 
 const PRESET_COLORS = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
@@ -84,7 +85,7 @@ const initialProvider: IconProvider = {
 const presetProvider: IconProvider = {
   type: 'preset',
   renderIcon(icon) {
-    return { type: 'text', value: icon.value || '?' }
+    return { type: 'image', value: getPresetIconUrl(icon.value) || icon.value }
   },
 }
 

@@ -130,6 +130,14 @@ fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn hide_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(main) = app.get_webview_window("main") {
+        main.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -146,9 +154,15 @@ pub fn run() {
 
             #[cfg(target_os = "macos")]
             {
+                let tray_icon = tauri::image::Image::new(
+                    include_bytes!("../icons/tray-template.rgba"),
+                    22,
+                    22,
+                );
                 let _tray = TrayIconBuilder::with_id("main-tray")
                     .tooltip("OpenOTP")
-                    .icon(app.default_window_icon().unwrap().clone())
+                    .icon(tray_icon)
+                    .icon_as_template(true)
                     .on_tray_icon_event(|tray, event| {
                         if let tauri::tray::TrayIconEvent::Click {
                             button: tauri::tray::MouseButton::Left,
@@ -242,6 +256,7 @@ pub fn run() {
             load_password_hash,
             is_macos,
             show_main_window,
+            hide_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

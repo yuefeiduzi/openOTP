@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAccountStore } from '@/stores'
@@ -14,6 +15,7 @@ const router = useRouter()
 const accountStore = useAccountStore()
 const { t } = useI18n()
 const showAdd = ref(false)
+const isMac = ref(false)
 const showDelete = ref(false)
 const showEdit = ref(false)
 const deletingAccount = ref<Account | null>(null)
@@ -21,7 +23,12 @@ const editingAccount = ref<Account | null>(null)
 
 onMounted(async () => {
   await accountStore.loadAccounts()
+  isMac.value = await invoke<boolean>('is_macos')
 })
+
+async function minimizeToTray() {
+  await invoke('hide_main_window')
+}
 
 function goToSettings() {
   router.push('/settings')
@@ -49,7 +56,7 @@ function handleAddAccount(data: Partial<Account>) {
   const displayName = data.name || data.issuer || ''
   const initial = displayName ? displayName.charAt(0).toUpperCase() : '?'
 
-  const newAccount: Account = {
+  const newAccount: Omit<Account, 'order'> = {
     id: '',
     name: data.name || '',
     issuer: data.issuer || '',
@@ -62,7 +69,6 @@ function handleAddAccount(data: Partial<Account>) {
     counter: 0,
     notes: '',
     createdAt: Date.now(),
-    order: accountStore.accounts.length,
   }
   accountStore.addAccount(newAccount)
   showAdd.value = false
@@ -81,9 +87,19 @@ function handleEditSave(data: Partial<Account>) {
   <div class="home">
     <header class="header">
       <h1>{{ t('home.title') }}</h1>
-      <button class="settings-btn" @click="goToSettings">
-        <span>⚙</span>
-      </button>
+      <div class="header-actions">
+        <button
+          v-if="isMac"
+          class="settings-btn"
+          :title="t('home.minimizeToTray')"
+          @click="minimizeToTray"
+        >
+          <span>–</span>
+        </button>
+        <button class="settings-btn" @click="goToSettings">
+          <span>⚙</span>
+        </button>
+      </div>
     </header>
 
     <AccountCodeList
@@ -137,11 +153,23 @@ function handleEditSave(data: Partial<Account>) {
   color: var(--text-primary);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .settings-btn {
   background: none;
   border: none;
   font-size: 24px;
   cursor: pointer;
+  color: var(--text-primary);
+  transition: opacity 0.2s;
+}
+
+.settings-btn:hover {
+  opacity: 0.7;
 }
 
 .add-btn {

@@ -23,7 +23,7 @@ export const useAccountStore = defineStore('accounts', () => {
     return Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
   }
 
-  function addAccount(account: Account) {
+  function addAccount(account: Omit<Account, 'order'> & { order?: number }) {
     if (!account.id) {
       account.id = generateId()
     }
@@ -31,9 +31,13 @@ export const useAccountStore = defineStore('accounts', () => {
       account.createdAt = Date.now()
     }
     if (account.order === undefined) {
-      account.order = accounts.value.length
+      const minOrder = accounts.value.length
+        ? Math.min(...accounts.value.map(a => a.order))
+        : 1
+      account.order = minOrder - 1
     }
-    accounts.value.push(account)
+    const full: Account = { ...account, order: account.order }
+    accounts.value.push(full)
     persistAccounts()
   }
 

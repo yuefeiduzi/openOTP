@@ -13,6 +13,9 @@ export default {
     totp: 'TOTP',
     noAccounts: 'No {type} accounts',
     copied: 'Copied',
+    minimizeToTray: 'Minimize to menu bar',
+    sameIssuerMore: 'Show {count} more account(s) for this site',
+    collapseGroup: 'Collapse same-site accounts',
   },
   setup: {
     welcome: 'Welcome to OpenOTP',

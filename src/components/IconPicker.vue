@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import type { AccountIcon, IconType } from '@/types'
 import { getInitialStyle } from '@/utils/icons'
+import { PRESET_ICONS, getPresetIconUrl } from '@/utils/presetIcons'
 
 const props = defineProps<{
   modelValue: AccountIcon
@@ -30,6 +31,7 @@ const COLORS = [
 const activeTab = ref<IconType>(props.modelValue.type || 'emoji')
 const localIcon = ref<AccountIcon>({ ...props.modelValue })
 const fileInput = ref<HTMLInputElement | null>(null)
+const imageError = ref('')
 
 watch(() => props.modelValue, (val) => {
   localIcon.value = { ...val }
@@ -66,6 +68,11 @@ function cancelSelection() {
   emit('update:modelValue', { ...props.modelValue })
 }
 
+function selectPreset(name: string) {
+  imageError.value = ''
+  localIcon.value = { type: 'preset', value: name, bgColor: '' }
+}
+
 function triggerFileInput() {
   fileInput.value?.click()
 }
@@ -73,9 +80,19 @@ function triggerFileInput() {
 function handleFileSelected(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (file) {
-    localIcon.value = { type: 'image', value: file.name, bgColor: '' }
+  if (!file) return
+  if (file.size > 200 * 1024) {
+    imageError.value = '图片过大，请选择小于 200KB 的图片'
+    input.value = ''
+    return
   }
+  imageError.value = ''
+  const reader = new FileReader()
+  reader.onload = () => {
+    localIcon.value = { type: 'image', value: String(reader.result), bgColor: '' }
+  }
+  reader.readAsDataURL(file)
+  input.value = ''
 }
 </script>
 
@@ -88,8 +105,11 @@ function handleFileSelected(event: Event) {
         <div v-else-if="localIcon.type === 'initial'" :style="initialPreviewStyle" class="preview-initial">
           {{ initialLetter }}
         </div>
+        <div v-else-if="localIcon.type === 'preset'" class="preview-image">
+          <img :src="getPresetIconUrl(localIcon.value)" alt="" />
+        </div>
         <div v-else class="preview-image">
-          <span v-if="localIcon.value">{{ localIcon.value }}</span>
+          <img v-if="localIcon.value.startsWith('data:')" :src="localIcon.value" alt="" />
           <span v-else>?</span>
         </div>
       </div>
@@ -113,6 +133,12 @@ function handleFileSelected(event: Event) {
         @click="activeTab = 'image'"
       >
         图片
+      </button>
+      <button
+        :class="['tab-btn', { active: activeTab === 'preset' }]"
+        @click="activeTab = 'preset'"
+      >
+        预设
       </button>
     </div>
 
@@ -140,6 +166,18 @@ function handleFileSelected(event: Event) {
       </div>
     </div>
 
+    <div v-if="activeTab === 'preset'" class="preset-grid">
+      <button
+        v-for="icon in PRESET_ICONS"
+        :key="icon.name"
+        :class="['preset-item', { selected: localIcon.type === 'preset' && localIcon.value === icon.name }]"
+        :title="icon.name"
+        @click="selectPreset(icon.name)"
+      >
+        <img :src="icon.url" :alt="icon.name" />
+      </button>
+    </div>
+
     <div v-if="activeTab === 'image'" class="image-tab">
       <button class="upload-btn" @click="triggerFileInput">
         选择图片
@@ -151,7 +189,8 @@ function handleFileSelected(event: Event) {
         style="display: none"
         @change="handleFileSelected"
       />
-      <p class="image-hint">支持 PNG / SVG 格式</p>
+      <p class="image-hint">支持 PNG / SVG 格式，小于 200KB</p>
+      <p v-if="imageError" class="image-error">{{ imageError }}</p>
     </div>
 
     <div class="actions">
@@ -295,6 +334,39 @@ function handleFileSelected(event: Event) {
   transform: scale(1.1);
 }
 
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.preset-item {
+  width: 44px;
+  height: 44px;
+  padding: 8px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: #f9f9f9;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.preset-item:hover {
+  background: #f0f0f0;
+}
+
+.preset-item.selected {
+  border-color: #4A90D9;
+  background: #eef5ff;
+}
+
+.preset-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .image-tab {
   display: flex;
   flex-direction: column;
@@ -317,6 +389,17 @@ function handleFileSelected(event: Event) {
 .upload-btn:hover {
   border-color: #4A90D9;
   color: #4A90D9;
+}
+
+.image-error {
+  color: #e74c3c;
+  font-size: 12px;
+}
+
+.preview-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .image-hint {

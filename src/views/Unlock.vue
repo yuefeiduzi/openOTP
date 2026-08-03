@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
@@ -12,9 +12,14 @@ const { t } = useI18n()
 
 const password = ref('')
 const error = ref('')
+const errorNonce = ref(0)
 const biometricType = ref('')
 const canUseBiometric = ref(false)
 const biometricError = ref('')
+
+watch([error, biometricError], () => {
+  errorNonce.value++
+})
 
 const biometricLabel = computed(() => {
   const labels: Record<string, string> = {
@@ -93,7 +98,7 @@ async function useBiometric() {
 
     <PinInput v-model="password" @complete="handleSubmit" />
 
-    <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="error" :key="errorNonce" class="error">{{ error }}</p>
 
     <button class="submit-btn" @click="handleSubmit">{{ t('unlock.unlock') }}</button>
 
@@ -105,7 +110,7 @@ async function useBiometric() {
       {{ t('unlock.useBiometric', { biometric: biometricLabel }) }}
     </button>
 
-    <p v-if="biometricError" class="biometric-error">{{ biometricError }}</p>
+    <p v-if="biometricError" :key="errorNonce" class="biometric-error">{{ biometricError }}</p>
 
     <p v-if="settingsStore.settings.passwordHint" class="hint">
       {{ t('unlock.hint', { hint: settingsStore.settings.passwordHint }) }}
@@ -131,10 +136,19 @@ h1 {
   margin-bottom: 32px;
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
 .error {
   color: var(--progress-red);
   font-size: 14px;
   margin: 12px 0 0;
+  animation: shake 0.3s ease;
 }
 
 .submit-btn {
@@ -165,6 +179,7 @@ h1 {
   color: var(--progress-red);
   font-size: 14px;
   margin-top: 12px;
+  animation: shake 0.3s ease;
 }
 
 .hint {

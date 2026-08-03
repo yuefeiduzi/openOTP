@@ -13,6 +13,9 @@ export default {
     totp: 'TOTP',
     noAccounts: '暂无 {type} 账号',
     copied: '已复制',
+    minimizeToTray: '最小化到菜单栏',
+    sameIssuerMore: '展开其余 {count} 个同站点账号',
+    collapseGroup: '收起同站点账号',
   },
   setup: {
     welcome: '欢迎使用 OpenOTP',

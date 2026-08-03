@@ -439,6 +439,12 @@ function copyGithubLink() {
   showToast('已复制')
 }
 
+function handleBiometricToggle(event: Event) {
+  const enabled = (event.target as HTMLInputElement).checked
+  settingsStore.updateSettings({ biometricEnabled: enabled })
+  settingsStore.saveSettings()
+}
+
 function goBack() {
   router.back()
 }
@@ -550,6 +556,20 @@ async function exportDebugLogs() {
             {{ t('settings.passwordHint') }}<span v-if="settingsStore.settings.passwordHint" class="setting-hint-val">{{ settingsStore.settings.passwordHint }}</span>
             <span v-else class="setting-hint-empty">{{ t('settings.clickToSet') }}</span>
           </button>
+        </div>
+
+        <div v-if="biometricAvailable" class="setting-item setting-row">
+          <span class="setting-label">{{ t('settings.biometricUnlock') }}</span>
+          <div class="setting-control">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                :checked="settingsStore.settings.biometricEnabled"
+                @change="handleBiometricToggle"
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
       </section>
 
@@ -876,6 +896,7 @@ async function exportDebugLogs() {
   font-size: 14px;
   cursor: pointer;
   text-align: left;
+  transition: border-color 0.2s, background 0.2s;
   transition: border-color 0.2s, background 0.2s;
   display: flex;
   align-items: center;
