@@ -38,7 +38,7 @@ const { t } = useI18n()
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: var(--z-modal);
 }
 
 .dialog {
@@ -108,6 +108,6 @@ const { t } = useI18n()
 }
 
 .btn-delete:hover {
-  background: #d32f2f;
+  filter: brightness(0.9);
 }
 </style>

@@ -204,7 +204,8 @@ function handleFileSelected(event: Event) {
 .icon-picker {
   width: 350px;
   padding: 20px;
-  background: #fff;
+  background: var(--card-bg);
+  color: var(--text-primary);
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
 }
@@ -215,12 +216,12 @@ function handleFileSelected(event: Event) {
   gap: 16px;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .preview-label {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .preview-emoji {
@@ -235,19 +236,19 @@ function handleFileSelected(event: Event) {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #f0f0f0;
+  background: var(--bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .tab-bar {
   display: flex;
   margin-bottom: 16px;
   border-radius: 8px;
-  background: #f5f5f5;
+  background: var(--bg-secondary);
   padding: 3px;
 }
 
@@ -257,15 +258,15 @@ function handleFileSelected(event: Event) {
   border: none;
   background: transparent;
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.15s;
 }
 
 .tab-btn.active {
-  background: #fff;
-  color: #333;
+  background: var(--card-bg);
+  color: var(--text-primary);
   font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -282,7 +283,7 @@ function handleFileSelected(event: Event) {
   height: 44px;
   border: 2px solid transparent;
   border-radius: 10px;
-  background: #f9f9f9;
+  background: var(--bg-secondary);
   font-size: 20px;
   cursor: pointer;
   display: flex;
@@ -292,12 +293,12 @@ function handleFileSelected(event: Event) {
 }
 
 .emoji-item:hover {
-  background: #f0f0f0;
+  background: var(--btn-secondary-bg);
 }
 
 .emoji-item.selected {
-  border-color: #4A90D9;
-  background: #eef5ff;
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .initial-tab {
@@ -306,7 +307,7 @@ function handleFileSelected(event: Event) {
 
 .color-label {
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
   margin-bottom: 12px;
 }
 
@@ -330,7 +331,7 @@ function handleFileSelected(event: Event) {
 }
 
 .color-item.selected {
-  border-color: #333;
+  border-color: var(--text-primary);
   transform: scale(1.1);
 }
 
@@ -347,18 +348,18 @@ function handleFileSelected(event: Event) {
   padding: 8px;
   border: 2px solid transparent;
   border-radius: 10px;
-  background: #f9f9f9;
+  background: var(--bg-secondary);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .preset-item:hover {
-  background: #f0f0f0;
+  background: var(--btn-secondary-bg);
 }
 
 .preset-item.selected {
-  border-color: #4A90D9;
-  background: #eef5ff;
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .preset-item img {
@@ -378,21 +379,22 @@ function handleFileSelected(event: Event) {
 
 .upload-btn {
   padding: 10px 24px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #fff;
+  background: var(--card-bg);
+  color: var(--text-primary);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .upload-btn:hover {
-  border-color: #4A90D9;
-  color: #4A90D9;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .image-error {
-  color: #e74c3c;
+  color: var(--progress-red);
   font-size: 12px;
 }
 
@@ -404,7 +406,7 @@ function handleFileSelected(event: Event) {
 
 .image-hint {
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -413,7 +415,7 @@ function handleFileSelected(event: Event) {
   justify-content: flex-end;
   gap: 10px;
   padding-top: 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color);
 }
 
 .btn {
@@ -425,22 +427,22 @@ function handleFileSelected(event: Event) {
 }
 
 .btn-cancel {
-  border: 1px solid #ddd;
-  background: #fff;
-  color: #666;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-secondary);
 }
 
 .btn-cancel:hover {
-  background: #f5f5f5;
+  background: var(--bg-secondary);
 }
 
 .btn-confirm {
   border: none;
-  background: #4A90D9;
+  background: var(--accent);
   color: #fff;
 }
 
 .btn-confirm:hover {
-  background: #3a7bc8;
+  background: var(--accent-hover);
 }
 </style>

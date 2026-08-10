@@ -12,6 +12,7 @@ export default {
     title: 'OpenOTP',
     totp: 'TOTP',
     noAccounts: 'No {type} accounts',
+    addFirstAccount: 'Add your first account',
     copied: 'Copied',
     sameIssuerMore: 'Show {count} more account(s) for this site',
     collapseGroup: 'Collapse same-site accounts',

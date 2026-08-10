@@ -239,11 +239,11 @@ function useParsedData() {
         <div v-if="!qrImageUrl" class="qr-placeholder">
           <button class="scan-btn" @click="selectQrImage" :disabled="qrScanning">
             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="4" y="4" width="16" height="16" rx="3" stroke="#999" stroke-width="2.5"/>
-              <rect x="28" y="4" width="16" height="16" rx="3" stroke="#999" stroke-width="2.5"/>
-              <rect x="4" y="28" width="16" height="16" rx="3" stroke="#999" stroke-width="2.5"/>
-              <rect x="36" y="36" width="8" height="8" rx="2" stroke="#999" stroke-width="2.5"/>
-              <rect x="28" y="36" width="4" height="8" rx="1.5" fill="#999"/>
+              <rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="2.5"/>
+              <rect x="28" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="2.5"/>
+              <rect x="4" y="28" width="16" height="16" rx="3" stroke="currentColor" stroke-width="2.5"/>
+              <rect x="36" y="36" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2.5"/>
+              <rect x="28" y="36" width="4" height="8" rx="1.5" fill="currentColor"/>
             </svg>
             <span class="scan-label">{{ qrScanning ? t('addAccount.processing') : t('addAccount.selectQRImage') }}</span>
           </button>
@@ -362,7 +362,7 @@ function useParsedData() {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: var(--z-modal);
 }
 
 .modal {
@@ -438,13 +438,14 @@ function useParsedData() {
   border: 2px dashed var(--border-color);
   border-radius: 12px;
   background: var(--bg-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .scan-btn:hover {
   border-color: var(--accent);
-  background: rgba(74, 144, 217, 0.1);
+  background: var(--accent-soft);
 }
 
 .scan-btn:disabled {

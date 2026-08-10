@@ -98,7 +98,7 @@ function selectEmoji(emoji: string) {
 
 <style scoped>
 .emoji-picker {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -107,11 +107,12 @@ function selectEmoji(emoji: string) {
   width: 100%;
   padding: 10px 12px;
   border: none;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border-color);
   font-size: 13px;
   outline: none;
   box-sizing: border-box;
-  background: #fafafa;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .emoji-grid {
@@ -126,7 +127,7 @@ function selectEmoji(emoji: string) {
 
 .emoji-cat-label {
   font-size: 11px;
-  color: #999;
+  color: var(--text-secondary);
   padding: 4px 4px 2px;
 }
 
@@ -152,17 +153,17 @@ function selectEmoji(emoji: string) {
 }
 
 .emoji-item:hover {
-  background: #f0f0f0;
+  background: var(--btn-secondary-bg);
 }
 
 .emoji-item.selected {
-  border-color: #4a90d9;
-  background: #eef4ff;
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .emoji-empty {
   text-align: center;
-  color: #999;
+  color: var(--text-secondary);
   font-size: 13px;
   padding: 16px;
 }

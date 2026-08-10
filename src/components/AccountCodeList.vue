@@ -13,6 +13,7 @@ const { show: showToast } = useToast()
 const emit = defineEmits<{
   (e: 'delete', account: Account): void
   (e: 'edit', account: Account): void
+  (e: 'add'): void
 }>()
 
 const accounts = computed(() =>
@@ -61,9 +62,12 @@ function handleCopy(code: string) {
 
 <template>
   <div class="account-code-list">
-    <p v-if="accounts.length === 0" class="empty">
-      {{ t('home.noAccounts', { type: 'TOTP' }) }}
-    </p>
+    <div v-if="accounts.length === 0" class="empty">
+      <p class="empty-text">{{ t('home.noAccounts', { type: 'TOTP' }) }}</p>
+      <button class="empty-add-btn" @click="emit('add')">
+        {{ t('home.addFirstAccount') }}
+      </button>
+    </div>
     <template v-for="group in groups" :key="group.key">
       <AccountCard
         :account="group.accounts[0]"
@@ -102,9 +106,31 @@ function handleCopy(code: string) {
 }
 
 .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 32px;
   text-align: center;
+}
+
+.empty-text {
   color: var(--text-secondary);
-  padding: 32px;
+}
+
+.empty-add-btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.empty-add-btn:hover {
+  background: var(--accent-hover);
 }
 
 .group-toggle {

@@ -17,6 +17,12 @@
   --progress-red: #F44336;
   --toast-bg: rgba(0, 0, 0, 0.8);
   --toast-text: #ffffff;
+  --accent-soft: #eef4ff;
+  --accent-hover: #3a7bc8;
+  --focus-ring: rgba(74, 144, 217, 0.15);
+  --z-sheet: 200;
+  --z-modal: 300;
+  --z-toast: 9999;
 }
 
 [data-theme="dark"] {
@@ -38,4 +44,7 @@
   --progress-red: #ff453a;
   --toast-bg: rgba(60, 60, 67, 0.95);
   --toast-text: #f5f5f7;
+  --accent-soft: rgba(90, 163, 240, 0.18);
+  --accent-hover: #4a90d9;
+  --focus-ring: rgba(90, 163, 240, 0.25);
 }

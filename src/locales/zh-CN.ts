@@ -12,6 +12,7 @@ export default {
     title: 'OpenOTP',
     totp: 'TOTP',
     noAccounts: '暂无 {type} 账号',
+    addFirstAccount: '添加第一个账号',
     copied: '已复制',
     sameIssuerMore: '展开其余 {count} 个同站点账号',
     collapseGroup: '收起同站点账号',

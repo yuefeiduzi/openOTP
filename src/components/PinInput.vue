@@ -142,12 +142,12 @@ defineExpose({ focus })
 
 .pin-box:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
+  box-shadow: 0 0 0 3px var(--focus-ring);
   background: var(--card-bg);
 }
 
 .pin-box.filled {
-  border-color: #b0b0b0;
+  border-color: var(--text-secondary);
   background: var(--card-bg);
 }
 

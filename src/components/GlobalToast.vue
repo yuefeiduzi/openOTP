@@ -25,7 +25,7 @@ const { toast } = useToast()
   padding: 14px 28px;
   border-radius: 10px;
   font-size: 14px;
-  z-index: 9999;
+  z-index: var(--z-toast);
   pointer-events: none;
   white-space: nowrap;
 }

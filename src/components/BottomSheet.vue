@@ -53,7 +53,7 @@ const emit = defineEmits<{
   right: 0;
   bottom: 0;
   background: var(--overlay);
-  z-index: 200;
+  z-index: var(--z-sheet);
   display: flex;
   align-items: flex-end;
   justify-content: center;
