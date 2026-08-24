@@ -177,10 +177,14 @@ pub fn run() {
                     }
                 }
 
+                // Use the 44x44 (@2x) template image: tray-icon forces an 18pt
+                // status-bar height on macOS, so on Retina (2x) the rendered icon
+                // needs 36px+ of source pixels — the 22px 1x asset gets upscaled
+                // and looks blurry in the menu bar.
                 let tray_icon = tauri::image::Image::new(
-                    include_bytes!("../icons/tray-template.rgba"),
-                    22,
-                    22,
+                    include_bytes!("../icons/tray-template@2x.rgba"),
+                    44,
+                    44,
                 );
                 let en = settings.language == "en-US";
                 let return_item = tauri::menu::MenuItem::with_id(
@@ -279,6 +283,7 @@ pub fn run() {
                                 .resizable(false)
                                 .always_on_top(true)
                                 .transparent(true)
+                                .shadow(false)
                                 .visible(true)
                                 .build()
                             {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
@@ -6,6 +7,9 @@ import AccountCodeList from '@/components/AccountCodeList.vue'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
+
+onMounted(() => document.documentElement.classList.add('popover-route'))
+onUnmounted(() => document.documentElement.classList.remove('popover-route'))
 
 async function openMainWindow() {
   await invoke('show_main_window')
@@ -54,24 +58,29 @@ async function returnToAppMode() {
 </template>
 
 <style scoped>
-/* The popover window is opaque (see lib.rs); paint the window frame with a
-   slightly different tone so the rounded panel reads clearly. */
-:global(html),
-:global(body),
-:global(#app) {
-  background: var(--bg-secondary);
+/* The popover window is transparent (see lib.rs); keep the page background
+   clear so only the rounded panel shows. The panel sits inset from the window
+   edges — the transparent margin lets the CSS drop-shadow render around the
+   rounded corners (a native window shadow would be a rectangle and stick out).
+   The shadow uses a tight 0.5px hard pass + a close blur, so the edge stays
+   crisp instead of hazy. */
+:global(html.popover-route),
+:global(html.popover-route body),
+:global(html.popover-route #app) {
+  background: transparent;
+  overflow: hidden;
 }
 
 .popover {
+  position: absolute;
+  inset: 12px;
   display: flex;
   flex-direction: column;
-  height: calc(100% - 16px);
-  margin: 8px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
   overflow: hidden;
+  filter: var(--popover-shadow);
 }
 
 .popover-header {

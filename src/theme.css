@@ -7,6 +7,7 @@
   --accent: #4a90d9;
   --card-bg: #ffffff;
   --card-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --popover-shadow: drop-shadow(0 0.5px 0.5px rgba(0, 0, 0, 0.10)) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.15)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.10));
   --overlay: rgba(0, 0, 0, 0.4);
   --sheet-bg: #ffffff;
   --btn-secondary-bg: #f0f0f0;
@@ -34,6 +35,7 @@
   --accent: #5aa3f0;
   --card-bg: #2c2c2e;
   --card-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --popover-shadow: drop-shadow(0 0.5px 0.5px rgba(0, 0, 0, 0.25)) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.30)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.20));
   --overlay: rgba(0, 0, 0, 0.7);
   --sheet-bg: #2c2c2e;
   --btn-secondary-bg: #3a3a3c;
