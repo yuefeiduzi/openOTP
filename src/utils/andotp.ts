@@ -1,5 +1,6 @@
-import type { Account } from '@/types'
-import { getRandomBgColor } from '@/utils/icons'
+import type { Account, AccountIcon } from '@/types'
+import { createDefaultIcon } from '@/utils/icons'
+import { PRESET_ICONS } from '@/utils/presetIcons'
 
 interface AndOTPAccount {
   secret: string
@@ -37,19 +38,30 @@ function parseAndOTPLabel(label: string): { issuer: string; name: string } {
   return { issuer, name }
 }
 
+/**
+ * andOTP stores a service name in `thumbnail` and leaves it empty when the
+ * user picked a colour. Brands we ship a preset for are matched by name;
+ * everything else keeps the generated initial icon.
+ */
+function iconForThumbnail(thumbnail: string, name: string): AccountIcon {
+  const wanted = thumbnail.trim().toLowerCase()
+  if (!wanted) {
+    return createDefaultIcon(name)
+  }
+
+  const preset = PRESET_ICONS.find(icon => icon.name === wanted)
+  return preset
+    ? { type: 'preset', value: preset.name, bgColor: '' }
+    : createDefaultIcon(name)
+}
+
 function convertAndOTPAccount(andotp: AndOTPAccount, order: number): Account {
   const { issuer: parsedIssuer, name } = parseAndOTPLabel(andotp.label)
 
   const issuer = andotp.issuer || parsedIssuer
 
-  // TODO: 映射 thumbnail 到图标
   const displayName = name || issuer || '?'
-  const initial = displayName.charAt(0).toUpperCase()
-  const icon = {
-    type: 'initial' as const,
-    value: initial,
-    bgColor: getRandomBgColor()
-  }
+  const icon = iconForThumbnail(andotp.thumbnail, displayName)
 
   return {
     id: generateId(),

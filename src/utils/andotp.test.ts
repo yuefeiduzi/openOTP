@@ -206,9 +206,18 @@ describe('importAndOTPBackup', () => {
       .toThrow('andOTP backup should be a JSON array')
   })
 
-  it('should set default icon for each account', () => {
+  it('should give every imported account a usable icon', () => {
     const json = JSON.stringify([validAccounts[0]])
     const { accounts: result } = importAndOTPBackup(json)
+
+    // Microsoft has a preset icon, andOTP's thumbnail selects it.
+    expect(result[0].icon).toEqual({ type: 'preset', value: 'microsoft', bgColor: '' })
+  })
+
+  it('should build an initial icon when no thumbnail matches', () => {
+    const json = JSON.stringify([{ ...validAccounts[0], thumbnail: '' }])
+    const { accounts: result } = importAndOTPBackup(json)
+
     expect(result[0].icon.type).toBe('initial')
     expect(result[0].icon.bgColor).toBeTruthy()
     expect(result[0].icon.value).toBeTruthy()
@@ -247,5 +256,26 @@ describe('importAndOTPBackup', () => {
 
     expect(accounts).toHaveLength(validAccounts.length)
     expect(skipped).toBe(0)
+  })
+
+  it('should map a known thumbnail to the matching preset icon', () => {
+    const { accounts } = importAndOTPBackup(JSON.stringify([{ ...validAccounts[0], thumbnail: 'GitHub' }]))
+
+    expect(accounts[0].icon).toEqual({ type: 'preset', value: 'github', bgColor: '' })
+  })
+
+  it('should keep an initial icon for an unknown thumbnail', () => {
+    const { accounts } = importAndOTPBackup(
+      JSON.stringify([{ ...validAccounts[0], thumbnail: 'Some Bank' }]),
+    )
+
+    expect(accounts[0].icon.type).toBe('initial')
+    expect(accounts[0].icon.value).toBe('U')
+  })
+
+  it('should ignore an empty thumbnail', () => {
+    const { accounts } = importAndOTPBackup(JSON.stringify([{ ...validAccounts[0], thumbnail: '' }]))
+
+    expect(accounts[0].icon.type).toBe('initial')
   })
 })
