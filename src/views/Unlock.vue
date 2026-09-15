@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
 import { invoke } from '@tauri-apps/api/core'
 import PinInput from '@/components/PinInput.vue'
 
 const router = useRouter()
+const route = useRoute()
 const settingsStore = useSettingsStore()
 const { t } = useI18n()
 
@@ -59,7 +60,7 @@ async function handleSubmit() {
     const valid = await settingsStore.verifyPassword(password.value)
     if (valid) {
       settingsStore.unlock()
-      router.replace('/')
+      router.replace(afterUnlockTarget())
     } else {
       error.value = t('errors.passwordError')
       password.value = ''
@@ -69,14 +70,24 @@ async function handleSubmit() {
   }
 }
 
+/** Where to go once unlocked: back to whatever the guard interrupted. */
+function afterUnlockTarget(): string {
+  const redirect = route.query.redirect
+  return typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/'
+}
+
 async function useBiometric() {
   biometricError.value = ''
+  // The system prompt takes focus away from the popover window, which hides
+  // itself on focus loss; pin it for the duration so the prompt is not left
+  // floating over a closed panel.
+  await invoke('set_popover_pinned', { pinned: true }).catch(() => {})
   try {
     const success = await invoke<boolean>('biometric_auth', { reason: t('biometric.unlock') })
     if (success) {
       await invoke('reset_biometric_failures')
       settingsStore.unlock()
-      router.replace('/')
+      router.replace(afterUnlockTarget())
     }
   } catch (e) {
     const err = e as { type: string }
@@ -87,6 +98,8 @@ async function useBiometric() {
     } else {
       biometricError.value = t('errors.verifyFailed')
     }
+  } finally {
+    await invoke('set_popover_pinned', { pinned: false }).catch(() => {})
   }
 }
 </script>
@@ -186,5 +199,25 @@ h1 {
   margin-top: 24px;
   color: var(--text-secondary);
   font-size: 12px;
+}
+
+/* The menu bar popover is only 320pt wide, so the PIN row has to shrink to fit
+   (six 40pt boxes plus gaps overflow it). */
+:global(html.popover-window) .unlock {
+  padding: 24px 12px;
+}
+
+:global(html.popover-window) .unlock h1 {
+  font-size: 22px;
+}
+
+:global(html.popover-window) :deep(.pin-box) {
+  width: 34px;
+  height: 42px;
+  font-size: 17px;
+}
+
+:global(html.popover-window) :deep(.pin-input) {
+  gap: 4px;
 }
 </style>

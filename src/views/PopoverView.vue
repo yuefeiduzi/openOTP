@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
@@ -36,9 +36,7 @@ watch(isModalOpen, (open) => {
   invoke('set_popover_pinned', { pinned: open }).catch(() => {})
 })
 
-onMounted(() => document.documentElement.classList.add('popover-route'))
 onUnmounted(() => {
-  document.documentElement.classList.remove('popover-route')
   invoke('set_popover_pinned', { pinned: false }).catch(() => {})
 })
 
@@ -132,9 +130,9 @@ async function returnToAppMode() {
    rounded corners (a native window shadow would be a rectangle and stick out).
    The shadow uses a tight 0.5px hard pass + a close blur, so the edge stays
    crisp instead of hazy. */
-:global(html.popover-route),
-:global(html.popover-route body),
-:global(html.popover-route #app) {
+:global(html.popover-window),
+:global(html.popover-window body),
+:global(html.popover-window #app) {
   background: transparent;
   overflow: hidden;
 }

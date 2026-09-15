@@ -33,11 +33,9 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, _from, next) => {
-  if (to.name === 'popover') {
-    next()
-    return
-  }
-
+  // The menu bar popover is a window, not a privileged route: it has to pass
+  // the same lock check as the main window, or the tray icon becomes a way to
+  // read codes without unlocking.
   const settingsStore = useSettingsStore()
   await settingsStore.checkSetup()
 
@@ -51,7 +49,8 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (settingsStore.isLocked && to.name !== 'unlock' && to.name !== 'setup') {
-    next({ name: 'unlock' })
+    // Remember where the user was headed so unlocking returns them there.
+    next({ name: 'unlock', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } })
     return
   }
 
