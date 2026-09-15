@@ -25,4 +25,4 @@
 - 发布流程与签名 / 更新机制现状 → [docs/RELEASE.md](docs/RELEASE.md)
 - 图标现状与重新生成 → [docs/ICON_STATUS.md](docs/ICON_STATUS.md)
 - 待办与待决事项 → [TODO.md](TODO.md)（已完成的历史见 [CHANGELOG.md](CHANGELOG.md)）
-- 设计文档 → `docs/`（`docs/superpowers/` 仅本地，未入 git）
+- 设计文档（仅本地，未入 git）→ `docs/superpowers/`
