@@ -86,6 +86,7 @@ export default {
     exportNoPassword: 'No Password',
     exportCustomPassword: 'Custom Password',
     exportAppPassword: 'Use App Password',
+    exportNoPasswordWarning: 'Unencrypted backups store secrets in plain text — keep the file safe',
     setExportPassword: 'Set Export Password',
     backupPassword: 'Backup Password',
     exportSuccess: 'Exported to {path}',

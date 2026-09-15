@@ -57,6 +57,27 @@ export const useAccountStore = defineStore('accounts', () => {
     }
   }
 
+  /**
+   * Appends imported accounts, always assigning fresh ids to avoid collisions
+   * with existing accounts, and preserving the order they arrived in.
+   */
+  function importAccounts(imported: Account[]) {
+    const maxOrder = accounts.value.length
+      ? Math.max(...accounts.value.map(a => a.order))
+      : -1
+
+    imported.forEach((account, index) => {
+      accounts.value.push({
+        ...account,
+        id: generateId(),
+        createdAt: account.createdAt || Date.now(),
+        order: maxOrder + 1 + index,
+      })
+    })
+
+    persistAccounts()
+  }
+
   function reorderAccounts(orderedIds: string[]) {
     let order = 0
     for (const id of orderedIds) {
@@ -85,6 +106,7 @@ export const useAccountStore = defineStore('accounts', () => {
     addAccount,
     removeAccount,
     updateAccount,
+    importAccounts,
     reorderAccounts,
     persistAccounts
   }

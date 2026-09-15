@@ -86,6 +86,7 @@ export default {
     exportNoPassword: '无密码',
     exportCustomPassword: '自定义密码',
     exportAppPassword: '使用应用密码',
+    exportNoPasswordWarning: '不加密的备份将以明文保存密钥，请自行妥善保管',
     setExportPassword: '设置导出密码',
     backupPassword: '备份密码',
     exportSuccess: '已导出到 {path}',

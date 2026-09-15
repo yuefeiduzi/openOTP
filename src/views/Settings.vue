@@ -7,7 +7,8 @@ import { save, open } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeFile } from '@tauri-apps/plugin-fs'
 import { useSettingsStore, useAccountStore } from '@/stores'
 import type { AppSettings } from '@/types'
-import { createBackup, restoreBackup } from '@/utils/backup'
+import { createBackup, restoreBackup, validateBackup } from '@/utils/backup'
+import type { BackupManifest } from '@/utils/backup'
 import { importAndOTPBackup } from '@/utils/andotp'
 import { setLocale, getSavedLocalePreference } from '@/locales'
 import PinInput from '@/components/PinInput.vue'
@@ -63,7 +64,6 @@ const exportPasswordError = ref('')
 const showLangSheet = ref(false)
 
 const showImportPasswordModal = ref(false)
-const importFilePath = ref('')
 const importFileContent = ref('')
 const importPassword = ref('')
 const importPasswordError = ref('')
@@ -359,8 +359,8 @@ async function handleImportBackup() {
     if (!filePath) return
 
     const fileContent = await readTextFile(filePath)
-    
-    let payload: any
+
+    let payload: { manifest?: BackupManifest; accounts?: unknown[] }
     try {
       payload = JSON.parse(fileContent)
     } catch {
@@ -368,19 +368,35 @@ async function handleImportBackup() {
       return
     }
 
-    if (!payload.data || !payload.data.iv) {
-      showToast(t('errors.importFailed', { error: 'Invalid backup format' }), true)
+    const validation = validateBackup(payload.manifest as BackupManifest)
+    if (!validation.valid) {
+      showToast(t('errors.importFailed', { error: validation.error || '' }), true)
       return
     }
 
-    importFilePath.value = filePath
     importFileContent.value = fileContent
+
+    // Plaintext backups carry their accounts inline and need no password.
+    if (!payload.manifest!.encrypted) {
+      await applyImport(fileContent, '')
+      return
+    }
+
     importPassword.value = ''
     importPasswordError.value = ''
     showImportPasswordModal.value = true
   } catch (err) {
     showToast(t('errors.importFailed', { error: String(err) }), true)
   }
+}
+
+async function applyImport(fileContent: string, password: string) {
+  const { manifest, accounts } = await restoreBackup(fileContent, password)
+
+  accountStore.importAccounts(accounts)
+
+  showImportPasswordModal.value = false
+  showToast(t('errors.importSuccess', { count: manifest.accountCount }))
 }
 
 async function handleImportPasswordConfirm() {
@@ -392,16 +408,10 @@ async function handleImportPasswordConfirm() {
   }
 
   try {
-    const { manifest, accounts } = await restoreBackup(importFileContent.value, importPassword.value)
-
-    for (const account of accounts) {
-      accountStore.addAccount(account)
-    }
-
-    showImportPasswordModal.value = false
-    showToast(t('errors.importSuccess', { count: manifest.accountCount }))
-  } catch {
+    await applyImport(importFileContent.value, importPassword.value)
+  } catch (err) {
     importPasswordError.value = t('errors.passwordError')
+    showToast(t('errors.importFailed', { error: String(err) }), true)
   }
 }
 
@@ -417,9 +427,7 @@ async function importAndOTPAccounts() {
     const fileContent = await readTextFile(filePath)
     const accounts = importAndOTPBackup(fileContent)
 
-    for (const account of accounts) {
-      accountStore.addAccount(account)
-    }
+    accountStore.importAccounts(accounts)
 
     showToast(t('errors.andOTPImportSuccess', { count: accounts.length }))
   } catch (err) {
@@ -673,6 +681,9 @@ async function exportDebugLogs() {
           <input v-model="exportMode" type="radio" value="none" />
           <span>{{ t('settings.exportNoPassword') }}</span>
         </label>
+        <p v-if="exportMode === 'none'" class="export-warning">
+          {{ t('settings.exportNoPasswordWarning') }}
+        </p>
         <label class="radio-item" :class="{ active: exportMode === 'custom' }">
           <input v-model="exportMode" type="radio" value="custom" />
           <span>{{ t('settings.exportCustomPassword') }}</span>
@@ -1003,6 +1014,13 @@ async function exportDebugLogs() {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.export-warning {
+  margin: 4px 14px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--progress-red);
 }
 
 .radio-item {
