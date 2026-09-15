@@ -7,8 +7,7 @@ import { save, open } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeFile } from '@tauri-apps/plugin-fs'
 import { useSettingsStore, useAccountStore } from '@/stores'
 import type { AppSettings } from '@/types'
-import { createBackup, restoreBackup, validateBackup } from '@/utils/backup'
-import type { BackupManifest } from '@/utils/backup'
+import { exportBackup, inspectBackup, importBackup, MIN_BACKUP_PASSWORD_LENGTH } from '@/utils/backup'
 import { importAndOTPBackup } from '@/utils/andotp'
 import { setLocale, getSavedLocalePreference } from '@/locales'
 import PinInput from '@/components/PinInput.vue'
@@ -31,7 +30,6 @@ const showThemeSheet = ref(false)
 
 const showPasswordModal = ref(false)
 const passwordStep = ref<'verify' | 'change'>('verify')
-const passwordModalPurpose = ref<'change' | 'export'>('change')
 const currentPassword = ref('')
 const newPassword = ref('')
 const confirmNewPassword = ref('')
@@ -55,16 +53,15 @@ const isMac = ref(false)
 const biometricType = ref('')
 
 const showExportSheet = ref(false)
-const exportMode = ref<'none' | 'custom' | 'app'>('none')
+const exportMode = ref<'encrypted' | 'none'>('encrypted')
 const showExportPasswordModal = ref(false)
-const exportCustomPassword = ref('')
-const exportConfirmPassword = ref('')
+const exportPassword = ref('')
 const exportPasswordError = ref('')
 
 const showLangSheet = ref(false)
 
 const showImportPasswordModal = ref(false)
-const importFileContent = ref('')
+const importFilePath = ref('')
 const importPassword = ref('')
 const importPasswordError = ref('')
 
@@ -145,7 +142,6 @@ function handleHintKeydown(e: KeyboardEvent) {
 
 function openChangePassword() {
   showPasswordModal.value = true
-  passwordModalPurpose.value = 'change'
   passwordStep.value = 'verify'
   currentPassword.value = ''
   newPassword.value = ''
@@ -175,12 +171,6 @@ async function verifyCurrentPassword() {
     })
 
     if (valid) {
-      if (passwordModalPurpose.value === 'export') {
-        showPasswordModal.value = false
-        await doExport(currentPassword.value)
-        return
-      }
-
       if (settingsStore.settings.biometricEnabled && biometricAvailable.value) {
         try {
           const bioSuccess = await invoke<boolean>('biometric_auth', { reason: t('biometric.changePassword') })
@@ -281,52 +271,35 @@ async function submitSetPassword() {
 }
 
 function openExportSheet() {
-  exportMode.value = 'none'
+  exportMode.value = 'encrypted'
   showExportSheet.value = true
 }
 
 async function handleExportConfirm() {
-  if (exportMode.value === 'custom') {
+  if (exportMode.value === 'encrypted') {
     showExportSheet.value = false
-    exportCustomPassword.value = ''
-    exportConfirmPassword.value = ''
+    exportPassword.value = ''
     exportPasswordError.value = ''
     showExportPasswordModal.value = true
     return
   }
 
-  if (exportMode.value === 'app') {
-    showExportSheet.value = false
-    await handleExportWithAppPassword()
-    return
-  }
-
   showExportSheet.value = false
   await new Promise(r => setTimeout(r, 350))
-  await doExport('')
+  await doExport(null)
 }
 
-async function handleExportWithAppPassword() {
-  currentPassword.value = ''
-  passwordError.value = ''
-  passwordModalPurpose.value = 'export'
-  passwordStep.value = 'verify'
-  showPasswordModal.value = true
-}
-
-async function doExport(password: string) {
+async function doExport(password: string | null) {
   try {
     const filePath = await save({
       title: t('settings.exportBackup'),
-      defaultPath: 'openotp-backup.openotp',
-      filters: [{ name: 'OpenOTP Backup', extensions: ['openotp'] }],
+      defaultPath: 'openotp-backup.zip',
+      filters: [{ name: 'OpenOTP Backup', extensions: ['zip'] }],
     })
 
     if (!filePath) return
 
-    const json = await createBackup(accountStore.accounts, password)
-    const encoder = new TextEncoder()
-    await writeFile(filePath, encoder.encode(json))
+    await exportBackup(filePath, accountStore.accounts, password)
     showToast(t('settings.exportSuccess', { path: filePath }))
   } catch (err) {
     showToast(t('errors.exportFailed', { error: String(err) }), true)
@@ -336,52 +309,35 @@ async function doExport(password: string) {
 async function handleExportPasswordConfirm() {
   exportPasswordError.value = ''
 
-  if (exportCustomPassword.value.length < 6) {
-    exportPasswordError.value = t('errors.backupPasswordLength')
-    return
-  }
-  if (exportCustomPassword.value !== exportConfirmPassword.value) {
-    exportPasswordError.value = t('errors.backupPasswordMismatch')
+  if (exportPassword.value.length < MIN_BACKUP_PASSWORD_LENGTH) {
+    exportPasswordError.value = t('errors.backupPasswordTooShort', {
+      min: MIN_BACKUP_PASSWORD_LENGTH,
+    })
     return
   }
 
   showExportPasswordModal.value = false
-  await doExport(exportCustomPassword.value)
+  await doExport(exportPassword.value)
 }
 
 async function handleImportBackup() {
   try {
     const filePath = await open({
-      filters: [{ name: 'OpenOTP Backup', extensions: ['openotp'] }],
+      filters: [{ name: 'OpenOTP Backup', extensions: ['zip', 'openotp'] }],
       multiple: false,
     })
 
     if (!filePath) return
 
-    const fileContent = await readTextFile(filePath)
+    const manifest = await inspectBackup(filePath)
 
-    let payload: { manifest?: BackupManifest; accounts?: unknown[] }
-    try {
-      payload = JSON.parse(fileContent)
-    } catch {
-      showToast(t('errors.importFailed', { error: 'Invalid backup file' }), true)
+    // Unencrypted backups need no password.
+    if (!manifest.encrypted) {
+      await applyImport(filePath, null)
       return
     }
 
-    const validation = validateBackup(payload.manifest as BackupManifest)
-    if (!validation.valid) {
-      showToast(t('errors.importFailed', { error: validation.error || '' }), true)
-      return
-    }
-
-    importFileContent.value = fileContent
-
-    // Plaintext backups carry their accounts inline and need no password.
-    if (!payload.manifest!.encrypted) {
-      await applyImport(fileContent, '')
-      return
-    }
-
+    importFilePath.value = filePath
     importPassword.value = ''
     importPasswordError.value = ''
     showImportPasswordModal.value = true
@@ -390,8 +346,8 @@ async function handleImportBackup() {
   }
 }
 
-async function applyImport(fileContent: string, password: string) {
-  const { manifest, accounts } = await restoreBackup(fileContent, password)
+async function applyImport(filePath: string, password: string | null) {
+  const { manifest, accounts } = await importBackup(filePath, password)
 
   accountStore.importAccounts(accounts)
 
@@ -408,7 +364,7 @@ async function handleImportPasswordConfirm() {
   }
 
   try {
-    await applyImport(importFileContent.value, importPassword.value)
+    await applyImport(importFilePath.value, importPassword.value)
   } catch (err) {
     importPasswordError.value = t('errors.passwordError')
     showToast(t('errors.importFailed', { error: String(err) }), true)
@@ -677,6 +633,10 @@ async function exportDebugLogs() {
       @confirm="handleExportConfirm"
     >
       <div class="export-options">
+        <label class="radio-item" :class="{ active: exportMode === 'encrypted' }">
+          <input v-model="exportMode" type="radio" value="encrypted" />
+          <span>{{ t('settings.exportEncrypted') }}</span>
+        </label>
         <label class="radio-item" :class="{ active: exportMode === 'none' }">
           <input v-model="exportMode" type="radio" value="none" />
           <span>{{ t('settings.exportNoPassword') }}</span>
@@ -684,14 +644,6 @@ async function exportDebugLogs() {
         <p v-if="exportMode === 'none'" class="export-warning">
           {{ t('settings.exportNoPasswordWarning') }}
         </p>
-        <label class="radio-item" :class="{ active: exportMode === 'custom' }">
-          <input v-model="exportMode" type="radio" value="custom" />
-          <span>{{ t('settings.exportCustomPassword') }}</span>
-        </label>
-        <label class="radio-item" :class="{ active: exportMode === 'app' }">
-          <input v-model="exportMode" type="radio" value="app" />
-          <span>{{ t('settings.exportAppPassword') }}</span>
-        </label>
       </div>
     </BottomSheet>
 
@@ -699,13 +651,15 @@ async function exportDebugLogs() {
       <div class="modal">
         <h3 class="modal-title">{{ t('settings.setExportPassword') }}</h3>
         <div class="form-group">
-          <label>{{ t('setup.masterPassword') }}</label>
-          <PinInput v-model="exportCustomPassword" />
+          <label>{{ t('settings.backupPassword') }}</label>
+          <input
+            v-model="exportPassword"
+            type="password"
+            class="input"
+            :placeholder="t('settings.backupPasswordHint', { min: MIN_BACKUP_PASSWORD_LENGTH })"
+          />
         </div>
-        <div class="form-group">
-          <label>{{ t('setup.confirmPassword') }}</label>
-          <PinInput v-model="exportConfirmPassword" />
-        </div>
+        <p class="form-note">{{ t('settings.backupPasswordNote') }}</p>
         <p v-if="exportPasswordError" class="form-error">{{ exportPasswordError }}</p>
         <div class="modal-actions">
           <button class="btn btn-secondary" @click="showExportPasswordModal = false">取消</button>
@@ -719,7 +673,7 @@ async function exportDebugLogs() {
         <h3 class="modal-title">{{ t('settings.importBackup') }}</h3>
         <div class="form-group">
           <label>{{ t('settings.backupPassword') }}</label>
-          <PinInput v-model="importPassword" />
+          <input v-model="importPassword" type="password" class="input" />
         </div>
         <p v-if="importPasswordError" class="form-error">{{ importPasswordError }}</p>
         <div class="modal-actions">
@@ -731,7 +685,7 @@ async function exportDebugLogs() {
 
     <div v-if="showPasswordModal" class="modal-overlay" @click.self="closePasswordModal">
       <div class="modal">
-        <h3 class="modal-title">{{ passwordModalPurpose === 'export' ? t('settings.verifyPassword') : t('settings.changePassword') }}</h3>
+        <h3 class="modal-title">{{ t('settings.changePassword') }}</h3>
 
         <template v-if="passwordStep === 'verify'">
           <div class="form-group">
@@ -1186,6 +1140,13 @@ async function exportDebugLogs() {
   color: var(--progress-red);
   font-size: 13px;
   margin: 8px 0;
+}
+
+.form-note {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 8px 0 0;
 }
 
 .form-success {

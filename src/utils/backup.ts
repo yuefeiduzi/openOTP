@@ -1,123 +1,42 @@
+import { invoke } from '@tauri-apps/api/core'
 import type { Account } from '@/types'
-import { encryptData, decryptData } from '@/utils/crypto'
-import type { EncryptedData } from '@/utils/crypto'
 
-export const BACKUP_VERSION = '2.0.0'
+/** Minimum length for an encrypted backup password. */
+export const MIN_BACKUP_PASSWORD_LENGTH = 8
 
 export interface BackupManifest {
-  version: string
+  format: string
+  formatVersion: number
   appVersion: string
   createdAt: number
   accountCount: number
-  /** v2+：false 表示 accounts 字段为明文，true 表示 data 字段为加密载荷 */
   encrypted: boolean
 }
 
-interface BackupPayload {
+export interface ImportResult {
   manifest: BackupManifest
-  /** 仅 encrypted === true 时存在 */
-  data?: EncryptedData
-  /** 仅 encrypted === false 时存在 */
-  accounts?: Account[]
+  accounts: Account[]
 }
 
 /**
- * Creates a backup payload. Secrets are always included — an empty password
- * produces a plaintext payload, any other password encrypts the accounts.
+ * Writes a zip backup containing `manifest.json`, `accounts.json` and one file
+ * per uploaded icon. `password` encrypts the account data; pass null to write
+ * an unencrypted archive.
  */
-export async function createBackup(accounts: Account[], password: string): Promise<string> {
-  const encrypted = password.length > 0
-
-  const manifest: BackupManifest = {
-    version: BACKUP_VERSION,
-    appVersion: '0.1.0',
-    createdAt: Math.floor(Date.now() / 1000),
-    accountCount: accounts.length,
-    encrypted,
-  }
-
-  const payload: BackupPayload = encrypted
-    ? { manifest, data: await encryptData(JSON.stringify(accounts), password) }
-    : { manifest, accounts }
-
-  return JSON.stringify(payload)
+export async function exportBackup(
+  path: string,
+  accounts: Account[],
+  password: string | null,
+): Promise<BackupManifest> {
+  return invoke<BackupManifest>('export_backup', { path, accounts, password })
 }
 
-/**
- * Restores accounts from a backup. The password is ignored for plaintext
- * backups (manifest.encrypted === false).
- */
-export async function restoreBackup(
-  backupJson: string,
-  password: string,
-): Promise<{ manifest: BackupManifest; accounts: Account[] }> {
-  let payload: BackupPayload
-  try {
-    payload = JSON.parse(backupJson) as BackupPayload
-  } catch {
-    throw new Error('Invalid backup file: malformed JSON')
-  }
-
-  if (!payload || typeof payload !== 'object' || !payload.manifest) {
-    throw new Error('Invalid backup file: missing manifest')
-  }
-
-  const validation = validateBackup(payload.manifest)
-  if (!validation.valid) {
-    throw new Error(`Invalid backup file: ${validation.error}`)
-  }
-
-  if (!payload.manifest.encrypted) {
-    if (!Array.isArray(payload.accounts)) {
-      throw new Error('Invalid backup file: missing accounts')
-    }
-    return { manifest: payload.manifest, accounts: payload.accounts }
-  }
-
-  if (!payload.data) {
-    throw new Error('Invalid backup file: missing encrypted data')
-  }
-
-  const plaintext = await decryptData(payload.data, password)
-
-  let accounts: Account[]
-  try {
-    accounts = JSON.parse(plaintext) as Account[]
-  } catch {
-    throw new Error('Invalid backup file: failed to parse accounts')
-  }
-
-  if (!Array.isArray(accounts)) {
-    throw new Error('Invalid backup file: failed to parse accounts')
-  }
-
-  return { manifest: payload.manifest, accounts }
+/** Reads a backup's manifest without needing its password. */
+export async function inspectBackup(path: string): Promise<BackupManifest> {
+  return invoke<BackupManifest>('inspect_backup', { path })
 }
 
-/**
- * Validates a backup manifest. Only v2+ is accepted: v1 backups were written
- * before secrets were included and restoring them yields unusable accounts.
- */
-export function validateBackup(manifest: BackupManifest): { valid: boolean; error?: string } {
-  if (!manifest || !manifest.version) {
-    return { valid: false, error: 'Missing version in manifest' }
-  }
-
-  const [major] = manifest.version.split('.').map(Number)
-  if (major !== 2) {
-    return {
-      valid: false,
-      error: `Unsupported backup version ${manifest.version} — backups older than 2.0.0 contain no account secrets`,
-    }
-  }
-
-  if (typeof manifest.encrypted !== 'boolean') {
-    return { valid: false, error: 'Missing encrypted flag in manifest' }
-  }
-
-  if (typeof manifest.accountCount !== 'number' || manifest.accountCount < 0) {
-    return { valid: false, error: 'Invalid account count' }
-  }
-
-  return { valid: true }
+/** Restores the accounts contained in a backup. */
+export async function importBackup(path: string, password: string | null): Promise<ImportResult> {
+  return invoke<ImportResult>('import_backup', { path, password })
 }

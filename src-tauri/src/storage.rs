@@ -91,6 +91,11 @@ fn data_dir_or_log(app: &AppHandle) -> Option<PathBuf> {
 /// to a sibling temp file, flushed, then renamed over the target. A crash can
 /// therefore never leave a half-written file in place.
 pub(crate) fn write_private(path: &Path, content: &str) -> Result<(), String> {
+    write_private_bytes(path, content.as_bytes())
+}
+
+/// Byte-oriented counterpart of [`write_private`].
+pub fn write_private_bytes(path: &Path, content: &[u8]) -> Result<(), String> {
     let dir = path
         .parent()
         .ok_or_else(|| format!("{} has no parent directory", path.display()))?;
@@ -113,7 +118,7 @@ pub(crate) fn write_private(path: &Path, content: &str) -> Result<(), String> {
                 .map_err(|e| format!("failed to set permissions on {}: {}", tmp.display(), e))?;
         }
 
-        file.write_all(content.as_bytes())
+        file.write_all(content)
             .map_err(|e| format!("failed to write {}: {}", tmp.display(), e))?;
         file.sync_all()
             .map_err(|e| format!("failed to flush {}: {}", tmp.display(), e))?;
@@ -416,6 +421,16 @@ mod tests {
             load_password_hash_from(&dir).unwrap(),
             "pbkdf2_sha256:100000:aa:bb"
         );
+    }
+
+    #[test]
+    fn writes_binary_content() {
+        let dir = temp_dir("binary");
+        let path = dir.join("backup.zip");
+
+        write_private_bytes(&path, &[0x50, 0x4b, 0x03, 0x04]).unwrap();
+
+        assert_eq!(fs::read(&path).unwrap(), vec![0x50, 0x4b, 0x03, 0x04]);
     }
 
     #[cfg(unix)]

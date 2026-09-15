@@ -1,9 +1,11 @@
 mod storage;
 mod crypto;
+mod backup;
 mod biometric;
 mod biometric_status;
 
 use serde::Serialize;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::AppHandle;
 use tauri::LogicalPosition;
@@ -53,13 +55,22 @@ fn save_settings(app: AppHandle, settings: storage::AppSettings) -> Result<(), S
 }
 
 #[tauri::command]
-fn encrypt_data(plaintext: String, password: String) -> Result<crypto::EncryptedData, String> {
-    crypto::encrypt(&plaintext, &password)
+fn export_backup(
+    path: String,
+    accounts: Vec<storage::Account>,
+    password: Option<String>,
+) -> Result<backup::BackupManifest, String> {
+    backup::export(Path::new(&path), &accounts, password.as_deref())
 }
 
 #[tauri::command]
-fn decrypt_data(encrypted: crypto::EncryptedData, password: String) -> Result<String, String> {
-    crypto::decrypt(&encrypted, &password)
+fn inspect_backup(path: String) -> Result<backup::BackupManifest, String> {
+    backup::inspect(Path::new(&path))
+}
+
+#[tauri::command]
+fn import_backup(path: String, password: Option<String>) -> Result<backup::ImportResult, String> {
+    backup::import(Path::new(&path), password.as_deref())
 }
 
 #[tauri::command]
@@ -351,10 +362,11 @@ pub fn run() {
             delete_account,
             get_settings,
             save_settings,
-            encrypt_data,
-            decrypt_data,
             hash_password_cmd,
             verify_password_cmd,
+            export_backup,
+            inspect_backup,
+            import_backup,
             check_biometric,
             get_biometric_type,
             biometric_auth,
@@ -371,4 +383,77 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod command_tests {
+    use super::*;
+    use crate::storage::{Account, AccountIcon};
+
+    fn temp_path(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("openotp-cmd-{}-{}", name, std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir.join("backup.zip")
+    }
+
+    fn account() -> Account {
+        Account {
+            id: "a1".into(),
+            name: "alice@example.com".into(),
+            issuer: "GitHub".into(),
+            icon: AccountIcon {
+                icon_type: "image".into(),
+                value: "data:image/png;base64,iVBORw0KGgo=".into(),
+                bg_color: String::new(),
+            },
+            account_type: "totp".into(),
+            secret: "JBSWY3DPEHPK3PXP".into(),
+            algorithm: "sha1".into(),
+            digits: 6,
+            period: 30,
+            counter: 0,
+            notes: String::new(),
+            created_at: 1_700_000_000_000,
+            order: 0,
+        }
+    }
+
+    #[test]
+    fn export_inspect_and_import_round_trip() {
+        let path = temp_path("round-trip").to_string_lossy().to_string();
+
+        let manifest = export_backup(path.clone(), vec![account()], Some("password123".into()))
+            .expect("export should succeed");
+        assert!(manifest.encrypted);
+        assert_eq!(manifest.account_count, 1);
+
+        let inspected = inspect_backup(path.clone()).expect("inspect should succeed");
+        assert!(inspected.encrypted);
+
+        let result = import_backup(path, Some("password123".into())).expect("import should succeed");
+        assert_eq!(result.accounts.len(), 1);
+        assert_eq!(result.accounts[0].secret, "JBSWY3DPEHPK3PXP");
+        assert_eq!(result.accounts[0].icon.value, "data:image/png;base64,iVBORw0KGgo=");
+    }
+
+    #[test]
+    fn exports_and_imports_without_a_password() {
+        let path = temp_path("plain").to_string_lossy().to_string();
+
+        let manifest = export_backup(path.clone(), vec![account()], None).expect("export");
+        assert!(!manifest.encrypted);
+
+        let result = import_backup(path, None).expect("import");
+        assert_eq!(result.accounts[0].secret, "JBSWY3DPEHPK3PXP");
+    }
+
+    #[test]
+    fn reports_a_wrong_password_instead_of_silently_failing() {
+        let path = temp_path("wrong-password").to_string_lossy().to_string();
+        export_backup(path.clone(), vec![account()], Some("password123".into())).unwrap();
+
+        let error = import_backup(path, Some("password124".into())).unwrap_err();
+        assert!(error.contains("wrong password"), "unexpected error: {error}");
+    }
 }

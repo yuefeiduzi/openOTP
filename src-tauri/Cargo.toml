@@ -23,13 +23,14 @@ tauri = { version = "2.11.2", features = ["tray-icon", "macos-private-api"] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
-aes-gcm = "0.10"
 pbkdf2 = { version = "0.12", features = ["sha2"] }
 sha2 = "0.10"
 rand = "0.8"
 base64 = "0.22"
 hex = "0.4"
 subtle = "2"
+# Backup container: standard zip, optionally AES-256 encrypted.
+zip = { version = "8", default-features = false, features = ["aes-crypto", "deflate-flate2"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-localauthentication = "0.3"
