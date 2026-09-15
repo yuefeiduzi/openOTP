@@ -8,27 +8,25 @@
 
 ## P0 — 阻塞性：功能实际不可用 / 文档与现实不符
 
-### P0-1 备份导入导出实质失效 【前端+安全】
-- `src/utils/backup.ts:14-19` `stripSecrets()` 导出前删掉 `secret`；导入后 `Settings.vue:395-399` 直接 `addAccount()` → **导回的账号生成不出验证码**
-- `src/utils/backup.test.ts:105-112` 还专门断言了"必须剥离 secret"，测试固化了错误行为
-- `validateBackup()`（`backup.ts:66`）从未被应用调用，`Settings.vue:376` 只检查了 `payload.data.iv`
-- 导出面板三种方式（不加密 / 自定义密码 / 应用密码）语义矛盾，需重新定义
-- **验收**：导出→删除全部账号→导入，验证码可正常生成；旧版本备份不崩溃
+### ~~P0-1 备份导入导出实质失效~~ ✅ 2026-09-15
+- 备份格式升到 v2（`encrypted` 标记），导出带 `secret`；明文模式（无密码）端到端可用，导入不再要求密码
+- 导入前调用 `validateBackup`；v1 旧备份直接拒绝并说明原因（不含密钥，恢复出来不可用）
+- 新增 `importAccounts`：每次导入重新生成 id（重复导入不再撞 id）+ 保持顺序；OpenOTP / andOTP 导入统一走它
+- 导出面板在「无密码」选项下加了明文警告
 
-### P0-2 编辑账号会静默破坏图标（数据不可逆）【前端】
-- `src/components/EditAccount.vue:30-47`：`image` 类型被强转 `emoji`，`emojiValue` 初始化为 `'🔑'` → **改一次名字，已上传的 dataURL 永久丢失**
-- `preset` 类型：`type` 不变但 `value` 被覆写成首字母 → `getPresetIconUrl()` 返回 `''` → `AccountCard.vue:126` 渲染 `<img src="">`
-- **验收**：编辑任意 preset / image 图标的账号（含只改名字），图标保真不变
+### ~~P0-2 编辑账号会静默破坏图标（数据不可逆）~~ ✅ 2026-09-15
+- 未触碰图标编辑器时原样保留原图标（preset / image 不再被改写）；预览支持全部 4 种类型
+- 只有点 tab / 选 emoji / 选颜色才标记 dirty；顺手修掉 `visible` watcher 缺 `immediate` 导致的初始化依赖
+- 新增 `EditAccount.test.ts`（仓库首个组件测试）
 
-### P0-3 macOS 弹窗交互残废 【前端】
-- `src/views/PopoverView.vue:54` `<AccountCodeList />` 未绑定 `add/delete/edit`，而组件会 emit 这三个事件（`AccountCodeList.vue:54-58`）→ 弹窗内长按删除、"添加第一个账号"均无反应
-- ️ **必须与 P0-4 同改**，否则接上 AddAccount 后 `plugin:dialog` / `plugin:fs` 会被 ACL 拒
-- **验收**：弹窗内可添加、编辑、删除账号
+### ~~P0-3 macOS 弹窗交互残废~~ ✅ 2026-09-15
+- 弹窗绑定 add/edit/delete，头部加「+」入口；Home 与弹窗共用 `useAccountEditor` composable
+- **附带修掉一个两份审计都漏掉的严重 bug**：`removeAccount` 只做本地 splice + upsert 落盘 → **删除不持久，重启后账号回来**；现在调用 Rust 的 `delete_account`（原先的死代码）
+- **附带修复**：弹窗是独立 webview，主窗口重新可见时重载账号（`App.vue`）
+- **附带修复**：模态框打开时 pin 住弹窗（`set_popover_pinned`），否则原生文件对话框抢焦点会导致弹窗被自动隐藏
 
-### P0-4 capabilities 未覆盖 popover 窗口 【后端】
-- `src-tauri/capabilities/default.json:4-6` 仅 `"windows": ["main"]`
-- 自定义命令目前放行（无 `permissions/` → `has_app_acl_manifest=false`，见 tauri 2.11.2 `webview/mod.rs:1813-1818`）；但 `plugin_command.is_some()` 是独立条件 → **popover 调 plugin 命令必被拒**
-- **验收**：`windows: ["main", "popover"]`，弹窗内选图/导出可用
+### ~~P0-4 capabilities 未覆盖 popover 窗口~~ ✅ 2026-09-15
+- `windows: ["main", "popover"]`，已验证写入 `target/debug/build/*/out/capabilities.json`
 
 ### P0-5 "AES-256-GCM 加密存储" 与实现不符 【文档/安全】
 - `README.md:9`、`docs/STRUCTURE.md` 声称加密存储；实际 AES-GCM 只用于备份导出
