@@ -380,11 +380,16 @@ async function importAndOTPAccounts() {
     if (!filePath) return
 
     const fileContent = await readTextFile(filePath)
-    const accounts = importAndOTPBackup(fileContent)
+    const { accounts, skipped } = importAndOTPBackup(fileContent)
 
     accountStore.importAccounts(accounts)
 
-    showToast(t('errors.andOTPImportSuccess', { count: accounts.length }))
+    showToast(
+      skipped > 0
+        ? t('errors.andOTPImportPartial', { count: accounts.length, skipped })
+        : t('errors.andOTPImportSuccess', { count: accounts.length }),
+      skipped > 0,
+    )
   } catch (err) {
     showToast(t('errors.andOTPImportFailed', { error: String(err) }), true)
   }

@@ -93,21 +93,45 @@ export function getTOTPRemainingSeconds(period: number = 30): number {
   return period - Math.floor((Date.now() / 1000) % period)
 }
 
+/** Why an otpauth URL could not be used, for the UI to translate. */
+export type OtpauthParseReason =
+  | 'malformed'
+  | 'unsupportedProtocol'
+  | 'unsupportedType'
+  | 'hotpUnsupported'
+  | 'missingSecret'
+
+export class OtpauthUrlError extends Error {
+  readonly reason: OtpauthParseReason
+
+  constructor(reason: OtpauthParseReason, message: string) {
+    super(message)
+    this.name = 'OtpauthUrlError'
+    this.reason = reason
+  }
+}
+
 export function parseOtpauthUrl(url: string): Partial<Account> {
   let parsed: URL
   try {
     parsed = new URL(url)
   } catch {
-    throw new Error('Invalid otpauth URL: malformed URL')
+    throw new OtpauthUrlError('malformed', 'Invalid otpauth URL: malformed URL')
   }
 
   if (parsed.protocol !== 'otpauth:') {
-    throw new Error('Invalid otpauth URL: unsupported protocol')
+    throw new OtpauthUrlError('unsupportedProtocol', 'Invalid otpauth URL: unsupported protocol')
   }
 
   const type = parsed.hostname
-  if (type !== 'totp' && type !== 'hotp') {
-    throw new Error(`Invalid otpauth URL: unsupported type "${type}"`)
+  if (type === 'hotp') {
+    // Counter based codes would need a manually advanced counter; until that
+    // exists, refusing beats adding an account that always shows wrong codes.
+    throw new OtpauthUrlError('hotpUnsupported', 'HOTP accounts are not supported yet')
+  }
+
+  if (type !== 'totp') {
+    throw new OtpauthUrlError('unsupportedType', `Invalid otpauth URL: unsupported type "${type}"`)
   }
 
   let label = decodeURIComponent(parsed.pathname.substring(1))
@@ -123,7 +147,7 @@ export function parseOtpauthUrl(url: string): Partial<Account> {
   const params = parsed.searchParams
   const secret = params.get('secret')
   if (!secret) {
-    throw new Error('Invalid otpauth URL: missing secret parameter')
+    throw new OtpauthUrlError('missingSecret', 'Invalid otpauth URL: missing secret parameter')
   }
 
   const queryIssuer = params.get('issuer')

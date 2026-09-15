@@ -2,7 +2,8 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Account, AccountIcon } from '@/types'
-import { parseOtpauthUrl } from '@/utils/otp'
+import { parseOtpauthUrl, OtpauthUrlError } from '@/utils/otp'
+import type { OtpauthParseReason } from '@/utils/otp'
 import { createDefaultIcon } from '@/utils/icons'
 import IconDisplay from '@/components/IconDisplay.vue'
 import BottomSheet from '@/components/BottomSheet.vue'
@@ -22,6 +23,15 @@ const { t } = useI18n()
 const activeTab = ref<'qr' | 'url' | 'manual'>('url')
 const otpauthUrl = ref('')
 const parseError = ref('')
+
+/** Kept as literals so the translations test can see every key. */
+const PARSE_ERROR_KEYS: Record<OtpauthParseReason, string> = {
+  malformed: 'addAccount.parseErrors.malformed',
+  unsupportedProtocol: 'addAccount.parseErrors.unsupportedProtocol',
+  unsupportedType: 'addAccount.parseErrors.unsupportedType',
+  hotpUnsupported: 'addAccount.parseErrors.hotpUnsupported',
+  missingSecret: 'addAccount.parseErrors.missingSecret',
+}
 const manualMode = ref(false)
 
 const manualName = ref('')
@@ -49,7 +59,7 @@ const parsedPreview = computed(() => {
     parseError.value = ''
     return result
   } catch (e) {
-    parseError.value = e instanceof Error ? e.message : 'Invalid URL'
+    parseError.value = e instanceof OtpauthUrlError ? PARSE_ERROR_KEYS[e.reason] : 'addAccount.parseError'
     return null
   }
 })
@@ -301,7 +311,7 @@ function useParsedData() {
           />
         </div>
 
-        <div v-if="parseError" class="parse-error">{{ t('addAccount.parseError') }}</div>
+        <div v-if="parseError" class="parse-error">{{ t(parseError) }}</div>
 
         <div v-if="parsedPreview" class="preview-section">
           <div class="preview-row">

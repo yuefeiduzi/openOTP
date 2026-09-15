@@ -72,7 +72,13 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2)
 }
 
-export function importAndOTPBackup(jsonContent: string): Account[] {
+export interface AndOTPImportResult {
+  accounts: Account[]
+  /** Entries that were skipped, e.g. counter based HOTP accounts. */
+  skipped: number
+}
+
+export function importAndOTPBackup(jsonContent: string): AndOTPImportResult {
   let andotpAccounts: AndOTPAccount[]
 
   try {
@@ -85,9 +91,12 @@ export function importAndOTPBackup(jsonContent: string): Account[] {
     throw new Error('andOTP backup should be a JSON array')
   }
 
-  return andotpAccounts
-    .filter(account => account.type === 'TOTP')
-    .map((account, index) => convertAndOTPAccount(account, index))
+  const supported = andotpAccounts.filter(account => account.type === 'TOTP')
+
+  return {
+    accounts: supported.map((account, index) => convertAndOTPAccount(account, index)),
+    skipped: andotpAccounts.length - supported.length,
+  }
 }
 
 export type { AndOTPAccount }

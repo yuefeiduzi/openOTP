@@ -2,6 +2,20 @@ import { describe, it, expect } from 'vitest'
 import { importAndOTPBackup } from './andotp'
 import type { AndOTPAccount } from './andotp'
 
+const hotpAccount: AndOTPAccount = {
+  secret: 'JBSWY3DPEHPK3PXP',
+  issuer: 'Legacy',
+  label: 'Legacy:counter@example.com',
+  digits: 6,
+  type: 'HOTP',
+  algorithm: 'SHA1',
+  thumbnail: '',
+  last_used: 0,
+  used_frequency: 0,
+  period: 30,
+  tags: [],
+}
+
 describe('importAndOTPBackup', () => {
   const validAccounts: AndOTPAccount[] = [
     {
@@ -60,7 +74,7 @@ describe('importAndOTPBackup', () => {
 
   it('should parse valid andOTP JSON array', () => {
     const json = JSON.stringify(validAccounts)
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result).toHaveLength(4)
   })
 
@@ -70,7 +84,7 @@ describe('importAndOTPBackup', () => {
       { ...validAccounts[0], type: 'HOTP' },
     ]
     const json = JSON.stringify(accounts)
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result).toHaveLength(4)
   })
 
@@ -91,7 +105,7 @@ describe('importAndOTPBackup', () => {
       },
     ]
     const json = JSON.stringify(accounts)
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result[0].issuer).toBe('Ubisoft')
   })
 
@@ -112,7 +126,7 @@ describe('importAndOTPBackup', () => {
       },
     ]
     const json = JSON.stringify(accounts)
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result[0].issuer).toBe('Epic Games')
     expect(result[0].name).toBe('demo@Epic Games')
   })
@@ -134,7 +148,7 @@ describe('importAndOTPBackup', () => {
       },
     ]
     const json = JSON.stringify(accounts)
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result[0].issuer).toBe('Microsoft')
     expect(result[0].name).toBe('user@example.com')
   })
@@ -156,7 +170,7 @@ describe('importAndOTPBackup', () => {
       },
     ]
     const json = JSON.stringify(accounts)
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result[0].issuer).toBe('V2EX')
     expect(result[0].name).toBe('@demo')
   })
@@ -178,7 +192,7 @@ describe('importAndOTPBackup', () => {
       },
     ]
     const json = JSON.stringify(accounts)
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result[0].algorithm).toBe('sha256')
   })
 
@@ -194,7 +208,7 @@ describe('importAndOTPBackup', () => {
 
   it('should set default icon for each account', () => {
     const json = JSON.stringify([validAccounts[0]])
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result[0].icon.type).toBe('initial')
     expect(result[0].icon.bgColor).toBeTruthy()
     expect(result[0].icon.value).toBeTruthy()
@@ -202,7 +216,7 @@ describe('importAndOTPBackup', () => {
 
   it('should set correct order for multiple accounts', () => {
     const json = JSON.stringify(validAccounts.slice(0, 3))
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result[0].order).toBe(0)
     expect(result[1].order).toBe(1)
     expect(result[2].order).toBe(2)
@@ -210,13 +224,28 @@ describe('importAndOTPBackup', () => {
 
   it('should set type to totp for all imported accounts', () => {
     const json = JSON.stringify([validAccounts[0]])
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result[0].type).toBe('totp')
   })
 
   it('should generate unique IDs', () => {
     const json = JSON.stringify([validAccounts[0], validAccounts[1]])
-    const result = importAndOTPBackup(json)
+    const { accounts: result } = importAndOTPBackup(json)
     expect(result[0].id).not.toBe(result[1].id)
+  })
+  it('should report skipped entries instead of dropping them silently', () => {
+    const json = JSON.stringify([validAccounts[0], hotpAccount])
+    const { accounts, skipped } = importAndOTPBackup(json)
+
+    expect(accounts).toHaveLength(1)
+    expect(accounts[0].name).toBe('user@example.com')
+    expect(skipped).toBe(1)
+  })
+
+  it('should report nothing skipped for a pure totp backup', () => {
+    const { accounts, skipped } = importAndOTPBackup(JSON.stringify(validAccounts))
+
+    expect(accounts).toHaveLength(validAccounts.length)
+    expect(skipped).toBe(0)
   })
 })
