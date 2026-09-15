@@ -11,6 +11,8 @@ export default {
     title: 'OpenOTP',
     totp: 'TOTP',
     noAccounts: 'No {type} accounts',
+    searchPlaceholder: 'Search accounts or sites',
+    noSearchResults: 'No matching accounts',
     addFirstAccount: 'Add your first account',
     copied: 'Copied',
     sameIssuerMore: 'Show {count} more account(s) for this site',

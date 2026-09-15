@@ -24,6 +24,19 @@ const accounts = computed(() =>
     .sort((a, b) => a.order - b.order)
 )
 
+const searchQuery = ref('')
+
+/** Searching switches the list from grouped to a flat list of matches. */
+const isSearching = computed(() => searchQuery.value.trim().length > 0)
+
+const searchResults = computed(() => {
+  const needle = searchQuery.value.trim().toLowerCase()
+  return accounts.value.filter(account =>
+    (account.name || '').toLowerCase().includes(needle) ||
+    (account.issuer || '').toLowerCase().includes(needle),
+  )
+})
+
 interface AccountGroup {
   key: string
   issuer: string
@@ -150,7 +163,30 @@ async function handleCopy(code: string) {
         {{ t('home.addFirstAccount') }}
       </button>
     </div>
-    <template v-for="group in groups" :key="group.key">
+    <input
+      v-if="accounts.length"
+      v-model="searchQuery"
+      class="search-input"
+      type="search"
+      :placeholder="t('home.searchPlaceholder')"
+      :aria-label="t('home.searchPlaceholder')"
+    />
+
+    <template v-if="isSearching">
+      <AccountCard
+        v-for="account in searchResults"
+        :key="account.id"
+        :account="account"
+        :copy-on-tap="settingsStore.settings.autoCopy"
+        show-account-name
+        @copy="handleCopy"
+        @delete="emit('delete', account)"
+        @edit="emit('edit', account)"
+      />
+      <p v-if="!searchResults.length" class="no-results">{{ t('home.noSearchResults') }}</p>
+    </template>
+
+    <template v-for="group in groups" v-else :key="group.key">
       <AccountCard
         :account="group.accounts[0]"
         :copy-on-tap="settingsStore.settings.autoCopy"
@@ -217,6 +253,31 @@ async function handleCopy(code: string) {
 
 .account-code-list :deep(.account-card[data-drop-after]) {
   box-shadow: 0 2px 0 0 var(--accent);
+}
+
+.search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.no-results {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .empty {

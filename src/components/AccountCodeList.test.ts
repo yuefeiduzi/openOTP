@@ -188,4 +188,84 @@ describe('AccountCodeList drag reorder', () => {
 
     expect(spy).not.toHaveBeenCalled()
   })
+
+})
+
+describe('AccountCodeList search', () => {
+  async function mountSearchable() {
+    const accounts = useAccountStore()
+    const settings = useSettingsStore()
+    settings.updateSettings({ autoCopy: true })
+    accounts.accounts = [
+      makeAccount({ id: 'a', order: 0, name: 'alice@example.com', issuer: 'GitHub' }),
+      makeAccount({ id: 'b', order: 1, name: 'bob@example.com', issuer: 'GitLab' }),
+      makeAccount({ id: 'c', order: 2, name: 'carol@example.com', issuer: 'GitHub' }),
+    ]
+    const wrapper = mount(AccountCodeList)
+    await flushPromises()
+    return wrapper
+  }
+
+  it('should filter by account name', async () => {
+    const wrapper = await mountSearchable()
+
+    await wrapper.find('.search-input').setValue('bob')
+    await flushPromises()
+
+    const cards = wrapper.findAllComponents({ name: 'AccountCard' })
+    expect(cards).toHaveLength(1)
+    expect(cards[0].props('account').name).toBe('bob@example.com')
+    // The card shows the account name while searching, or the match would be
+    // invisible in a list that otherwise only labels accounts by issuer.
+    expect(wrapper.find('.account-name').text()).toBe('bob@example.com')
+  })
+
+  it('should filter by issuer case insensitively', async () => {
+    const wrapper = await mountSearchable()
+
+    await wrapper.find('.search-input').setValue('gitlab')
+    await flushPromises()
+
+    expect(wrapper.findAll('.account-card')).toHaveLength(1)
+  })
+
+  it('should show every match and no group toggles while searching', async () => {
+    const wrapper = await mountSearchable()
+
+    await wrapper.find('.search-input').setValue('github')
+    await flushPromises()
+
+    expect(wrapper.findAll('.account-card')).toHaveLength(2)
+    expect(wrapper.find('.group-toggle').exists()).toBe(false)
+  })
+
+  it('should say so when nothing matches', async () => {
+    const wrapper = await mountSearchable()
+
+    await wrapper.find('.search-input').setValue('nope')
+    await flushPromises()
+
+    expect(wrapper.findAll('.account-card')).toHaveLength(0)
+    expect(wrapper.find('.no-results').text()).toBe('home.noSearchResults')
+  })
+
+  it('should return to the grouped list when the query is cleared', async () => {
+    const wrapper = await mountSearchable()
+    await wrapper.find('.search-input').setValue('bob')
+    await flushPromises()
+
+    await wrapper.find('.search-input').setValue('')
+    await flushPromises()
+
+    // Grouped again: GitHub has two accounts, so a toggle is rendered.
+    expect(wrapper.find('.group-toggle').exists()).toBe(true)
+  })
+
+  it('should keep working without any accounts', async () => {
+    const wrapper = mount(AccountCodeList)
+    await flushPromises()
+
+    expect(wrapper.find('.search-input').exists()).toBe(false)
+    expect(wrapper.find('.empty').exists()).toBe(true)
+  })
 })

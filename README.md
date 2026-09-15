@@ -48,6 +48,10 @@ pnpm tauri:build
 pnpm test
 ```
 
+## 发布
+
+版本历史见 [CHANGELOG.md](CHANGELOG.md)；签名、公证与自动更新尚未配置，落地步骤见 [docs/RELEASE.md](docs/RELEASE.md)。
+
 ## 项目结构
 
 ```

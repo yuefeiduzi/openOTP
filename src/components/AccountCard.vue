@@ -11,6 +11,12 @@ const props = defineProps<{
    * when false only the copy button copies, so a tap cannot copy by accident.
    */
   copyOnTap?: boolean
+  /**
+   * Show the account name under the issuer. Cards normally show only the
+   * issuer because same-issuer accounts are grouped, but a search result has to
+   * be distinguishable from its siblings.
+   */
+  showAccountName?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -148,6 +154,9 @@ onUnmounted(() => {
       <div class="code-area" @click.stop="handleCodeTap">
         <div class="code-text">{{ currentCode }}</div>
         <div class="issuer-name">{{ account.issuer }}</div>
+        <div v-if="showAccountName && account.name && account.name !== account.issuer" class="account-name">
+          {{ account.name }}
+        </div>
       </div>
 
       <button v-if="copyOnTap === false" class="copy-btn" @click.stop="handleCopy">
@@ -222,6 +231,15 @@ onUnmounted(() => {
   letter-spacing: 1px;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+}
+
+.account-name {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .issuer-name {
