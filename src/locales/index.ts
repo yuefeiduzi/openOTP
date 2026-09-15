@@ -38,10 +38,6 @@ export function setLocale(locale: 'auto' | 'zh-CN' | 'en-US'): void {
   localStorage.setItem('locale', locale)
 }
 
-export function getCurrentLocale(): string {
-  return i18n.global.locale.value
-}
-
 export function getSavedLocalePreference(): 'auto' | 'zh-CN' | 'en-US' {
   return (localStorage.getItem('locale') as 'auto' | 'zh-CN' | 'en-US') || 'auto'
 }

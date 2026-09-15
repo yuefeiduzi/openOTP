@@ -7,7 +7,9 @@ vi.mock('vue-i18n', () => ({
   useI18n: () => ({ t: (key: string) => key }),
 }))
 
-vi.mock('@/utils/otp', () => ({
+// Keep the real helpers and stub only what talks to the clock.
+vi.mock('@/utils/otp', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/utils/otp')>()),
   generateTOTP: vi.fn().mockResolvedValue('123456'),
   getTOTPRemainingSeconds: vi.fn().mockReturnValue(20),
 }))

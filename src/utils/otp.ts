@@ -8,7 +8,7 @@ const ALGORITHM_MAP: Record<string, string> = {
   sha512: 'SHA-512',
 }
 
-export function base32ToBuffer(base32: string): ArrayBuffer {
+function base32ToBuffer(base32: string): ArrayBuffer {
   const cleaned = base32.replace(/=+$/, '').replace(/\s/g, '').toUpperCase()
 
   const bits: number[] = []
@@ -67,7 +67,7 @@ function dynamicTruncation(hmacResult: ArrayBuffer, digits: number): string {
   return otp.toString().padStart(digits, '0')
 }
 
-export async function generateHOTP(
+async function generateHOTP(
   secret: string,
   counter: number,
   algorithm: 'sha1' | 'sha256' | 'sha512' = 'sha1',

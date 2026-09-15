@@ -37,7 +37,6 @@ const currentPassword = ref('')
 const newPassword = ref('')
 const confirmNewPassword = ref('')
 const passwordError = ref('')
-const passwordSuccess = ref('')
 const passwordHash = ref('')
 
 const showSetPasswordModal = ref(false)
@@ -46,7 +45,6 @@ const setConfirmPassword = ref('')
 const setPasswordHint = ref('')
 const setEnableBiometric = ref(true)
 const setPasswordError = ref('')
-const setPasswordSuccess = ref('')
 
 const showHintModal = ref(false)
 const hintValue = ref('')
@@ -153,7 +151,6 @@ function openChangePassword() {
   newPassword.value = ''
   confirmNewPassword.value = ''
   passwordError.value = ''
-  passwordSuccess.value = ''
 }
 
 function closePasswordModal() {
@@ -162,7 +159,6 @@ function closePasswordModal() {
 
 async function verifyCurrentPassword() {
   passwordError.value = ''
-  passwordSuccess.value = ''
 
   if (currentPassword.value.length !== 6) {
     passwordError.value = t('errors.changePasswordVerify')
@@ -205,7 +201,6 @@ async function verifyCurrentPassword() {
 
 async function submitNewPassword() {
   passwordError.value = ''
-  passwordSuccess.value = ''
 
   if (newPassword.value.length !== 6) {
     passwordError.value = t('errors.passwordLength')
@@ -233,7 +228,6 @@ function openSetPassword() {
   setPasswordHint.value = settingsStore.settings.passwordHint
   setEnableBiometric.value = biometricAvailable.value
   setPasswordError.value = ''
-  setPasswordSuccess.value = ''
   showSetPasswordModal.value = true
 }
 
@@ -243,7 +237,6 @@ function closeSetPasswordModal() {
 
 async function submitSetPassword() {
   setPasswordError.value = ''
-  setPasswordSuccess.value = ''
 
   if (setNewPassword.value.length !== 6) {
     setPasswordError.value = t('errors.passwordLength')
@@ -834,7 +827,6 @@ async function exportDebugLogs() {
             <PinInput v-model="confirmNewPassword" />
           </div>
           <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
-          <p v-if="passwordSuccess" class="form-success">{{ passwordSuccess }}</p>
           <div class="modal-actions">
             <button class="btn btn-secondary" @click="closePasswordModal">{{ t('common.cancel') }}</button>
             <button class="btn btn-primary" @click="submitNewPassword">{{ t('common.save') }}</button>
@@ -871,7 +863,6 @@ async function exportDebugLogs() {
           </label>
         </div>
         <p v-if="setPasswordError" class="form-error">{{ setPasswordError }}</p>
-        <p v-if="setPasswordSuccess" class="form-success">{{ setPasswordSuccess }}</p>
         <div class="modal-actions">
           <button class="btn btn-secondary" @click="closeSetPasswordModal">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" @click="submitSetPassword">{{ t('common.save') }}</button>

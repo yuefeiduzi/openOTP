@@ -78,10 +78,6 @@ export function isDebugEnabled(): boolean {
   return enabled
 }
 
-export function getLogs(): LogEntry[] {
-  return [...logs]
-}
-
 export function exportLogsText(): string {
   return logs
     .map((entry) => `[${entry.time}] [${entry.level.toUpperCase()}] ${entry.args}`)

@@ -1,14 +1,10 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { invoke } from '@tauri-apps/api/core'
 import type { Account } from '@/types'
 
 export const useAccountStore = defineStore('accounts', () => {
   const accounts = ref<Account[]>([])
-
-  const totpAccounts = computed(() =>
-    accounts.value.filter(a => a.type === 'totp').sort((a, b) => a.order - b.order)
-  )
 
   async function loadAccounts(): Promise<void> {
     try {
@@ -103,7 +99,6 @@ export const useAccountStore = defineStore('accounts', () => {
 
   return {
     accounts,
-    totpAccounts,
     loadAccounts,
     addAccount,
     removeAccount,

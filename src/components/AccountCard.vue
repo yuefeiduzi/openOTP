@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import type { Account } from '@/types'
-import { generateTOTP, getTOTPRemainingSeconds } from '@/utils/otp'
+import { formatCode, generateTOTP, getTOTPRemainingSeconds } from '@/utils/otp'
 import IconDisplay from '@/components/IconDisplay.vue'
 
 const props = defineProps<{
@@ -26,17 +26,6 @@ let timerInterval: ReturnType<typeof setInterval> | null = null
 let pressTimer: ReturnType<typeof setTimeout> | null = null
 let longPressFired = false
 
-function getCodeSpacing(code: string): string {
-  if (code.length <= 6) {
-    const half = Math.floor(code.length / 2)
-    return code.substring(0, half) + ' ' + code.substring(half)
-  }
-  if (code.length === 7) {
-    return code[0] + ' ' + code.substring(1, 4) + ' ' + code.substring(4)
-  }
-  return code.substring(0, 3) + ' ' + code.substring(3, 6) + ' ' + code.substring(6)
-}
-
 async function updateTOTP() {
   try {
     const code = await generateTOTP(
@@ -45,7 +34,7 @@ async function updateTOTP() {
       props.account.digits || 6,
       props.account.period || 30,
     )
-    currentCode.value = getCodeSpacing(code)
+    currentCode.value = formatCode(code)
     const remaining = getTOTPRemainingSeconds(props.account.period || 30)
     const period = props.account.period || 30
     progress.value = (remaining / period) * 100
