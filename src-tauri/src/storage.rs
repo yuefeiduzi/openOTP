@@ -393,15 +393,17 @@ mod tests {
         let settings = load_settings_from(&dir);
 
         assert!(!settings.menu_bar_only);
-        assert!(dir.join("settings.json").exists() == false);
+        assert!(!dir.join("settings.json").exists());
     }
 
     #[test]
     fn settings_round_trip() {
         let dir = temp_dir("settings");
-        let mut settings = AppSettings::default();
-        settings.menu_bar_only = true;
-        settings.language = "zh-CN".into();
+        let settings = AppSettings {
+            menu_bar_only: true,
+            language: "zh-CN".into(),
+            ..AppSettings::default()
+        };
 
         write_private(
             &dir.join("settings.json"),
