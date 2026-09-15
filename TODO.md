@@ -1,6 +1,8 @@
 # TODO
 
 > **2026-09-15 全量审计**：`pnpm build` 通过，`pnpm test` 48/48 通过，工作区干净。
+> **进度**：P0 全部完成（P0-5/P0-6 按决策重新设计后完成）；P1 全部完成；P2/P3 待办。
+> 当前：前端 64 测试 / 后端 36 测试 / `cargo clippy` 零告警。
 > 下列为审计出的未完成项，按优先级排列，均带 `文件:行号` 证据。
 > 已解决的历史条目压缩保留在文末。
 
@@ -28,19 +30,22 @@
 ### ~~P0-4 capabilities 未覆盖 popover 窗口~~ ✅ 2026-09-15
 - `windows: ["main", "popover"]`，已验证写入 `target/debug/build/*/out/capabilities.json`
 
-### P0-5 "AES-256-GCM 加密存储" 与实现不符 【文档/安全】
-- `README.md:9`、`docs/STRUCTURE.md` 声称加密存储；实际 AES-GCM 只用于备份导出
-- `src-tauri/src/storage.rs:24,88-97` `secret` 明文写入 `data.json`；解锁仅是前端 UI 门闩（`stores/settings.ts` 的 `isLocked`）
-- 主密码为 6 位数字 PIN（`Unlock.vue:53`）
-- **需产品决策**：① 改文档（"备份加密，本地数据依赖磁盘加密"）或 ② 真做 `data.json` 加密
+### ~~P0-5 备份格式与加密口径~~ ✅ 2026-09-15（决策：改设计 + 改口径）
+- 决策：备份改为 **标准 zip 容器**（`manifest.json` + `accounts.json` + `icons/<id>.<ext>`），密码即 zip 密码，也支持不加密
+- 已实现：AES-256（WinZip AE-2）；图标作为真实图片文件存入 zip；`inspect_backup` 先读 manifest 再决定要不要问密码；导出去掉「使用应用密码」选项；密码输入从 6 位 PIN 改为文本（最低 8 位）
+- ❗ **密码强度取舍**：zip 的 AES 用 PBKDF2-HMAC-SHA1 1000 次迭代（规范固定），远弱于旧方案，所以强制长密码；已在导出面板与文档说明
+- 已同步修正文档：本地 `data.json` 为**明文**（依赖系统磁盘加密），不再声称“加密存储”
+- [ ] **未决**：是否需要真正的本地数据加密（涉及解锁流程重构 + 现有数据迁移 + 忘记密码即丢数据）
 
-### P0-6 平台支持是"纸面跨平台" 【文档/后端】
-- 托盘 + 弹窗创建全在 `#[cfg(target_os = "macos")]` 内（`src-tauri/src/lib.rs:170-299`），关闭隐藏同理（`:304-311`）→ **Windows 无托盘、点关闭即退出**，而 README 宣称跨平台
-- `set_menu_bar_only` 非 macOS 静默返回 `Ok`（`lib.rs:122-135`）
-- `src-tauri/gen/` 仅 schemas → **移动端工程从未 init，无法构建**
-- Android 生物识别三处不一致：`Cargo.toml:37` 声明依赖 → `lib.rs:159-161` 从未 `.plugin()` 注册 → `biometric.rs:35-37` 硬编码返回"可用" → `:89-93` 认证必抛 `"Android biometric not yet integrated"`
-- iOS 无任何分支，`apple-localauthentication` 未在 ios target 声明
-- **需产品决策**：Windows 托盘做/不做；Android 生物识别接/砍（砍 = 可用性返回 false + 删依赖）
+### ~~P0-6 平台支持~~ ✅ 2026-09-15（决策：桌面两端体验一致）
+- 托盘/弹窗/关闭即隐藏从 `#[cfg(target_os = "macos")]` 改为 `#[cfg(desktop)]`；仅激活策略与单色模板图标保留为 macOS 专属
+- Windows/Linux 用彩色应用图标（预转 raw RGBA，避免 PNG 解码依赖）
+- 弹窗定位：托盘在屏幕下半区（Windows）向上弹，上半区（macOS 菜单栏）向下弹，并按显示器边界钳制（含多显示器、小于面板的屏幕）→ 纯函数 + 6 个单测
+- 生物识别策略：macOS 支持；**Android 原本谎报可用（开关能开、认证必失败），现改为诚实不可用**；Windows/Linux/iOS 用 PIN
+- UI 文案改为平台中立（托盘 / 菜单栏模式），入口在桌面端均可见；移除无用命令 `is_macos`
+- README / STRUCTURE.md 改为真实平台支持表（不再声称移动端支持）
+- [ ] **待办：Windows 实机验证**（本机无法交叉编译：需下载 macOS 无关的依赖图，网络受限；已用 cfg 翻转冒烟测试验证非 macOS 分支可通过类型检查）
+- [ ] **待办：Android 工程 init + 指纹接入**（本机无 Android SDK/NDK；需 `tauri android init` + 注册 `tauri-plugin-biometric` + 权限声明，并在 `biometric.rs` 的 android 分支调用其 Rust API）
 
 ---
 
@@ -83,7 +88,7 @@
 - [ ] **收敛图标实现**：`AccountCard.vue:115-130` 自带 if/else switch vs `icons.ts:56-101` 的 provider 注册表（`getIconProvider` 零调用）→ 两套并行实现，必须先合一
 - [ ] **拖拽排序恢复**：24f05b3 实现过，9f86e0f 重构 AccountCodeList 时丢失；`stores/accounts.ts:60-68` `reorderAccounts` 成死代码
 - [ ] **长按态复位**：`AccountCard.vue:76-84` `isLongPress` 置 true 后 `cancelLongPress()` 只清 timer → 卡片永久停在 `pressing` 缩放态（`:107`）
-- [ ] **i18n 收口**：7 处硬编码「取消」（`Settings.vue:667,700,715,732,749,786,814`）+ `BottomSheet.vue:32` 默认值 + `Settings.vue:432` `showToast('已复制')` + `EmojiPicker.vue:36-85` 分类/占位符/空态；反向：`common.edit`、`home.totp`、`settings.sourceCode`、`setup.completeSetup`、`addAccount.type` 等定义了无功能
+- [ ] **i18n 收口**：死键 `settings.verifyPassword`（导出改用应用密码的分支已删除）；7 处硬编码「取消」（`Settings.vue:667,700,715,732,749,786,814`）+ `BottomSheet.vue:32` 默认值 + `Settings.vue:432` `showToast('已复制')` + `EmojiPicker.vue:36-85` 分类/占位符/空态；反向：`common.edit`、`home.totp`、`settings.sourceCode`、`setup.completeSetup`、`addAccount.type` 等定义了无功能
 - [ ] **死 UI**：`Settings.vue:38,47` `passwordSuccess`/`setPasswordSuccess` 从未写入非空，但 `:747`/`:784` 仍渲染 `v-if` 成功提示；`importFilePath`（`:66`）只写不读
 - [ ] **HOTP 未实现**：`otp.ts:109` 允许解析 `hotp` 但结果固定 `type:'totp'`；`Account.counter` 只写 0 从不递增（`types/index.ts:19`）
 - [ ] **andOTP thumbnail 未映射**：`utils/andotp.ts:45`
