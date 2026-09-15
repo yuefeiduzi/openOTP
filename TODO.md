@@ -80,30 +80,33 @@
 
 ---
 
-## P2 — 接线：代码写完了但没有入口
+## P2 — 接线：代码写完了但没有入口 ✅ 2026-09-15
 
-- [ ] **剪贴板链路**：`utils/clipboard.ts` 4 个导出零调用（`AccountCodeList.vue:58` 与 `Settings.vue:431` 直调 `navigator.clipboard`）→ `autoCopy` / `clipboardClearTime` 永不生效
-- [ ] **设置页缺整块 UI**：`autoCopy`、`clipboardClearTime`(30s/60s/永不)、`lockTimeout`、`lockApp` —— locale 文案已就绪（`zh-CN.ts:71-84`），store 默认值已就绪，仅缺 UI
-- [ ] **IconPicker 接线**：`src/components/IconPicker.vue` 全项目零引用（仅 `components/index.ts:9` 导出），预设 tab + 图片上传不可达，`assets/preset-icons/` 12 个 SVG 无入口
-- [ ] **收敛图标实现**：`AccountCard.vue:115-130` 自带 if/else switch vs `icons.ts:56-101` 的 provider 注册表（`getIconProvider` 零调用）→ 两套并行实现，必须先合一
-- [ ] **拖拽排序恢复**：24f05b3 实现过，9f86e0f 重构 AccountCodeList 时丢失；`stores/accounts.ts:60-68` `reorderAccounts` 成死代码
-- [ ] **长按态复位**：`AccountCard.vue:76-84` `isLongPress` 置 true 后 `cancelLongPress()` 只清 timer → 卡片永久停在 `pressing` 缩放态（`:107`）
-- [ ] **i18n 收口**：死键 `settings.verifyPassword`（导出改用应用密码的分支已删除）；7 处硬编码「取消」（`Settings.vue:667,700,715,732,749,786,814`）+ `BottomSheet.vue:32` 默认值 + `Settings.vue:432` `showToast('已复制')` + `EmojiPicker.vue:36-85` 分类/占位符/空态；反向：`common.edit`、`home.totp`、`settings.sourceCode`、`setup.completeSetup`、`addAccount.type` 等定义了无功能
-- [ ] **死 UI**：`Settings.vue:38,47` `passwordSuccess`/`setPasswordSuccess` 从未写入非空，但 `:747`/`:784` 仍渲染 `v-if` 成功提示；`importFilePath`（`:66`）只写不读
-- [ ] **HOTP 未实现**：`otp.ts:109` 允许解析 `hotp` 但结果固定 `type:'totp'`；`Account.counter` 只写 0 从不递增（`types/index.ts:19`）
-- [ ] **andOTP thumbnail 未映射**：`utils/andotp.ts:45`
-- [ ] **死代码清理**：前端 `formatCode`、`getIconDisplay`、`isEmojiIcon`、`generateId`、`randomHex`、`getLogs`、`totpAccounts`、`components/index.ts` barrel（后端 `delete_account` 已接入，不再是死代码）
+- [x] **剪贴板链路**：`copyToClipboard` / `scheduleClearClipboard` 接入列表；`autoCopy` 语义定为「点击卡片即复制」（关闭时只留复制按钮），`clipboardClearTime`（30s / 60s / 不自动清除，0=不清除）
+- [x] **设置页缺整块 UI**：`autoCopy`、`clipboardClearTime`、`lockTimeout`（立即 / 1 分钟 / 5 分钟）、`lockApp`（立即锁定）全部补齐；顺带把后端默认锁定时间 60 与前端 1 对齐
+- [x] **IconPicker 接线**：AddAccount 与 EditAccount 都通过 BottomSheet 打开选择器；预设图标与图片上传首次可用
+- [x] **收敛图标实现**：`renderIcon()` 成为唯一入口，新的 `IconDisplay` 组件供卡片/选择器/编辑器共用；未知预设名降级为首字母而非坏图；首字母改为渲染时推导
+- [x] **拖拽排序恢复**：卡片可拖拽，按上下半区决定插入位置，落点按完整 order 序列计算（折叠分组下同样正确）
+- [x] **长按态复位**：`isLongPress` 在抬起/移出时复位；长按后的那次点击不再触发复制或编辑
+- [x] **i18n 收口**：7 处「取消」+ BottomSheet 默认值 + 图标选择器标签 + 剪贴板提示 + 密码提示弹窗全部走 `t()`；删除 12 个死键；修正仓库地址；新增 i18n 测试（键漂移 / 缺失 / 未使用 / 硬编码中文）
+- [x] **死 UI**：两个永不显示的成功提示与相关 ref 已删除
+- [x] **HOTP**：由「接受但当成 TOTP 生成错误验证码」改为**明确拒绝**并给出可翻译原因；andOTP 导入报告跳过数量。真正的 HOTP 支持（计数器手动递增 UI）仍是未决功能，见下
+- [x] **死代码清理**：`emojis.ts`、`EmojiPicker.vue`、`components/index.ts`、`getLogs`、`getCurrentLocale`、`totpAccounts` 删除；`base32ToBuffer`/`generateHOTP` 收回为内部函数；卡片不再自带复制一份的格式化实现
+- [x] **andOTP thumbnail 映射**：按名称匹配预设图标，未知品牌回退首字母
 
----
+### 新增待决
+
+- [ ] **HOTP 真支持**（可选）：目前明确拒绝。若要做，需要 UI 决策：计数器如何在卡片上递增（复制后自动 +1 还是手动「下一个」），以及分组列表如何展示
+- [ ] 锁定语义：`lockApp` 与自动锁定只作用于主窗口，`#/popover` 路由仍绕过解锁守卫（菜单栏模式下点击托盘即可看码）。若希望锁定也覆盖弹窗，需要把守卫扩展到 popover
 
 ## P3 — 工程与发布
 
-- [ ] **storage.rs 可测性重构**：当前每个函数都吃 `AppHandle`，无法单测 → 抽出 `struct Store { dir: PathBuf }`，app 层只做 `app.path() → Store`，测试用 tempdir
-- [ ] **补测试**：前端 `utils/otp.ts`（TOTP 核心）、`utils/crypto.ts`、`stores/accounts.ts` 零覆盖；`icons.test.ts` 只测了应用代码不用的函数。**后端 `src-tauri/` 0 个测试**（crypto / storage / biometric_status 全裸）
+- [x] **storage.rs 可测性重构**：改为「AppHandle → 目录」+ 纯 `*_from(&Path)` 内部函数，测试用临时目录（未抽出独立 `Store` 结构体，但已可完整单测）
+- [x] **补测试**：后端 0 → 36 个（crypto / storage / backup / 命令层 / 弹窗定位）；前端 48 → 128 个（新增 otp 算法含 RFC 6238 向量、clipboard、i18n、accounts store、Settings / EditAccount / AddAccount / AccountCard / AccountCodeList / App 组件测试）
 - [ ] **CI**：无 `.github/`，构建完全手动 → build + vitest + `cargo test` + clippy + fmt check
 - [ ] **App 主图标替换**：仍是旧青黄双环 logo，`docs/app-icon-v2/v3.png` 设计稿未应用（见 `docs/ICON_STATUS.md`）
 - [ ] **发布链路**：无签名/公证（macOS signingIdentity、Windows certificate）、无 updater（`createUpdaterArtifacts` 未开）、无 CHANGELOG
-- [ ] **元数据不一致**：`Cargo.toml:8` repository 与 `Settings.vue:431` 链接均指向 `github.com/openotp/openotp`，实际 remote 为 `github.com:yuefeiduzi/openOTP`
+- [x] **元数据不一致**：`Cargo.toml` 与关于页链接已改为实际仓库地址
 - [ ] **产品功能缺口**：账号列表无搜索/筛选；无摄像头实时扫码（仅本地图片 → jsQR）；无分组管理（仅按 issuer 折叠）
 
 ---
