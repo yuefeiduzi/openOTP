@@ -1,23 +1,30 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import { useSettingsStore } from '@/stores'
+import { useAccountStore, useSettingsStore } from '@/stores'
 import { useTheme } from '@/composables/useTheme'
 import GlobalToast from '@/components/GlobalToast.vue'
 
 useTheme()
 
 const settingsStore = useSettingsStore()
+const accountStore = useAccountStore()
 let hiddenTime: number | null = null
 
 function handleVisibilityChange() {
   if (document.hidden) {
     hiddenTime = Date.now()
-  } else if (hiddenTime && settingsStore.isSetup) {
-    const elapsedMinutes = (Date.now() - hiddenTime) / 60000
-    if (elapsedMinutes >= settingsStore.settings.lockTimeout) {
-      settingsStore.lock()
+  } else {
+    if (hiddenTime && settingsStore.isSetup) {
+      const elapsedMinutes = (Date.now() - hiddenTime) / 60000
+      if (elapsedMinutes >= settingsStore.settings.lockTimeout) {
+        settingsStore.lock()
+      }
+      hiddenTime = null
     }
-    hiddenTime = null
+
+    // Accounts may have been added, edited or removed from the menu bar
+    // popover, which is a separate webview with its own store.
+    accountStore.loadAccounts()
   }
 }
 

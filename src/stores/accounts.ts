@@ -45,7 +45,9 @@ export const useAccountStore = defineStore('accounts', () => {
     const index = accounts.value.findIndex(a => a.id === id)
     if (index !== -1) {
       accounts.value.splice(index, 1)
-      persistAccounts()
+      // save_account only upserts, so deletion needs its own command to
+      // actually drop the entry from data.json.
+      invoke('delete_account', { id }).catch(() => {})
     }
   }
 

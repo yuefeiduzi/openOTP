@@ -1,15 +1,46 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
+import { useAccountEditor } from '@/composables/useAccountEditor'
 import AccountCodeList from '@/components/AccountCodeList.vue'
+import AddAccount from '@/components/AddAccount.vue'
+import DeleteConfirm from '@/components/DeleteConfirm.vue'
+import EditAccount from '@/components/EditAccount.vue'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
 
+const {
+  showAdd,
+  showDelete,
+  showEdit,
+  deletingAccount,
+  editingAccount,
+  isModalOpen,
+  openAdd,
+  closeAdd,
+  handleAddAccount,
+  handleEdit,
+  closeEdit,
+  handleEditSave,
+  handleDelete,
+  closeDelete,
+  confirmDelete,
+} = useAccountEditor()
+
+// Modals that open a native file dialog move focus away from the popover, and the
+// Rust side hides the window on focus loss — pin the popover while one is open.
+watch(isModalOpen, (open) => {
+  invoke('set_popover_pinned', { pinned: open }).catch(() => {})
+})
+
 onMounted(() => document.documentElement.classList.add('popover-route'))
-onUnmounted(() => document.documentElement.classList.remove('popover-route'))
+onUnmounted(() => {
+  document.documentElement.classList.remove('popover-route')
+  invoke('set_popover_pinned', { pinned: false }).catch(() => {})
+})
 
 async function openMainWindow() {
   await invoke('show_main_window')
@@ -28,6 +59,19 @@ async function returnToAppMode() {
     <header class="popover-header">
       <span class="popover-title">OpenOTP</span>
       <div class="popover-actions">
+        <button class="popover-icon-btn" :title="t('addAccount.title')" @click="openAdd">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
         <button
           class="return-btn"
           :title="t('popover.returnToApp')"
@@ -53,7 +97,31 @@ async function returnToAppMode() {
         </button>
       </div>
     </header>
-    <AccountCodeList />
+    <AccountCodeList
+      @delete="handleDelete"
+      @edit="handleEdit"
+      @add="openAdd"
+    />
+
+    <AddAccount
+      :visible="showAdd"
+      @close="closeAdd"
+      @add="handleAddAccount"
+    />
+
+    <DeleteConfirm
+      :visible="showDelete"
+      :account-name="deletingAccount?.issuer || deletingAccount?.name || ''"
+      @close="closeDelete"
+      @confirm="confirmDelete"
+    />
+
+    <EditAccount
+      :visible="showEdit"
+      :account="editingAccount"
+      @close="closeEdit"
+      @save="handleEditSave"
+    />
   </div>
 </template>
 

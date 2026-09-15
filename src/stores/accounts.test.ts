@@ -7,6 +7,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 }))
 
 import { useAccountStore } from './accounts'
+import { invoke } from '@tauri-apps/api/core'
 
 function makeAccount(overrides: Partial<Account> = {}): Account {
   return {
@@ -29,6 +30,28 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
 
 beforeEach(() => {
   setActivePinia(createPinia())
+  vi.clearAllMocks()
+})
+
+describe('removeAccount', () => {
+  it('should call the delete command so the removal is persisted', () => {
+    const store = useAccountStore()
+    store.accounts = [makeAccount({ id: 'gone' }), makeAccount({ id: 'kept' })]
+
+    store.removeAccount('gone')
+
+    expect(store.accounts.map(a => a.id)).toEqual(['kept'])
+    expect(invoke).toHaveBeenCalledWith('delete_account', { id: 'gone' })
+  })
+
+  it('should not call the delete command for an unknown id', () => {
+    const store = useAccountStore()
+    store.accounts = [makeAccount({ id: 'kept' })]
+
+    store.removeAccount('missing')
+
+    expect(invoke).not.toHaveBeenCalled()
+  })
 })
 
 describe('importAccounts', () => {

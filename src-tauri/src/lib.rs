@@ -4,6 +4,7 @@ mod biometric;
 mod biometric_status;
 
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::AppHandle;
 use tauri::LogicalPosition;
 use tauri::Manager;
@@ -118,6 +119,18 @@ fn is_macos() -> bool {
     cfg!(target_os = "macos")
 }
 
+/// While pinned the popover ignores focus loss, so opening a native file dialog
+/// from one of its modals no longer hides the window underneath the dialog.
+#[derive(Default)]
+struct PopoverState {
+    pinned: AtomicBool,
+}
+
+#[tauri::command]
+fn set_popover_pinned(state: tauri::State<PopoverState>, pinned: bool) {
+    state.pinned.store(pinned, Ordering::Relaxed);
+}
+
 #[tauri::command]
 fn set_menu_bar_only(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -156,6 +169,7 @@ fn hide_main_window(app: tauri::AppHandle) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(PopoverState::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
@@ -269,6 +283,7 @@ pub fn run() {
                                 // NOTE: runtime set_position on this window is unreliable on
                                 // macOS 26 (the window ends up offset); the position set at
                                 // creation time sticks, so only show/hide here.
+                                app.state::<PopoverState>().pinned.store(false, Ordering::Relaxed);
                                 let _ = popover.show();
                                 let _ = app.show();
                                 let _ = popover.set_focus();
@@ -288,6 +303,7 @@ pub fn run() {
                                 .build()
                             {
                                 let _ = popover.eval("window.location.hash = '#/popover'");
+                                app.state::<PopoverState>().pinned.store(false, Ordering::Relaxed);
                                 let _ = popover.show();
                                 let _ = app.show();
                                 let _ = popover.set_focus();
@@ -312,8 +328,12 @@ pub fn run() {
             if window.label() == "popover" {
                 if let tauri::WindowEvent::Focused(false) = event {
                     let w = window.clone();
+                    let app = window.app_handle().clone();
                     std::thread::spawn(move || {
                         std::thread::sleep(std::time::Duration::from_millis(200));
+                        if app.state::<PopoverState>().pinned.load(Ordering::Relaxed) {
+                            return;
+                        }
                         if w.is_visible().unwrap_or(false) && !w.is_focused().unwrap_or(false) {
                             let _ = w.hide();
                         }
@@ -340,6 +360,7 @@ pub fn run() {
             save_password_hash,
             load_password_hash,
             is_macos,
+            set_popover_pinned,
             show_main_window,
             hide_main_window,
             set_menu_bar_only,

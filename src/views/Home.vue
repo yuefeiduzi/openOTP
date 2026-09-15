@@ -4,8 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 import { useAccountStore, useSettingsStore } from '@/stores'
-import type { Account } from '@/types'
-import { getRandomBgColor } from '@/utils/icons'
+import { useAccountEditor } from '@/composables/useAccountEditor'
 import AccountCodeList from '@/components/AccountCodeList.vue'
 import AddAccount from '@/components/AddAccount.vue'
 import DeleteConfirm from '@/components/DeleteConfirm.vue'
@@ -15,12 +14,24 @@ const router = useRouter()
 const accountStore = useAccountStore()
 const settingsStore = useSettingsStore()
 const { t } = useI18n()
-const showAdd = ref(false)
 const isMac = ref(false)
-const showDelete = ref(false)
-const showEdit = ref(false)
-const deletingAccount = ref<Account | null>(null)
-const editingAccount = ref<Account | null>(null)
+
+const {
+  showAdd,
+  showDelete,
+  showEdit,
+  deletingAccount,
+  editingAccount,
+  openAdd,
+  closeAdd,
+  handleAddAccount,
+  handleEdit,
+  closeEdit,
+  handleEditSave,
+  handleDelete,
+  closeDelete,
+  confirmDelete,
+} = useAccountEditor()
 
 onMounted(async () => {
   await accountStore.loadAccounts()
@@ -37,54 +48,6 @@ async function enterMenuBarMode() {
 
 function goToSettings() {
   router.push('/settings')
-}
-
-function handleDelete(account: Account) {
-  deletingAccount.value = account
-  showDelete.value = true
-}
-
-function confirmDelete() {
-  if (deletingAccount.value) {
-    accountStore.removeAccount(deletingAccount.value.id)
-  }
-  showDelete.value = false
-  deletingAccount.value = null
-}
-
-function handleEdit(account: Account) {
-  editingAccount.value = account
-  showEdit.value = true
-}
-
-function handleAddAccount(data: Partial<Account>) {
-  const displayName = data.name || data.issuer || ''
-  const initial = displayName ? displayName.charAt(0).toUpperCase() : '?'
-
-  const newAccount: Omit<Account, 'order'> = {
-    id: '',
-    name: data.name || '',
-    issuer: data.issuer || '',
-    icon: data.icon || { type: 'initial', value: initial, bgColor: getRandomBgColor() },
-    type: 'totp',
-    secret: data.secret || '',
-    algorithm: data.algorithm || 'sha1',
-    digits: data.digits || 6,
-    period: data.period || 30,
-    counter: 0,
-    notes: '',
-    createdAt: Date.now(),
-  }
-  accountStore.addAccount(newAccount)
-  showAdd.value = false
-}
-
-function handleEditSave(data: Partial<Account>) {
-  if (editingAccount.value) {
-    accountStore.updateAccount(editingAccount.value.id, data)
-  }
-  showEdit.value = false
-  editingAccount.value = null
 }
 </script>
 
@@ -134,28 +97,28 @@ function handleEditSave(data: Partial<Account>) {
     <AccountCodeList
       @delete="handleDelete"
       @edit="handleEdit"
-      @add="showAdd = true"
+      @add="openAdd"
     />
 
-    <button class="add-btn" @click="showAdd = true">+</button>
+    <button class="add-btn" @click="openAdd">+</button>
 
     <AddAccount
       :visible="showAdd"
-      @close="showAdd = false"
+      @close="closeAdd"
       @add="handleAddAccount"
     />
 
     <DeleteConfirm
       :visible="showDelete"
       :account-name="deletingAccount?.issuer || deletingAccount?.name || ''"
-      @close="showDelete = false"
+      @close="closeDelete"
       @confirm="confirmDelete"
     />
 
     <EditAccount
       :visible="showEdit"
       :account="editingAccount"
-      @close="showEdit = false; editingAccount = null"
+      @close="closeEdit"
       @save="handleEditSave"
     />
   </div>
