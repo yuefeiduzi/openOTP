@@ -96,18 +96,21 @@
 
 ### 新增待决
 
-- [ ] **HOTP 真支持**（可选）：目前明确拒绝。若要做，需要 UI 决策：计数器如何在卡片上递增（复制后自动 +1 还是手动「下一个」），以及分组列表如何展示
-- [ ] 锁定语义：`lockApp` 与自动锁定只作用于主窗口，`#/popover` 路由仍绕过解锁守卫（菜单栏模式下点击托盘即可看码）。若希望锁定也覆盖弹窗，需要把守卫扩展到 popover
+- [ ] **HOTP 真支持**（可选）：目前明确拒绝。若要做，需要 UI 决策：计数器如何在卡片上递增（复制后自动 +1 还是手动「下一个」）
+- [x] ~~锁定语义：`#/popover` 绕过解锁守卫~~ ✅ 2026-09-15：守卫覆盖弹窗，解锁后返回原目标；生物识别期间 pin 住弹窗
 
 ## P3 — 工程与发布
 
 - [x] **storage.rs 可测性重构**：改为「AppHandle → 目录」+ 纯 `*_from(&Path)` 内部函数，测试用临时目录（未抽出独立 `Store` 结构体，但已可完整单测）
-- [x] **补测试**：后端 0 → 36 个（crypto / storage / backup / 命令层 / 弹窗定位）；前端 48 → 128 个（新增 otp 算法含 RFC 6238 向量、clipboard、i18n、accounts store、Settings / EditAccount / AddAccount / AccountCard / AccountCodeList / App 组件测试）
-- [ ] **CI**：无 `.github/`，构建完全手动 → build + vitest + `cargo test` + clippy + fmt check
-- [ ] **App 主图标替换**：仍是旧青黄双环 logo，`docs/app-icon-v2/v3.png` 设计稿未应用（见 `docs/ICON_STATUS.md`）
-- [ ] **发布链路**：无签名/公证（macOS signingIdentity、Windows certificate）、无 updater（`createUpdaterArtifacts` 未开）、无 CHANGELOG
+- [x] **补测试**：后端 0 → 36 个（crypto / storage / backup / 命令层 / 弹窗定位）；前端 48 → 146 个（新增 otp 算法含 RFC 6238 向量、clipboard、i18n、accounts store、Settings / EditAccount / AddAccount / AccountCard / AccountCodeList / App 组件测试）
+- [x] **CI**：`.github/workflows/ci.yml`（前端 frozen install + build + test；后端 fmt --check / clippy --all-targets -D warnings / test）。开启严格 clippy 后立刻发现 2 处测试 lint
+- [x] **App 主图标替换**：改用 `docs/app-icon-v3.png` 生成全套（icns/ico/png/Windows Store logos），同步 `public/icon.png` 与 favicon，重建 Windows 托盘位图；流程见 `docs/ICON_STATUS.md`
+- [x] **更新日志与发布文档**：`CHANGELOG.md`（Keep a Changelog）+ `docs/RELEASE.md`（三处版本号、macOS 签名/公证、Windows 签名、updater 落地步骤、发布前检查清单）
+- [ ] **发布链路（需要你的凭据/决策）**：macOS 签名 + 公证（Apple Developer 证书）、Windows 代码签名、自动更新（updater 密钥对 + 静态 `latest.json` 端点）。步骤已写在 `docs/RELEASE.md`
 - [x] **元数据不一致**：`Cargo.toml` 与关于页链接已改为实际仓库地址
-- [ ] **产品功能缺口**：账号列表无搜索/筛选；无摄像头实时扫码（仅本地图片 → jsQR）；无分组管理（仅按 issuer 折叠）
+- [x] **账号列表搜索**：按账号名 / 发行方过滤，搜索时显示平铺结果与账号名（分组视图不变）
+- [ ] **摄像头实时扫码**：需要 macOS Info.plist 摄像头用途声明 + `getUserMedia`，且本机无法脚本化验证（系统授权弹窗需人工点击）→ 建议先不做：桌面端「截图 → 选择图片」已是主路径
+- [ ] **自定义分组 / 标签**：需要产品决策（标签模型 + 视图），当前靠 issuer 折叠 + 搜索已覆盖多数场景
 
 ---
 
@@ -116,8 +119,8 @@
 1. ~~语言下拉框 Bug~~ ✅ 2026-06-03（`handleLanguageChange` 遗漏 language 字段 + `.lang-option` CSS 未定义）
 2. ~~macOS 菜单栏弹出框设计~~ ✅ 2026-06-03（320×480 无标题栏窗口，popover/main 互斥，`show_main_window`）
 3. ~~深色模式~~ ✅ 2026-06-03（17 个 CSS 变量 + useTheme + 三选一）
-4. ~~应用名称与图标设计~~ ✅ 2026-08-03（托盘 template 图标；⚠️ App 主图标见 P3）
-5. ~~网站图标 — 自定义图片 + 预设图标库~~ ⚠️ **2026-09-15 复核为未完成**（后端 provider 就绪，但 IconPicker 无入口 + EditAccount 会破坏图标 → 见 P0-2 / P2）
+4. ~~应用名称与图标设计~~ ✅ 2026-08-03 托盘 / 2026-09-15 App 主图标（见 P3）
+5. ~~网站图标 — 自定义图片 + 预设图标库~~ ✅ 2026-09-15（IconPicker 接入添加与编辑；图标渲染收敛为 `renderIcon` 单一实现）
 6. ~~设置模块样式与交互优化~~ ✅ 2026-08-03
 7. ~~解锁页样式优化~~ ✅ 2026-08-03（错误抖动动画）
 8. ~~梳理全局通用组件~~ ✅ 2026-08-03（`components/index.ts` 统一导出；实际无人使用 → 见 P2 死代码）
