@@ -2,14 +2,14 @@
 
 ## 功能
 - TOTP 验证码生成、二维码扫描 / 手动输入添加账号
-- 密码 + 生物识别解锁，AES-256-GCM 加密存储
-- **macOS 菜单栏模式**：托盘图标弹窗快速查看验证码；纯菜单模式隐藏主窗口，仅通过托盘访问
+- 密码 + 生物识别解锁；本地数据以明文 JSON 存储（依赖系统磁盘加密），备份可选 AES-256 加密
+- **托盘常驻模式**（macOS 菜单栏 / Windows 托盘）：托盘图标弹窗快速查看验证码；开启后隐藏主窗口，仅通过托盘访问
 
 ## 技术栈
 - 前端：Vue 3 + TypeScript + Pinia + Vue Router + vue-i18n
 - 桌面端：Tauri 2.0 (Rust)
 - 存储：JSON 文件存储（`data.json` 账户 / `settings.json` 设置 / `password.dat` 密码哈希），非数据库
-- 加密：AES-256-GCM + PBKDF2-HMAC-SHA256（100k 迭代）
+- 加密：密码哈希 PBKDF2-HMAC-SHA256（100k 迭代）；备份 zip 可选用 WinZip AES-256（PBKDF2-HMAC-SHA1，1000 次，受 zip 规范限制）
 - 二维码：jsqr（扫描）+ 手动输入两种添加方式
 - 生物识别：macOS LocalAuthentication（`apple-localauthentication`）、Android `tauri-plugin-biometric`
 
@@ -32,9 +32,10 @@ src/
 
 src-tauri/
 ├── src/
-│   ├── lib.rs               # Tauri 命令入口 + 托盘图标/右键菜单 + 悬浮窗窗口 + 纯菜单模式
-│   ├── storage.rs           # JSON 文件读写 (data.json / settings.json / password.dat)
-│   ├── crypto.rs            # AES-256-GCM 加解密 + PBKDF2 密钥派生
+│   ├── lib.rs               # Tauri 命令入口 + 托盘图标/右键菜单 + 悬浮窗窗口 + 托盘常驻模式
+│   ├── storage.rs           # JSON 文件读写 + 原子写/0600 权限/损坏隔离 (data.json / settings.json / password.dat)
+│   ├── crypto.rs            # 密码哈希与验证（PBKDF2-HMAC-SHA256，兼容旧格式）
+│   ├── backup.rs            # zip 备份容器（manifest + accounts + icons，可选 AES-256）
 │   ├── biometric.rs         # 生物识别可用性检测与认证
 │   └── biometric_status.rs  # 生物识别失败计数与锁定状态
 ├── capabilities/  # Tauri 权限配置 (default.json)
@@ -43,8 +44,17 @@ src-tauri/
 
 ## 数据与安全
 - 账户数据存于 app data 目录下的 `data.json`，设置存于 `settings.json`，密码哈希存于 `password.dat`
-- 密码哈希使用 PBKDF2-HMAC-SHA256，账户敏感字段使用 AES-256-GCM 加密
-- 备份导出格式为 `.openotp`（见 `src/utils/backup.ts`）
+- 密码哈希使用 PBKDF2-HMAC-SHA256（格式 `pbkdf2_sha256:<iterations>:<salt>:<hash>`）；账户字段落盘为明文，备份为可选加密的 zip
+- 备份导出格式为 zip（`manifest.json` + `accounts.json` + `icons/*`），实现见 `src-tauri/src/backup.rs`
 
 ## 支持平台
-- macOS (桌面端) · Windows (桌面端) · iOS (移动端) · Android (移动端)
+
+| 平台 | 状态 | 生物识别 |
+|---|---|---|
+| macOS | ✅ 完整支持（菜单栏模式、Touch ID） | Touch ID / Face ID |
+| Windows | ✅ 主窗口 + 托盘常驻模式（同代码路径） | 无，使用 PIN |
+| Linux | ⚠️ 托盘实现为桌面通用代码，未实机验证 | 无，使用 PIN |
+| Android | ❌ 工程未初始化；指纹识别待接入 | 计划支持 |
+| iOS | ❌ 工程未初始化 | 无，使用 PIN |
+
+托盘/弹窗代码位于 `#[cfg(desktop)]` 下；仅激活策略（Dock 图标、Accessory 模式）与模板图标为 macOS 专属。

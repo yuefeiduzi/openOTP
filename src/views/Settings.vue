@@ -49,7 +49,7 @@ const showHintModal = ref(false)
 const hintValue = ref('')
 
 const biometricAvailable = ref(false)
-const isMac = ref(false)
+const isDesktop = ref(false)
 const biometricType = ref('')
 
 const showExportSheet = ref(false)
@@ -87,9 +87,9 @@ onMounted(async () => {
   }
 
   try {
-    isMac.value = await invoke<boolean>('is_macos')
+    isDesktop.value = await invoke<boolean>('is_desktop')
   } catch {
-    isMac.value = false
+    isDesktop.value = false
   }
 
   try {
@@ -474,7 +474,7 @@ async function exportDebugLogs() {
           </button>
         </div>
 
-        <div v-if="isMac" class="setting-item setting-row">
+        <div v-if="isDesktop" class="setting-item setting-row">
           <span class="setting-label">{{ t('settings.menuBarOnly') }}</span>
           <div class="setting-control">
             <label class="toggle">

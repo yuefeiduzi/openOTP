@@ -14,7 +14,7 @@ const router = useRouter()
 const accountStore = useAccountStore()
 const settingsStore = useSettingsStore()
 const { t } = useI18n()
-const isMac = ref(false)
+const isDesktop = ref(false)
 
 const {
   showAdd,
@@ -36,7 +36,7 @@ const {
 onMounted(async () => {
   await accountStore.loadAccounts()
   await settingsStore.loadSettings()
-  isMac.value = await invoke<boolean>('is_macos')
+  isDesktop.value = await invoke<boolean>('is_desktop')
 })
 
 async function enterMenuBarMode() {
@@ -72,7 +72,7 @@ function goToSettings() {
       </button>
     </header>
 
-    <button v-if="isMac" class="menu-bar-entry" @click="enterMenuBarMode">
+    <button v-if="isDesktop" class="menu-bar-entry" @click="enterMenuBarMode">
       <svg
         class="menu-bar-entry-icon"
         width="22"

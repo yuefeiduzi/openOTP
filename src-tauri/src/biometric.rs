@@ -1,3 +1,11 @@
+//! Biometric unlock.
+//!
+//! Platform policy: macOS and Android offer biometrics, every other platform
+//! falls back to the PIN alone. Android support is not wired up yet — the
+//! plugin is declared in Cargo.toml but never registered, so this module reports
+//! biometrics as unavailable there rather than offering a toggle that cannot
+//! work.
+
 use crate::biometric_status::BiometricStatus;
 use serde::Serialize;
 use tauri::AppHandle;
@@ -32,12 +40,9 @@ pub fn is_biometric_available() -> bool {
             false
         }
     }
-    #[cfg(target_os = "android")]
+    #[cfg(not(target_os = "macos"))]
     {
-        true
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "android")))]
-    {
+        // Android is planned but unimplemented; Windows/Linux/iOS use the PIN.
         false
     }
 }
@@ -60,6 +65,7 @@ pub fn get_biometric_type() -> String {
     }
     #[cfg(target_os = "android")]
     {
+        // Matches the (currently disabled) Android implementation.
         "fingerprint".to_string()
     }
     #[cfg(not(any(target_os = "macos", target_os = "android")))]
@@ -87,9 +93,9 @@ pub fn authenticate(app: &AppHandle, reason: &str) -> Result<bool, BiometricErro
     }
     #[cfg(target_os = "android")]
     {
-        Err(BiometricError::SystemError(
-            "Android biometric not yet integrated".into(),
-        ))
+        // TODO: register tauri-plugin-biometric and call its Rust API here.
+        // Until then availability is false, so this is unreachable.
+        Err(BiometricError::NotAvailable)
     }
     #[cfg(not(any(target_os = "macos", target_os = "android")))]
     {
@@ -101,7 +107,7 @@ pub fn get_status(app: &AppHandle) -> BiometricStatusResponse {
     let status = BiometricStatus::load(app);
     BiometricStatusResponse {
         failure_count: status.failure_count(),
-        last_failure_time: None,
+        last_failure_time: status.last_failure_time(),
         can_use_biometric: status.can_use(),
     }
 }

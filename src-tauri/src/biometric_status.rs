@@ -45,6 +45,10 @@ impl BiometricStatus {
         self.data.failure_count
     }
 
+    pub fn last_failure_time(&self) -> Option<i64> {
+        self.data.last_failure_time
+    }
+
     pub fn can_use(&self) -> bool {
         if self.data.failure_count < 3 {
             return true;

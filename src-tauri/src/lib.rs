@@ -7,9 +7,21 @@ mod biometric_status;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager, PhysicalPosition};
+
+/// Size of the menu bar / tray popover window.
+#[cfg(desktop)]
+const POPOVER_WIDTH: f64 = 320.0;
+#[cfg(desktop)]
+const POPOVER_HEIGHT: f64 = 480.0;
+/// Gap between the tray icon and the popover.
+#[cfg(desktop)]
+const POPOVER_GAP: f64 = 12.0;
+
+/// Whether the window is being used as a tray-only app.
+///
+/// macOS also drops the Dock icon; other desktops just keep the window hidden.
 use tauri::LogicalPosition;
-use tauri::Manager;
 use tauri::WebviewWindowBuilder;
 use tauri::tray::TrayIconBuilder;
 
@@ -126,8 +138,8 @@ fn load_password_hash(app: AppHandle) -> Option<String> {
 }
 
 #[tauri::command]
-fn is_macos() -> bool {
-    cfg!(target_os = "macos")
+fn is_desktop() -> bool {
+    cfg!(desktop)
 }
 
 /// While pinned the popover ignores focus loss, so opening a native file dialog
@@ -144,6 +156,15 @@ fn set_popover_pinned(state: tauri::State<PopoverState>, pinned: bool) {
 
 #[tauri::command]
 fn set_menu_bar_only(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    apply_background_mode(&app, enabled);
+    Ok(())
+}
+
+/// Applies or leaves background mode. On macOS this also switches between the
+/// regular and accessory activation policies, which is what removes the Dock
+/// icon; other desktops have no equivalent and only hide the window.
+#[allow(unused_variables)]
+fn apply_background_mode(app: &AppHandle, enabled: bool) {
     #[cfg(target_os = "macos")]
     {
         let policy = if enabled {
@@ -151,10 +172,15 @@ fn set_menu_bar_only(app: tauri::AppHandle, enabled: bool) -> Result<(), String>
         } else {
             tauri::ActivationPolicy::Regular
         };
-        app.set_activation_policy(policy)
-            .map_err(|e| e.to_string())?;
+        if let Err(e) = app.set_activation_policy(policy) {
+            log::error!("failed to set activation policy: {}", e);
+        }
     }
-    Ok(())
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (app, enabled);
+    }
 }
 
 #[tauri::command]
@@ -177,6 +203,62 @@ fn hide_main_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Places the popover next to the tray icon, above it when the icon sits in
+/// the lower half of the screen (the Windows tray) and below it otherwise (the
+/// macOS menu bar), clamped so the window always lands inside that monitor.
+#[cfg(desktop)]
+fn popover_position(app: &AppHandle, clicked_at: PhysicalPosition<f64>) -> LogicalPosition<f64> {
+    let monitor = app
+        .monitor_from_point(clicked_at.x, clicked_at.y)
+        .ok()
+        .flatten();
+
+    let scale = monitor.as_ref().map(|m| m.scale_factor()).unwrap_or(1.0);
+    let cursor = clicked_at.to_logical::<f64>(scale);
+
+    let (x, y) = match monitor {
+        Some(monitor) => {
+            let scale = monitor.scale_factor();
+            let origin = monitor.position().to_logical::<f64>(scale);
+            let size = monitor.size().to_logical::<f64>(scale);
+            place_popover(cursor.x, cursor.y, origin.x, origin.y, size.width, size.height)
+        }
+        None => (cursor.x - POPOVER_WIDTH / 2.0, cursor.y + POPOVER_GAP),
+    };
+
+    LogicalPosition::new(x, y)
+}
+
+/// Placement maths for the popover, split out so it can be tested without a
+/// window or monitor handle.
+#[cfg(desktop)]
+fn place_popover(
+    cursor_x: f64,
+    cursor_y: f64,
+    origin_x: f64,
+    origin_y: f64,
+    monitor_width: f64,
+    monitor_height: f64,
+) -> (f64, f64) {
+    let x = cursor_x - POPOVER_WIDTH / 2.0;
+    let mut y = cursor_y + POPOVER_GAP;
+
+    // Tray icons live at the bottom on Windows and at the top on macOS, so the
+    // panel flips above the cursor when the cursor is in the lower half.
+    if cursor_y > origin_y + monitor_height / 2.0 {
+        y = cursor_y - POPOVER_HEIGHT - POPOVER_GAP;
+    }
+
+    let margin = 8.0;
+    let min_x = origin_x + margin;
+    let min_y = origin_y + margin;
+    // max(...) keeps the range valid on monitors smaller than the popover.
+    let max_x = (origin_x + monitor_width - POPOVER_WIDTH - margin).max(min_x);
+    let max_y = (origin_y + monitor_height - POPOVER_HEIGHT - margin).max(min_y);
+
+    (x.clamp(min_x, max_x), y.clamp(min_y, max_y))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -192,25 +274,34 @@ pub fn run() {
                 )?;
             }
 
-            #[cfg(target_os = "macos")]
+            #[cfg(desktop)]
             {
                 let settings = storage::load_settings(app.handle());
                 if settings.menu_bar_only {
-                    app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    // Hidden is enough on non-macOS, where there is no Dock icon.
+                    apply_background_mode(app.handle(), true);
                     if let Some(main) = app.get_webview_window("main") {
                         let _ = main.hide();
                     }
                 }
 
-                // Use the 44x44 (@2x) template image: tray-icon forces an 18pt
-                // status-bar height on macOS, so on Retina (2x) the rendered icon
-                // needs 36px+ of source pixels — the 22px 1x asset gets upscaled
-                // and looks blurry in the menu bar.
+                // macOS uses a monochrome template image so the icon adapts to
+                // the menu bar; other platforms show the regular app icon.
+                #[cfg(target_os = "macos")]
                 let tray_icon = tauri::image::Image::new(
                     include_bytes!("../icons/tray-template@2x.rgba"),
                     44,
                     44,
                 );
+                // Other desktops get the colour app icon. Kept as a checked-in
+                // raw RGBA asset so the build does not need a PNG decoder.
+                #[cfg(not(target_os = "macos"))]
+                let tray_icon = tauri::image::Image::new(
+                    include_bytes!("../icons/tray-32@2x.rgba"),
+                    64,
+                    64,
+                );
+
                 let en = settings.language == "en-US";
                 let return_item = tauri::menu::MenuItem::with_id(
                     app,
@@ -223,22 +314,27 @@ pub fn run() {
                     tauri::menu::PredefinedMenuItem::quit(app, Some(if en { "Quit" } else { "退出" }))?;
                 let tray_menu = tauri::menu::Menu::with_items(app, &[&return_item, &quit_item])?;
 
-                let _tray = TrayIconBuilder::with_id("main-tray")
+                let mut tray_builder = TrayIconBuilder::with_id("main-tray")
                     .tooltip("OpenOTP")
                     .icon(tray_icon)
-                    .icon_as_template(true)
-                    .menu(&tray_menu)
+                    .menu(&tray_menu);
+
+                // Monochrome template icons are a macOS menu bar convention.
+                #[cfg(target_os = "macos")]
+                {
+                    tray_builder = tray_builder.icon_as_template(true);
+                }
+
+                let _tray = tray_builder
                     .on_menu_event(|tray, event| {
                         if event.id().0 == "tray_return_app" {
                             let app = tray.app_handle();
                             let mut settings = storage::load_settings(app);
                             settings.menu_bar_only = false;
                             if let Err(e) = storage::save_settings(app, &settings) {
-                                log::error!("failed to persist menu bar mode: {}", e);
+                                log::error!("failed to persist background mode: {}", e);
                             }
-                            if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
-                                log::error!("failed to restore activation policy: {}", e);
-                            }
+                            apply_background_mode(app, false);
                             if let Some(popover) = app.get_webview_window("popover") {
                                 let _ = popover.hide();
                             }
@@ -272,27 +368,7 @@ pub fn run() {
                                 }
                             }
 
-                            // The click position is in physical pixels (the cursor is on
-                            // the tray icon); find the monitor under it for the scale factor.
-                            let scale = app
-                                .available_monitors()
-                                .unwrap_or_default()
-                                .into_iter()
-                                .find(|m| {
-                                    let p = m.position();
-                                    let sz = m.size();
-                                    position.x >= p.x as f64
-                                        && position.x < p.x as f64 + sz.width as f64
-                                        && position.y >= p.y as f64
-                                        && position.y < p.y as f64 + sz.height as f64
-                                })
-                                .map(|m| m.scale_factor())
-                                .unwrap_or(1.0);
-                            let pos = position.to_logical::<f64>(scale);
-                            // Center the popover under the cursor, slightly below it.
-                            let x = pos.x - 160.0;
-                            let y = pos.y + 12.0;
-                            let target = LogicalPosition::new(x, y);
+                            let position = popover_position(app, position);
 
                             if let Some(popover) = app.get_webview_window("popover") {
                                 // NOTE: runtime set_position on this window is unreliable on
@@ -307,8 +383,8 @@ pub fn run() {
 
                             if let Ok(popover) = WebviewWindowBuilder::new(app, "popover", tauri::WebviewUrl::App("index.html".into()))
                                 .title("OpenOTP")
-                                .inner_size(320.0, 480.0)
-                                .position(target.x, target.y)
+                                .inner_size(POPOVER_WIDTH, POPOVER_HEIGHT)
+                                .position(position.x, position.y)
                                 .decorations(false)
                                 .resizable(false)
                                 .always_on_top(true)
@@ -332,7 +408,9 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            #[cfg(target_os = "macos")]
+            // Closing the main window keeps the app alive in the tray on every
+            // desktop platform; quitting is done from the tray menu.
+            #[cfg(desktop)]
             if window.label() == "main" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     window.hide().ok();
@@ -375,7 +453,7 @@ pub fn run() {
             has_setup,
             save_password_hash,
             load_password_hash,
-            is_macos,
+            is_desktop,
             set_popover_pinned,
             show_main_window,
             hide_main_window,
@@ -383,6 +461,76 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(all(test, desktop))]
+mod popover_tests {
+    use super::*;
+
+    /// 1512x982 macOS display, cursor on the menu bar icon at the top.
+    #[test]
+    fn places_below_the_cursor_on_macos() {
+        let (x, y) = place_popover(800.0, 10.0, 0.0, 0.0, 1512.0, 982.0);
+
+        assert_eq!(y, 10.0 + POPOVER_GAP);
+        assert_eq!(x, 800.0 - POPOVER_WIDTH / 2.0);
+    }
+
+    /// 1920x1080 Windows display, cursor on the tray icon at the bottom right.
+    #[test]
+    fn places_above_the_cursor_on_windows() {
+        let (x, y) = place_popover(1900.0, 1050.0, 0.0, 0.0, 1920.0, 1080.0);
+
+        assert_eq!(y, 1050.0 - POPOVER_HEIGHT - POPOVER_GAP);
+        // Clamped by the right edge instead of hanging off the screen.
+        assert_eq!(x, 1920.0 - POPOVER_WIDTH - 8.0);
+    }
+
+    #[test]
+    fn clamps_to_the_left_and_top_edges() {
+        let (x, y) = place_popover(4.0, 8.0, 0.0, 0.0, 1512.0, 982.0);
+
+        assert_eq!(x, 8.0);
+        assert_eq!(y, 8.0 + POPOVER_GAP);
+    }
+
+    /// Cursor in the lower half flips the panel above, even when below would
+    /// still fit inside the clamp range.
+    #[test]
+    fn flips_above_a_tray_icon_in_the_lower_half() {
+        let (_, y) = place_popover(800.0, 600.0, 0.0, 0.0, 1512.0, 700.0);
+
+        assert_eq!(y, 600.0 - POPOVER_HEIGHT - POPOVER_GAP);
+    }
+
+    /// Cursor in the upper half places below, but the bottom edge still wins.
+    #[test]
+    fn clamps_the_bottom_edge_when_placing_below() {
+        let (_, y) = place_popover(800.0, 440.0, 0.0, 0.0, 1512.0, 900.0);
+
+        assert_eq!(y, 900.0 - POPOVER_HEIGHT - 8.0);
+    }
+
+    #[test]
+    fn stays_inside_a_monitor_smaller_than_the_popover() {
+        let (x, y) = place_popover(150.0, 200.0, 0.0, 0.0, 300.0, 400.0);
+
+        assert_eq!((x, y), (8.0, 8.0));
+    }
+
+    #[test]
+    fn accounts_for_a_second_monitor_offset() {
+        // Monitor to the right of the primary one, cursor on its tray icon.
+        let (x, y) = place_popover(2100.0, 1050.0, 1920.0, 0.0, 1920.0, 1080.0);
+
+        assert_eq!(y, 1050.0 - POPOVER_HEIGHT - POPOVER_GAP);
+        // Centred under the cursor, still on that monitor.
+        assert_eq!(x, 2100.0 - POPOVER_WIDTH / 2.0);
+
+        // Cursor near the right edge of the second monitor clamps to it.
+        let (x, _) = place_popover(3800.0, 1050.0, 1920.0, 0.0, 1920.0, 1080.0);
+        assert_eq!(x, 1920.0 + 1920.0 - POPOVER_WIDTH - 8.0);
+    }
 }
 
 #[cfg(test)]
