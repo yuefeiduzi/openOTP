@@ -56,6 +56,73 @@ function toggleGroup(key: string) {
   expandedGroups.value = next
 }
 
+/**
+ * Drag to reorder. The list renders grouped and partially collapsed, so the
+ * move is applied to the full id order: the dragged account is taken out and
+ * re-inserted at the target's position, before or after it depending on which
+ * half of the card the pointer is over.
+ */
+const draggedId = ref<string | null>(null)
+const dropTarget = ref<{ id: string; after: boolean } | null>(null)
+
+const fullOrder = computed(() =>
+  [...accountStore.accounts].sort((a, b) => a.order - b.order).map(a => a.id)
+)
+
+function handleDragStart(id: string, event: DragEvent) {
+  draggedId.value = id
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', id)
+  }
+}
+
+function handleDragOver(id: string, event: DragEvent) {
+  if (draggedId.value === null || draggedId.value === id) {
+    return
+  }
+  // Needed for the drop event to fire at all.
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+
+  const card = event.currentTarget as HTMLElement | null
+  const after = card
+    ? event.clientY > card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2
+    : false
+  dropTarget.value = { id, after }
+}
+
+function handleDrop() {
+  const target = dropTarget.value
+  const id = draggedId.value
+
+  resetDrag()
+
+  if (!target || id === null || target.id === id) {
+    return
+  }
+
+  const ids = fullOrder.value.filter(existing => existing !== id)
+  const at = ids.indexOf(target.id)
+  if (at === -1) {
+    return
+  }
+
+  ids.splice(target.after ? at + 1 : at, 0, id)
+  accountStore.reorderAccounts(ids)
+}
+
+function isDropTarget(id: string, after: boolean): boolean {
+  return dropTarget.value?.id === id && dropTarget.value.after === after
+}
+
+function resetDrag() {
+  draggedId.value = null
+  dropTarget.value = null
+}
+
 async function handleCopy(code: string) {
   const copied = await copyToClipboard(code)
 
@@ -71,7 +138,12 @@ async function handleCopy(code: string) {
 </script>
 
 <template>
-  <div class="account-code-list">
+  <div
+    class="account-code-list"
+    @dragover.prevent
+    @drop="handleDrop"
+    @dragend="resetDrag"
+  >
     <div v-if="accounts.length === 0" class="empty">
       <p class="empty-text">{{ t('home.noAccounts', { type: 'TOTP' }) }}</p>
       <button class="empty-add-btn" @click="emit('add')">
@@ -82,6 +154,14 @@ async function handleCopy(code: string) {
       <AccountCard
         :account="group.accounts[0]"
         :copy-on-tap="settingsStore.settings.autoCopy"
+        :class="{ dragging: draggedId === group.accounts[0].id }"
+        :data-drop-before="isDropTarget(group.accounts[0].id, false) ? '' : undefined"
+        :data-drop-after="isDropTarget(group.accounts[0].id, true) ? '' : undefined"
+        draggable="true"
+        @dragstart="handleDragStart(group.accounts[0].id, $event)"
+        @dragover="handleDragOver(group.accounts[0].id, $event)"
+        @drop="handleDrop"
+        @dragend="resetDrag"
         @copy="handleCopy"
         @delete="emit('delete', group.accounts[0])"
         @edit="emit('edit', group.accounts[0])"
@@ -102,6 +182,14 @@ async function handleCopy(code: string) {
           :key="account.id"
           :account="account"
           :copy-on-tap="settingsStore.settings.autoCopy"
+          :class="{ dragging: draggedId === account.id }"
+          :data-drop-before="isDropTarget(account.id, false) ? '' : undefined"
+          :data-drop-after="isDropTarget(account.id, true) ? '' : undefined"
+          draggable="true"
+          @dragstart="handleDragStart(account.id, $event)"
+          @dragover="handleDragOver(account.id, $event)"
+          @drop="handleDrop"
+          @dragend="resetDrag"
           @copy="handleCopy"
           @delete="emit('delete', account)"
           @edit="emit('edit', account)"
@@ -113,8 +201,22 @@ async function handleCopy(code: string) {
 
 <style scoped>
 .account-code-list {
+  position: relative;
   flex: 1;
   overflow-y: auto;
+}
+
+.dragging {
+  opacity: 0.4;
+}
+
+/* Drop indicators sit on the card that would be pushed aside. */
+.account-code-list :deep(.account-card[data-drop-before]) {
+  box-shadow: 0 -2px 0 0 var(--accent);
+}
+
+.account-code-list :deep(.account-card[data-drop-after]) {
+  box-shadow: 0 2px 0 0 var(--accent);
 }
 
 .empty {

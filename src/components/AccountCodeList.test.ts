@@ -21,7 +21,7 @@ import { useAccountStore, useSettingsStore } from '@/stores'
 
 const writeText = vi.fn().mockResolvedValue(undefined)
 
-function makeAccount(): Account {
+function makeAccount(overrides: Partial<Account> = {}): Account {
   return {
     id: 'a1',
     name: 'alice@example.com',
@@ -36,6 +36,7 @@ function makeAccount(): Account {
     notes: '',
     createdAt: 1700000000000,
     order: 0,
+    ...overrides,
   }
 }
 
@@ -124,5 +125,65 @@ describe('AccountCodeList copy behaviour', () => {
     await flushPromises()
 
     expect(writeText).not.toHaveBeenCalledWith('')
+  })
+})
+describe('AccountCodeList drag reorder', () => {
+  async function mountThree() {
+    const accounts = useAccountStore()
+    const settings = useSettingsStore()
+    settings.updateSettings({ autoCopy: true })
+    accounts.accounts = [
+      makeAccount({ id: 'a', order: 0, name: 'first' }),
+      makeAccount({ id: 'b', order: 1, name: 'second', issuer: 'Other' }),
+      makeAccount({ id: 'c', order: 2, name: 'third', issuer: 'Third' }),
+    ]
+    const wrapper = mount(AccountCodeList)
+    await flushPromises()
+    return wrapper
+  }
+
+  function dragData() {
+    return { effectAllowed: '', dropEffect: '', setData: vi.fn() } as unknown as DataTransfer
+  }
+
+  it('should move a card to the end when dropped on the lower half of the last card', async () => {
+    const wrapper = await mountThree()
+    const store = useAccountStore()
+    const spy = vi.spyOn(store, 'reorderAccounts')
+
+    const cards = wrapper.findAll('.account-card')
+    await cards[0].trigger('dragstart', { dataTransfer: dragData() })
+    // jsdom/happy-dom have no layout, so the pointer is treated as the top half
+    // unless the element reports a height.
+    await cards[2].trigger('dragover', { dataTransfer: dragData(), clientY: 100 })
+    await cards[2].trigger('drop', { dataTransfer: dragData() })
+
+    expect(spy).toHaveBeenCalledWith(['b', 'c', 'a'])
+  })
+
+  it('should insert before a card when dropped on its upper half', async () => {
+    const wrapper = await mountThree()
+    const store = useAccountStore()
+    const spy = vi.spyOn(store, 'reorderAccounts')
+
+    const cards = wrapper.findAll('.account-card')
+    await cards[0].trigger('dragstart', { dataTransfer: dragData() })
+    await cards[2].trigger('dragover', { dataTransfer: dragData(), clientY: 0 })
+    await cards[2].trigger('drop', { dataTransfer: dragData() })
+
+    expect(spy).toHaveBeenCalledWith(['b', 'a', 'c'])
+  })
+
+  it('should not reorder when a card is dropped on itself', async () => {
+    const wrapper = await mountThree()
+    const store = useAccountStore()
+    const spy = vi.spyOn(store, 'reorderAccounts')
+
+    const cards = wrapper.findAll('.account-card')
+    await cards[1].trigger('dragstart', { dataTransfer: dragData() })
+    await cards[1].trigger('dragover', { dataTransfer: dragData(), clientY: 0 })
+    await cards[1].trigger('drop', { dataTransfer: dragData() })
+
+    expect(spy).not.toHaveBeenCalled()
   })
 })
