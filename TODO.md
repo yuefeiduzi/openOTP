@@ -44,20 +44,34 @@
 
 ---
 
-## P1 — 安全与健壮性（只动 Rust，与平台决策无关）
+## P1 — 安全与健壮性（只动 Rust，与平台决策无关） ✅ 2026-09-15
 
-- [ ] `crypto.rs:103` `key == expected_key.as_slice()` 非常量时间比较 → 用 `subtle::ConstantTimeEq`
-- [ ] `crypto.rs:81-87` hash 格式无版本/迭代数 → 升级为 `pbkdf2_sha256$iter$salt$hash`，verify 兼容旧格式
-- [ ] `crypto.rs:11,16-20` 迭代数硬编码、`EncryptedData` 无 version/KDF 参数 → 无迁移能力
-- [ ] `storage.rs:82,103` `unwrap_or_default()` → JSON 损坏时静默变空，下次保存覆盖原文件（**静默数据丢失**）→ 先改名 `*.corrupt.<ts>` 再报错
-- [ ] `storage.rs:95,116,126` 直接 `fs::write` → tmp+rename 原子写 + `#[cfg(unix)] 0o600`
-- [ ] `storage.rs:75` `expect("failed to resolve app data directory")` 可 panic → 返回 `Result`
-- [ ] `storage.rs:133` `read_to_string().ok()` 吞错 → 区分"无密码"与"IO 失败"
-- [ ] `biometric_status.rs:88-90` `let _ = fs::write` 吞错 → **3 次失败后的 30 分钟锁定可被重启绕过**（计数不落盘）
-- [ ] `biometric_status.rs` `get_status` 的 `last_failure_time` 恒为 `None`（`biometric.rs:105`）→ API 契约说谎
-- [ ] `lib.rs:211` 托盘菜单保存设置 `let _ =` 吞错
-- [ ] `tauri.conf.json:28` `"csp": null` → 换严格 CSP
-- [ ] data.json / settings.json / password.dat 均无 schema version，无迁移逻辑
+- [x] `crypto.rs:103` 非常量时间比较 → `subtle::ConstantTimeEq`
+- [x] `crypto.rs:81-87` hash 格式升级为 `pbkdf2_sha256:<iterations>:<salt>:<hash>`，verify 兼容旧 `salt:hash`
+- [x] `crypto.rs:11,16-20` `EncryptedData` 新增 `iterations`（serde default 兼容旧载荷），KDF 参数随密文存储
+- [x] `storage.rs` JSON 损坏 → 改名 `*.corrupt.<ts>` 隔离再报错（不再静默覆盖）
+- [x] `storage.rs` 原子写（tmp + flush + rename）+ `0600` 权限（实测新 profile 写入为 `-rw-------`）
+- [x] `storage.rs:75` `expect()` → `Result`，调用方降级 + 记日志
+- [x] `storage.rs:133` 区分「无密码」与「IO 失败」
+- [x] `biometric_status.rs` 吞错 → 记日志（失败计数丢失会导致重启绕过锁定），并入原子写
+- [x] `biometric_status.rs` 时间戳 `unwrap()` → 降级处理
+- [x] `lib.rs:211` 托盘菜单保存设置吞错 → 记日志
+- [x] `tauri.conf.json` `csp: null` → 严格生产 CSP + 独立 `devCsp`（已实机验证渲染正常）
+- [x] 后端测试从 0 到 17 个（crypto 8 + storage 9）；`cargo clippy` 零告警
+- [ ] data.json / settings.json / password.dat 仍无 schema version 与迁移逻辑（待归档格式变更时再做）
+
+---
+
+## 实施中新发现（两份审计都漏掉的）
+
+### ~~D-1 删除账号不落盘~~ ✅ 2026-09-15
+- `stores/accounts.ts` `removeAccount` 只做本地 splice，`persistAccounts` 走的是 upsert → 被删条目仍在 `data.json`，**重启后账号会回来**；Rust 的 `delete_account` 正是为此写的却从未被调用。已改为调用该命令 + 单测。
+
+### ~~D-2 备份解密永远失败~~ ✅ 2026-09-15
+- `utils/crypto.ts` 的 `decryptData` 把载荷拍平成顶层字段，而 Tauri 按参数名取键（`v.get("encrypted")`）→ `decrypt_data` 恒报 `missing required key encrypted`，UI 把安装成「密码错误」。已改为整体传递 + 契约测试。
+
+### D-3 平台集成缺口（归入 P0-6）
+- Windows 无托盘且关闭即退出；Android 生物识别从未接线；iOS 无任何分支；移动端工程未 init。
 
 ---
 
@@ -73,7 +87,7 @@
 - [ ] **死 UI**：`Settings.vue:38,47` `passwordSuccess`/`setPasswordSuccess` 从未写入非空，但 `:747`/`:784` 仍渲染 `v-if` 成功提示；`importFilePath`（`:66`）只写不读
 - [ ] **HOTP 未实现**：`otp.ts:109` 允许解析 `hotp` 但结果固定 `type:'totp'`；`Account.counter` 只写 0 从不递增（`types/index.ts:19`）
 - [ ] **andOTP thumbnail 未映射**：`utils/andotp.ts:45`
-- [ ] **死代码清理**：前端 `formatCode`、`getIconDisplay`、`isEmojiIcon`、`generateId`、`randomHex`、`getLogs`、`totpAccounts`、`components/index.ts` barrel；后端 `delete_account`（`lib.rs:36`，与 `removeAccount` 路径重复）
+- [ ] **死代码清理**：前端 `formatCode`、`getIconDisplay`、`isEmojiIcon`、`generateId`、`randomHex`、`getLogs`、`totpAccounts`、`components/index.ts` barrel（后端 `delete_account` 已接入，不再是死代码）
 
 ---
 
