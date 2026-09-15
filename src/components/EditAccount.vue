@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { Account, AccountIcon, IconType } from '@/types'
+import type { Account, AccountIcon } from '@/types'
 import EmojiPicker from '@/components/EmojiPicker.vue'
+import { getPresetIconUrl } from '@/utils/presetIcons'
 
 const props = defineProps<{
   visible: boolean
@@ -19,7 +20,10 @@ const editName = ref('')
 const editIssuer = ref('')
 const editNotes = ref('')
 const showIconEditor = ref(false)
-const iconType = ref<IconType>('emoji')
+/** Only emoji/initial are editable here, so the draft tabs live on their own ref. */
+const draftIconType = ref<'emoji' | 'initial'>('emoji')
+/** Set once the user actually touches the icon editor; until then the stored icon is preserved verbatim. */
+const iconDirty = ref(false)
 const emojiValue = ref('')
 const bgColor = ref('')
 
@@ -34,30 +38,51 @@ watch(() => props.visible, (val) => {
     editName.value = props.account.name
     editIssuer.value = props.account.issuer
     editNotes.value = props.account.notes || ''
-    iconType.value = props.account.icon.type === 'image'
-      ? 'emoji'
-      : props.account.icon.type
-    emojiValue.value = props.account.icon.type === 'emoji' ? props.account.icon.value : '🔑'
+    draftIconType.value = props.account.icon.type === 'initial' ? 'initial' : 'emoji'
+    iconDirty.value = false
+    emojiValue.value = props.account.icon.type === 'emoji' ? props.account.icon.value : ''
     bgColor.value = props.account.icon.bgColor || '#4A90D9'
     showIconEditor.value = false
   }
+}, { immediate: true })
+
+/** The icon as it will be saved: the stored one untouched, or the edited draft. */
+const effectiveIcon = computed<AccountIcon>(() => {
+  const original = props.account?.icon
+
+  if (!iconDirty.value && original) {
+    return original
+  }
+
+  if (draftIconType.value === 'emoji') {
+    return { type: 'emoji', value: emojiValue.value || '🔑', bgColor: '' }
+  }
+
+  return {
+    type: 'initial',
+    value: editName.value.charAt(0).toUpperCase(),
+    bgColor: bgColor.value,
+  }
 })
+
+const presetIconUrl = computed(() =>
+  effectiveIcon.value.type === 'preset' ? getPresetIconUrl(effectiveIcon.value.value) : ''
+)
+
+function selectIconType(type: 'emoji' | 'initial') {
+  draftIconType.value = type
+  iconDirty.value = true
+}
 
 function handleSave() {
   if (!props.account) return
-
-  const icon: AccountIcon = {
-    type: iconType.value,
-    value: iconType.value === 'emoji' ? emojiValue.value : editName.value.charAt(0).toUpperCase(),
-    bgColor: iconType.value === 'initial' ? bgColor.value : '',
-  }
 
   emit('save', {
     id: props.account.id,
     name: editName.value,
     issuer: editIssuer.value,
     notes: editNotes.value,
-    icon,
+    icon: { ...effectiveIcon.value },
   })
 }
 
@@ -96,39 +121,46 @@ function handleCancel() {
       <div class="field-group">
         <label class="field-label">{{ t('editAccount.icon') }}</label>
         <div class="current-icon" @click="showIconEditor = !showIconEditor">
-          <span v-if="iconType === 'emoji'" class="icon-emoji">{{ emojiValue || '&#x1F511;' }}</span>
+          <span v-if="effectiveIcon.type === 'emoji'" class="icon-emoji">{{ effectiveIcon.value || '&#x1F511;' }}</span>
           <div
-            v-else
+            v-else-if="effectiveIcon.type === 'initial'"
             class="icon-initial"
-            :style="{ backgroundColor: bgColor, color: '#fff', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 'bold' }"
+            :style="{ backgroundColor: effectiveIcon.bgColor, color: '#fff', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 'bold' }"
           >
-            {{ editName ? editName.charAt(0).toUpperCase() : '?' }}
+            {{ effectiveIcon.value || '?' }}
           </div>
+          <img
+            v-else-if="effectiveIcon.type === 'preset'"
+            class="icon-preview-img"
+            :src="presetIconUrl"
+            alt=""
+          />
+          <img v-else class="icon-preview-img" :src="effectiveIcon.value" alt="" />
           <button class="edit-icon-btn">{{ t('editAccount.changeIcon') }}</button>
         </div>
 
         <div v-if="showIconEditor" class="icon-editor">
           <div class="icon-type-tabs">
             <button
-              :class="['icon-type-btn', { active: iconType === 'emoji' }]"
-              @click="iconType = 'emoji'"
+              :class="['icon-type-btn', { active: effectiveIcon.type === 'emoji' }]"
+              @click="selectIconType('emoji')"
             >
               {{ t('editAccount.emoji') }}
             </button>
             <button
-              :class="['icon-type-btn', { active: iconType === 'initial' }]"
-              @click="iconType = 'initial'"
+              :class="['icon-type-btn', { active: effectiveIcon.type === 'initial' }]"
+              @click="selectIconType('initial')"
             >
               {{ t('editAccount.initial') }}
             </button>
           </div>
 
-          <div v-if="iconType === 'emoji'" class="field-group">
+          <div v-if="draftIconType === 'emoji'" class="field-group">
             <label class="field-label">{{ t('editAccount.emoji') }}</label>
-            <EmojiPicker v-model="emojiValue" />
+            <EmojiPicker v-model="emojiValue" @update:model-value="iconDirty = true" />
           </div>
 
-          <div v-if="iconType === 'initial'" class="field-group">
+          <div v-if="draftIconType === 'initial'" class="field-group">
             <label class="field-label">{{ t('editAccount.bgColor') }}</label>
             <div class="color-grid">
               <button
@@ -136,7 +168,7 @@ function handleCancel() {
                 :key="color"
                 :class="['color-item', { selected: bgColor === color }]"
                 :style="{ backgroundColor: color }"
-                @click="bgColor = color"
+                @click="bgColor = color; selectIconType('initial')"
               />
             </div>
           </div>
@@ -232,6 +264,14 @@ function handleCancel() {
 .icon-emoji {
   font-size: 24px;
   line-height: 1;
+}
+
+.icon-preview-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: var(--card-bg);
 }
 
 .edit-icon-btn {
