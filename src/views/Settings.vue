@@ -60,6 +60,8 @@ const exportPasswordError = ref('')
 
 const showLangSheet = ref(false)
 
+const showClipboardSheet = ref(false)
+
 const showImportPasswordModal = ref(false)
 const importFilePath = ref('')
 const importPassword = ref('')
@@ -403,6 +405,30 @@ function handleMenuBarOnlyToggle(event: Event) {
   invoke('set_menu_bar_only', { enabled })
 }
 
+const CLIPBOARD_OPTIONS = [
+  { value: 30, label: 'settings.clipboard30s' },
+  { value: 60, label: 'settings.clipboard60s' },
+  { value: 0, label: 'settings.clipboardNever' },
+] as const
+
+const clipboardClearLabel = computed(() => {
+  const current = settingsStore.settings.clipboardClearTime
+  const option = CLIPBOARD_OPTIONS.find(o => o.value === current)
+  return option ? t(option.label) : t('settings.clipboardNever')
+})
+
+function handleAutoCopyToggle(event: Event) {
+  const enabled = (event.target as HTMLInputElement).checked
+  settingsStore.updateSettings({ autoCopy: enabled })
+  settingsStore.saveSettings()
+}
+
+function handleClipboardClearChange(seconds: number) {
+  settingsStore.updateSettings({ clipboardClearTime: seconds })
+  settingsStore.saveSettings()
+  showClipboardSheet.value = false
+}
+
 function handleBiometricToggle(event: Event) {
   const enabled = (event.target as HTMLInputElement).checked
   settingsStore.updateSettings({ biometricEnabled: enabled })
@@ -549,6 +575,27 @@ async function exportDebugLogs() {
             </label>
           </div>
         </div>
+
+        <div class="setting-item setting-row">
+          <span class="setting-label">{{ t('settings.autoCopy') }}</span>
+          <div class="setting-control">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                :checked="settingsStore.settings.autoCopy"
+                @change="handleAutoCopyToggle"
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="showClipboardSheet = true">
+            {{ t('settings.clipboardClearTime') }}
+            <span class="setting-hint-val">{{ clipboardClearLabel }}</span>
+          </button>
+        </div>
       </section>
 
       <div class="divider"></div>
@@ -583,6 +630,26 @@ async function exportDebugLogs() {
         </div>
       </section>
     </div>
+
+    <BottomSheet
+      :visible="showClipboardSheet"
+      :title="t('settings.clipboardClearTime')"
+      hide-actions
+      @close="showClipboardSheet = false"
+    >
+      <div class="lang-options">
+        <button
+          v-for="opt in CLIPBOARD_OPTIONS"
+          :key="opt.value"
+          class="lang-option"
+          :class="{ active: settingsStore.settings.clipboardClearTime === opt.value }"
+          @click="handleClipboardClearChange(opt.value)"
+        >
+          {{ t(opt.label) }}
+          <span v-if="settingsStore.settings.clipboardClearTime === opt.value" class="lang-check">✓</span>
+        </button>
+      </div>
+    </BottomSheet>
 
     <BottomSheet
       :visible="showLangSheet"

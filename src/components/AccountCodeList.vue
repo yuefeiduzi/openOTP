@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAccountStore } from '@/stores'
+import { useAccountStore, useSettingsStore } from '@/stores'
 import type { Account } from '@/types'
 import AccountCard from '@/components/AccountCard.vue'
 import { useToast } from '@/composables/useToast'
+import { copyToClipboard, scheduleClearClipboard } from '@/utils/clipboard'
 
 const accountStore = useAccountStore()
+const settingsStore = useSettingsStore()
 const { t } = useI18n()
 const { show: showToast } = useToast()
 
@@ -54,9 +56,17 @@ function toggleGroup(key: string) {
   expandedGroups.value = next
 }
 
-function handleCopy(code: string) {
-  navigator.clipboard.writeText(code)
+async function handleCopy(code: string) {
+  const copied = await copyToClipboard(code)
+
+  if (!copied) {
+    showToast(t('errors.copyFailed'), true)
+    return
+  }
+
   showToast(t('home.copied'))
+  // 0 means the user asked for the clipboard to be left alone.
+  scheduleClearClipboard(settingsStore.settings.clipboardClearTime)
 }
 </script>
 
@@ -71,6 +81,7 @@ function handleCopy(code: string) {
     <template v-for="group in groups" :key="group.key">
       <AccountCard
         :account="group.accounts[0]"
+        :copy-on-tap="settingsStore.settings.autoCopy"
         @copy="handleCopy"
         @delete="emit('delete', group.accounts[0])"
         @edit="emit('edit', group.accounts[0])"
@@ -90,6 +101,7 @@ function handleCopy(code: string) {
           v-for="account in group.accounts.slice(1)"
           :key="account.id"
           :account="account"
+          :copy-on-tap="settingsStore.settings.autoCopy"
           @copy="handleCopy"
           @delete="emit('delete', account)"
           @edit="emit('edit', account)"
