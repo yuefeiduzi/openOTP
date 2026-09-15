@@ -99,7 +99,7 @@ function handleFileSelected(event: Event) {
         :class="['tab-btn', { active: activeTab === 'emoji' }]"
         @click="activeTab = 'emoji'"
       >
-        Emoji
+        {{ t('editAccount.emoji') }}
       </button>
       <button
         :class="['tab-btn', { active: activeTab === 'initial' }]"
@@ -133,7 +133,7 @@ function handleFileSelected(event: Event) {
     </div>
 
     <div v-if="activeTab === 'initial'" class="initial-tab">
-      <div class="color-label">选择背景颜色</div>
+      <div class="color-label">{{ t('iconPicker.chooseColor') }}</div>
       <div class="color-grid">
         <button
           v-for="color in COLORS"

@@ -145,7 +145,7 @@ async function handleCopy(code: string) {
     @dragend="resetDrag"
   >
     <div v-if="accounts.length === 0" class="empty">
-      <p class="empty-text">{{ t('home.noAccounts', { type: 'TOTP' }) }}</p>
+      <p class="empty-text">{{ t('home.noAccounts', { type: t('home.totp') }) }}</p>
       <button class="empty-add-btn" @click="emit('add')">
         {{ t('home.addFirstAccount') }}
       </button>

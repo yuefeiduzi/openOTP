@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 defineProps<{
   visible: boolean
   title: string
@@ -12,6 +14,8 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'confirm'): void
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -29,14 +33,14 @@ const emit = defineEmits<{
 
           <div v-if="!hideActions" class="sheet-actions">
             <button class="sheet-btn cancel" @click="emit('close')">
-              {{ cancelText || '取消' }}
+              {{ cancelText || t('common.cancel') }}
             </button>
             <button
               class="sheet-btn confirm"
               :disabled="confirmDisabled"
               @click="emit('confirm')"
             >
-              {{ confirmText || '确认' }}
+              {{ confirmText || t('common.confirm') }}
             </button>
           </div>
         </div>

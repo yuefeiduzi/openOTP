@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Open source, cross-platform, local-only two-factor authenticator"
 authors = ["openOTP Team"]
 license = "MIT"
-repository = "https://github.com/openotp/openotp"
+repository = "https://github.com/yuefeiduzi/openOTP"
 edition = "2021"
 rust-version = "1.77.2"
 

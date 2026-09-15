@@ -8,6 +8,7 @@ import { readTextFile, writeFile } from '@tauri-apps/plugin-fs'
 import { useSettingsStore, useAccountStore } from '@/stores'
 import type { AppSettings } from '@/types'
 import { exportBackup, inspectBackup, importBackup, MIN_BACKUP_PASSWORD_LENGTH } from '@/utils/backup'
+import { copyToClipboard } from '@/utils/clipboard'
 import { importAndOTPBackup } from '@/utils/andotp'
 import { setLocale, getSavedLocalePreference } from '@/locales'
 import PinInput from '@/components/PinInput.vue'
@@ -22,6 +23,8 @@ const accountStore = useAccountStore()
 const { t } = useI18n()
 const { show: showToast } = useToast()
 const { setTheme } = useTheme()
+
+const REPOSITORY_URL = 'https://github.com/yuefeiduzi/openOTP'
 
 const languagePreference = ref<'auto' | 'zh-CN' | 'en-US'>('auto')
 
@@ -210,7 +213,7 @@ async function submitNewPassword() {
   }
 
   if (newPassword.value !== confirmNewPassword.value) {
-    passwordError.value = t('errors.passwordMismatch')
+    passwordError.value = t('errors.changePasswordMismatch')
     return
   }
 
@@ -394,9 +397,9 @@ async function importAndOTPAccounts() {
   }
 }
 
-function copyGithubLink() {
-  navigator.clipboard.writeText('https://github.com/openotp/openotp')
-  showToast('已复制')
+async function copyGithubLink() {
+  const copied = await copyToClipboard(REPOSITORY_URL)
+  showToast(copied ? t('settings.linkCopied') : t('errors.copyFailed'), !copied)
 }
 
 function handleMenuBarOnlyToggle(event: Event) {
@@ -639,7 +642,7 @@ async function exportDebugLogs() {
         <h2 class="section-title">{{ t('settings.about') }}</h2>
         <p class="about-line">{{ t('settings.version') }}</p>
         <p class="about-line about-copy" @click="copyGithubLink()">
-          github.com/openotp/openotp
+          {{ t('settings.sourceCode') }}<span class="about-url">github.com/yuefeiduzi/openOTP</span>
         </p>
       </section>
 
@@ -750,7 +753,7 @@ async function exportDebugLogs() {
       :visible="showExportSheet"
       :title="t('settings.exportBackup')"
       :confirm-text="t('settings.startExport')"
-      cancel-text="取消"
+      :cancel-text="t('common.cancel')"
       @close="showExportSheet = false"
       @confirm="handleExportConfirm"
     >
@@ -784,7 +787,7 @@ async function exportDebugLogs() {
         <p class="form-note">{{ t('settings.backupPasswordNote') }}</p>
         <p v-if="exportPasswordError" class="form-error">{{ exportPasswordError }}</p>
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="showExportPasswordModal = false">取消</button>
+          <button class="btn btn-secondary" @click="showExportPasswordModal = false">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" @click="handleExportPasswordConfirm">{{ t('settings.startExport') }}</button>
         </div>
       </div>
@@ -799,7 +802,7 @@ async function exportDebugLogs() {
         </div>
         <p v-if="importPasswordError" class="form-error">{{ importPasswordError }}</p>
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="showImportPasswordModal = false">取消</button>
+          <button class="btn btn-secondary" @click="showImportPasswordModal = false">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" @click="handleImportPasswordConfirm">{{ t('common.confirm') }}</button>
         </div>
       </div>
@@ -816,7 +819,7 @@ async function exportDebugLogs() {
           </div>
           <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
           <div class="modal-actions">
-            <button class="btn btn-secondary" @click="closePasswordModal">取消</button>
+            <button class="btn btn-secondary" @click="closePasswordModal">{{ t('common.cancel') }}</button>
             <button class="btn btn-primary" @click="verifyCurrentPassword">{{ t('common.confirm') }}</button>
           </div>
         </template>
@@ -833,7 +836,7 @@ async function exportDebugLogs() {
           <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
           <p v-if="passwordSuccess" class="form-success">{{ passwordSuccess }}</p>
           <div class="modal-actions">
-            <button class="btn btn-secondary" @click="closePasswordModal">取消</button>
+            <button class="btn btn-secondary" @click="closePasswordModal">{{ t('common.cancel') }}</button>
             <button class="btn btn-primary" @click="submitNewPassword">{{ t('common.save') }}</button>
           </div>
         </template>
@@ -870,7 +873,7 @@ async function exportDebugLogs() {
         <p v-if="setPasswordError" class="form-error">{{ setPasswordError }}</p>
         <p v-if="setPasswordSuccess" class="form-success">{{ setPasswordSuccess }}</p>
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeSetPasswordModal">取消</button>
+          <button class="btn btn-secondary" @click="closeSetPasswordModal">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" @click="submitSetPassword">{{ t('common.save') }}</button>
         </div>
       </div>
@@ -881,7 +884,7 @@ async function exportDebugLogs() {
         <h3 class="modal-title">{{ t('settings.passwordHint') }}</h3>
 
         <div v-if="settingsStore.settings.passwordHint" class="hint-current">
-          <span class="hint-current-label">当前提示</span>
+          <span class="hint-current-label">{{ t('settings.hintCurrent') }}</span>
           <span class="hint-current-text">{{ settingsStore.settings.passwordHint }}</span>
         </div>
 
@@ -898,7 +901,7 @@ async function exportDebugLogs() {
         </div>
 
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeHintModal">取消</button>
+          <button class="btn btn-secondary" @click="closeHintModal">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" @click="saveHint">{{ t('common.save') }}</button>
         </div>
       </div>
@@ -1168,6 +1171,11 @@ async function exportDebugLogs() {
   margin: 4px 0;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.about-url {
+  margin-left: 6px;
+  color: var(--accent);
 }
 
 .about-copy {
