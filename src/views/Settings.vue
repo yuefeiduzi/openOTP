@@ -61,6 +61,7 @@ const exportPasswordError = ref('')
 const showLangSheet = ref(false)
 
 const showClipboardSheet = ref(false)
+const showLockSheet = ref(false)
 
 const showImportPasswordModal = ref(false)
 const importFilePath = ref('')
@@ -423,6 +424,29 @@ function handleAutoCopyToggle(event: Event) {
   settingsStore.saveSettings()
 }
 
+const LOCK_OPTIONS = [
+  { value: 0, label: 'settings.lockImmediate' },
+  { value: 1, label: 'settings.lock1min' },
+  { value: 5, label: 'settings.lock5min' },
+] as const
+
+const lockTimeoutLabel = computed(() => {
+  const current = settingsStore.settings.lockTimeout
+  const option = LOCK_OPTIONS.find(o => o.value === current)
+  return option ? t(option.label) : t('settings.lockImmediate')
+})
+
+function handleLockTimeoutChange(minutes: number) {
+  settingsStore.updateSettings({ lockTimeout: minutes })
+  settingsStore.saveSettings()
+  showLockSheet.value = false
+}
+
+function lockApp() {
+  settingsStore.lock()
+  router.push('/unlock')
+}
+
 function handleClipboardClearChange(seconds: number) {
   settingsStore.updateSettings({ clipboardClearTime: seconds })
   settingsStore.saveSettings()
@@ -596,6 +620,17 @@ async function exportDebugLogs() {
             <span class="setting-hint-val">{{ clipboardClearLabel }}</span>
           </button>
         </div>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="showLockSheet = true">
+            {{ t('settings.lockTimeout') }}
+            <span class="setting-hint-val">{{ lockTimeoutLabel }}</span>
+          </button>
+        </div>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="lockApp">{{ t('settings.lockApp') }}</button>
+        </div>
       </section>
 
       <div class="divider"></div>
@@ -630,6 +665,26 @@ async function exportDebugLogs() {
         </div>
       </section>
     </div>
+
+    <BottomSheet
+      :visible="showLockSheet"
+      :title="t('settings.lockTimeout')"
+      hide-actions
+      @close="showLockSheet = false"
+    >
+      <div class="lang-options">
+        <button
+          v-for="opt in LOCK_OPTIONS"
+          :key="opt.value"
+          class="lang-option"
+          :class="{ active: settingsStore.settings.lockTimeout === opt.value }"
+          @click="handleLockTimeoutChange(opt.value)"
+        >
+          {{ t(opt.label) }}
+          <span v-if="settingsStore.settings.lockTimeout === opt.value" class="lang-check">✓</span>
+        </button>
+      </div>
+    </BottomSheet>
 
     <BottomSheet
       :visible="showClipboardSheet"

@@ -43,7 +43,7 @@ vi.mock('@/locales', () => ({
 }))
 
 import Settings from './Settings.vue'
-import { useAccountStore } from '@/stores'
+import { useAccountStore, useSettingsStore } from '@/stores'
 
 const account: Account = {
   id: 'a1',
@@ -154,6 +154,42 @@ describe('Settings backup export', () => {
       accounts: [account],
       password: 'correct horse battery',
     })
+  })
+})
+
+describe('Settings lock controls', () => {
+  it('should lock the app from the lock button', async () => {
+    const wrapper = mountSettings()
+    const settings = useSettingsStore()
+    settings.completeSetup(true)
+    expect(settings.isLocked).toBe(false)
+
+    const button = wrapper.findAll('.setting-btn').find(b => b.text().includes('settings.lockApp'))
+    await button!.trigger('click')
+    await flushPromises()
+
+    expect(settings.isLocked).toBe(true)
+  })
+
+  it('should show the current lock timeout and let it change', async () => {
+    const wrapper = mountSettings()
+    const settings = useSettingsStore()
+    settings.updateSettings({ lockTimeout: 1 })
+
+    const button = wrapper.findAll('.setting-btn').find(b => b.text().includes('settings.lockTimeout'))
+    expect(button!.text()).toContain('settings.lock1min')
+
+    await button!.trigger('click')
+    await flushPromises()
+
+    const options = body().findAll('.lang-option')
+    expect(options.length).toBe(3)
+
+    await options[2].trigger('click')
+    await flushPromises()
+
+    expect(settings.settings.lockTimeout).toBe(5)
+    expect(invokeMock).toHaveBeenCalledWith('save_settings', expect.anything())
   })
 })
 

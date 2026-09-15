@@ -61,7 +61,7 @@ impl Default for AppSettings {
             biometric_enabled: false,
             auto_copy: true,
             clipboard_clear_time: 30,
-            lock_timeout: 60,
+            lock_timeout: 1,
             password_hint: String::new(),
             language: String::from("auto"),
             theme: String::from("auto"),
