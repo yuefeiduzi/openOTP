@@ -56,8 +56,8 @@ pub fn encrypt(plaintext: &str, password: &str) -> Result<EncryptedData, String>
 
     Ok(EncryptedData {
         iterations: PBKDF2_ITERATIONS,
-        nonce: base64::engine::general_purpose::STANDARD.encode(&nonce_bytes),
-        salt: base64::engine::general_purpose::STANDARD.encode(&salt),
+        nonce: base64::engine::general_purpose::STANDARD.encode(nonce_bytes),
+        salt: base64::engine::general_purpose::STANDARD.encode(salt),
         ciphertext: base64::engine::general_purpose::STANDARD.encode(&ciphertext),
     })
 }

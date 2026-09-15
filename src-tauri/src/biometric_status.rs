@@ -6,21 +6,11 @@ use tauri::Manager;
 
 const EXPIRY_SECONDS: i64 = 1800;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct BiometricStatusData {
     pub failure_count: u32,
     pub last_failure_time: Option<i64>,
     pub expires_at: Option<i64>,
-}
-
-impl Default for BiometricStatusData {
-    fn default() -> Self {
-        Self {
-            failure_count: 0,
-            last_failure_time: None,
-            expires_at: None,
-        }
-    }
 }
 
 pub struct BiometricStatus {
@@ -33,7 +23,10 @@ impl BiometricStatus {
         let path = app
             .path()
             .app_config_dir()
-            .unwrap_or_else(|_| PathBuf::from("."))
+            .unwrap_or_else(|e| {
+                log::error!("failed to resolve app config directory: {}; using cwd", e);
+                PathBuf::from(".")
+            })
             .join("biometric_status.json");
 
         let data = if path.exists() {
@@ -57,21 +50,15 @@ impl BiometricStatus {
             return true;
         }
         if let Some(expires) = self.data.expires_at {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64;
+            let now = now_epoch_seconds();
             return now > expires;
         }
         false
     }
 
     pub fn record_failure(&mut self) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
-        
+        let now = now_epoch_seconds();
+
         self.data.failure_count += 1;
         self.data.last_failure_time = Some(now);
         self.data.expires_at = Some(now + EXPIRY_SECONDS);
@@ -83,10 +70,26 @@ impl BiometricStatus {
         self.save();
     }
 
+    /// Persists the failure state. Failures are logged rather than ignored: if
+    /// this write is lost the lockout can be escaped by restarting the app.
     fn save(&self) {
-        if let Some(parent) = self.path.parent() {
-            let _ = fs::create_dir_all(parent);
+        let content = match serde_json::to_string_pretty(&self.data) {
+            Ok(content) => content,
+            Err(e) => {
+                log::error!("failed to serialize biometric status: {}", e);
+                return;
+            }
+        };
+
+        if let Err(e) = crate::storage::write_private(&self.path, &content) {
+            log::error!("failed to persist biometric status: {}", e);
         }
-        let _ = fs::write(&self.path, serde_json::to_string_pretty(&self.data).unwrap_or_default());
+    }
+}
+
+fn now_epoch_seconds() -> i64 {
+    match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(duration) => duration.as_secs() as i64,
+        Err(_) => 0,
     }
 }

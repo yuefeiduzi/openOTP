@@ -185,7 +185,7 @@ pub fn run() {
             {
                 let settings = storage::load_settings(app.handle());
                 if settings.menu_bar_only {
-                    let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    app.set_activation_policy(tauri::ActivationPolicy::Accessory);
                     if let Some(main) = app.get_webview_window("main") {
                         let _ = main.hide();
                     }
@@ -222,8 +222,12 @@ pub fn run() {
                             let app = tray.app_handle();
                             let mut settings = storage::load_settings(app);
                             settings.menu_bar_only = false;
-                            let _ = storage::save_settings(app, &settings);
-                            let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                            if let Err(e) = storage::save_settings(app, &settings) {
+                                log::error!("failed to persist menu bar mode: {}", e);
+                            }
+                            if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
+                                log::error!("failed to restore activation policy: {}", e);
+                            }
                             if let Some(popover) = app.get_webview_window("popover") {
                                 let _ = popover.hide();
                             }

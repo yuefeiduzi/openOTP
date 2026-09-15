@@ -77,13 +77,12 @@ pub fn authenticate(app: &AppHandle, reason: &str) -> Result<bool, BiometricErro
 
     #[cfg(target_os = "macos")]
     {
-        authenticate_macos(reason).map(|success| {
-            if success {
+        authenticate_macos(reason).inspect(|success| {
+            if *success {
                 status.reset();
             } else {
                 status.record_failure();
             }
-            success
         })
     }
     #[cfg(target_os = "android")]
