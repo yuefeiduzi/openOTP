@@ -286,11 +286,8 @@ mod tests {
     use super::*;
 
     fn temp_dir(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "openotp-test-{}-{}",
-            name,
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("openotp-test-{}-{}", name, std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -322,8 +319,11 @@ mod tests {
     fn accounts_round_trip() {
         let dir = temp_dir("accounts");
 
-        write_private(&dir.join("data.json"), &serde_json::to_string(&[account("a1")]).unwrap())
-            .unwrap();
+        write_private(
+            &dir.join("data.json"),
+            &serde_json::to_string(&[account("a1")]).unwrap(),
+        )
+        .unwrap();
 
         let loaded = load_accounts_from(&dir);
         assert_eq!(loaded.len(), 1);
@@ -379,7 +379,10 @@ mod tests {
             .filter(|p| p.to_string_lossy().contains(".corrupt."))
             .collect();
         assert_eq!(quarantined.len(), 1);
-        assert_eq!(fs::read_to_string(&quarantined[0]).unwrap(), "{ this is not json");
+        assert_eq!(
+            fs::read_to_string(&quarantined[0]).unwrap(),
+            "{ this is not json"
+        );
     }
 
     #[test]

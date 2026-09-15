@@ -1,8 +1,8 @@
-mod storage;
-mod crypto;
 mod backup;
 mod biometric;
 mod biometric_status;
+mod crypto;
+mod storage;
 
 use serde::Serialize;
 use std::path::Path;
@@ -18,12 +18,12 @@ const POPOVER_HEIGHT: f64 = 480.0;
 #[cfg(desktop)]
 const POPOVER_GAP: f64 = 12.0;
 
+use tauri::tray::TrayIconBuilder;
 /// Whether the window is being used as a tray-only app.
 ///
 /// macOS also drops the Dock icon; other desktops just keep the window hidden.
 use tauri::LogicalPosition;
 use tauri::WebviewWindowBuilder;
-use tauri::tray::TrayIconBuilder;
 
 #[derive(Serialize)]
 struct SetupStatus {
@@ -124,7 +124,10 @@ fn reset_biometric_failures(app: AppHandle) {
 fn has_setup(app: AppHandle) -> SetupStatus {
     let is_setup = storage::has_setup(&app);
     let has_password = storage::has_password_hash(&app);
-    SetupStatus { is_setup, has_password }
+    SetupStatus {
+        is_setup,
+        has_password,
+    }
 }
 
 #[tauri::command]
@@ -221,7 +224,14 @@ fn popover_position(app: &AppHandle, clicked_at: PhysicalPosition<f64>) -> Logic
             let scale = monitor.scale_factor();
             let origin = monitor.position().to_logical::<f64>(scale);
             let size = monitor.size().to_logical::<f64>(scale);
-            place_popover(cursor.x, cursor.y, origin.x, origin.y, size.width, size.height)
+            place_popover(
+                cursor.x,
+                cursor.y,
+                origin.x,
+                origin.y,
+                size.width,
+                size.height,
+            )
         }
         None => (cursor.x - POPOVER_WIDTH / 2.0, cursor.y + POPOVER_GAP),
     };
@@ -296,22 +306,25 @@ pub fn run() {
                 // Other desktops get the colour app icon. Kept as a checked-in
                 // raw RGBA asset so the build does not need a PNG decoder.
                 #[cfg(not(target_os = "macos"))]
-                let tray_icon = tauri::image::Image::new(
-                    include_bytes!("../icons/tray-32@2x.rgba"),
-                    64,
-                    64,
-                );
+                let tray_icon =
+                    tauri::image::Image::new(include_bytes!("../icons/tray-32@2x.rgba"), 64, 64);
 
                 let en = settings.language == "en-US";
                 let return_item = tauri::menu::MenuItem::with_id(
                     app,
                     "tray_return_app",
-                    if en { "Back to App Mode" } else { "返回 App 模式" },
+                    if en {
+                        "Back to App Mode"
+                    } else {
+                        "返回 App 模式"
+                    },
                     true,
                     None::<&str>,
                 )?;
-                let quit_item =
-                    tauri::menu::PredefinedMenuItem::quit(app, Some(if en { "Quit" } else { "退出" }))?;
+                let quit_item = tauri::menu::PredefinedMenuItem::quit(
+                    app,
+                    Some(if en { "Quit" } else { "退出" }),
+                )?;
                 let tray_menu = tauri::menu::Menu::with_items(app, &[&return_item, &quit_item])?;
 
                 let mut tray_builder = TrayIconBuilder::with_id("main-tray")
@@ -352,7 +365,8 @@ pub fn run() {
                             button_state: tauri::tray::MouseButtonState::Up,
                             position,
                             ..
-                        } = event {
+                        } = event
+                        {
                             let app = tray.app_handle();
 
                             if let Some(popover) = app.get_webview_window("popover") {
@@ -374,27 +388,35 @@ pub fn run() {
                                 // NOTE: runtime set_position on this window is unreliable on
                                 // macOS 26 (the window ends up offset); the position set at
                                 // creation time sticks, so only show/hide here.
-                                app.state::<PopoverState>().pinned.store(false, Ordering::Relaxed);
+                                app.state::<PopoverState>()
+                                    .pinned
+                                    .store(false, Ordering::Relaxed);
                                 let _ = popover.show();
                                 let _ = app.show();
                                 let _ = popover.set_focus();
                                 return;
                             }
 
-                            if let Ok(popover) = WebviewWindowBuilder::new(app, "popover", tauri::WebviewUrl::App("index.html".into()))
-                                .title("OpenOTP")
-                                .inner_size(POPOVER_WIDTH, POPOVER_HEIGHT)
-                                .position(position.x, position.y)
-                                .decorations(false)
-                                .resizable(false)
-                                .always_on_top(true)
-                                .transparent(true)
-                                .shadow(false)
-                                .visible(true)
-                                .build()
+                            if let Ok(popover) = WebviewWindowBuilder::new(
+                                app,
+                                "popover",
+                                tauri::WebviewUrl::App("index.html".into()),
+                            )
+                            .title("OpenOTP")
+                            .inner_size(POPOVER_WIDTH, POPOVER_HEIGHT)
+                            .position(position.x, position.y)
+                            .decorations(false)
+                            .resizable(false)
+                            .always_on_top(true)
+                            .transparent(true)
+                            .shadow(false)
+                            .visible(true)
+                            .build()
                             {
                                 let _ = popover.eval("window.location.hash = '#/popover'");
-                                app.state::<PopoverState>().pinned.store(false, Ordering::Relaxed);
+                                app.state::<PopoverState>()
+                                    .pinned
+                                    .store(false, Ordering::Relaxed);
                                 let _ = popover.show();
                                 let _ = app.show();
                                 let _ = popover.set_focus();
@@ -579,10 +601,14 @@ mod command_tests {
         let inspected = inspect_backup(path.clone()).expect("inspect should succeed");
         assert!(inspected.encrypted);
 
-        let result = import_backup(path, Some("password123".into())).expect("import should succeed");
+        let result =
+            import_backup(path, Some("password123".into())).expect("import should succeed");
         assert_eq!(result.accounts.len(), 1);
         assert_eq!(result.accounts[0].secret, "JBSWY3DPEHPK3PXP");
-        assert_eq!(result.accounts[0].icon.value, "data:image/png;base64,iVBORw0KGgo=");
+        assert_eq!(
+            result.accounts[0].icon.value,
+            "data:image/png;base64,iVBORw0KGgo="
+        );
     }
 
     #[test]
@@ -602,6 +628,9 @@ mod command_tests {
         export_backup(path.clone(), vec![account()], Some("password123".into())).unwrap();
 
         let error = import_backup(path, Some("password124".into())).unwrap_err();
-        assert!(error.contains("wrong password"), "unexpected error: {error}");
+        assert!(
+            error.contains("wrong password"),
+            "unexpected error: {error}"
+        );
     }
 }

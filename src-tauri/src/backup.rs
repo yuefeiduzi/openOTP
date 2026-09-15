@@ -197,8 +197,8 @@ pub fn inspect(path: &Path) -> Result<BackupManifest, String> {
         ZipArchive::new(file).map_err(|e| format!("not a valid backup archive: {}", e))?;
 
     let manifest = read_entry(&mut archive, MANIFEST_FILE, None)?;
-    let manifest: BackupManifest = serde_json::from_slice(&manifest)
-        .map_err(|e| format!("invalid backup manifest: {}", e))?;
+    let manifest: BackupManifest =
+        serde_json::from_slice(&manifest).map_err(|e| format!("invalid backup manifest: {}", e))?;
 
     validate_manifest(&manifest)?;
 
@@ -226,7 +226,12 @@ fn read_entry<R: Read + std::io::Seek>(
     let mut file = match password {
         Some(password) => archive
             .by_name_decrypt(name, password.as_bytes())
-            .map_err(|_| format!("failed to open \"{}\": wrong password or corrupt archive", name))?,
+            .map_err(|_| {
+                format!(
+                    "failed to open \"{}\": wrong password or corrupt archive",
+                    name
+                )
+            })?,
         None => archive
             .by_name(name)
             .map_err(|e| format!("missing \"{}\" in backup: {}", name, e))?,
@@ -273,7 +278,8 @@ fn rehydrate_icon<R: Read + std::io::Seek>(
 ) -> Result<Account, String> {
     let mut account = account;
 
-    if account.icon.icon_type != "image" || !account.icon.value.starts_with(&format!("{}/", ICONS_DIR))
+    if account.icon.icon_type != "image"
+        || !account.icon.value.starts_with(&format!("{}/", ICONS_DIR))
     {
         return Ok(account);
     }
@@ -382,7 +388,8 @@ mod tests {
     const PNG_DATA_URL: &str = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==";
 
     fn temp_dir(name: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("openotp-backup-{}-{}", name, std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("openotp-backup-{}-{}", name, std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -473,7 +480,10 @@ mod tests {
         export(&path, &[account("a1", icon)], None).unwrap();
         let result = import(&path, None).unwrap();
 
-        assert_eq!(result.accounts[0].icon.value, "data:image/svg+xml;base64,PHN2Zy8+");
+        assert_eq!(
+            result.accounts[0].icon.value,
+            "data:image/svg+xml;base64,PHN2Zy8+"
+        );
     }
 
     #[test]
@@ -517,7 +527,10 @@ mod tests {
         export(&path, &[account("a1", initial_icon())], Some("password123")).unwrap();
 
         let error = import(&path, Some("password124")).unwrap_err();
-        assert!(error.contains("wrong password"), "unexpected error: {error}");
+        assert!(
+            error.contains("wrong password"),
+            "unexpected error: {error}"
+        );
     }
 
     #[test]
@@ -526,7 +539,10 @@ mod tests {
         export(&path, &[account("a1", initial_icon())], Some("password123")).unwrap();
 
         let error = import(&path, None).unwrap_err();
-        assert!(error.contains("password is required"), "unexpected error: {error}");
+        assert!(
+            error.contains("password is required"),
+            "unexpected error: {error}"
+        );
     }
 
     #[test]
@@ -552,7 +568,8 @@ mod tests {
             .read_to_end(&mut accounts)
             .unwrap();
         let manifest: BackupManifest =
-            serde_json::from_slice(&read_entry(&mut archive, MANIFEST_FILE, None).unwrap()).unwrap();
+            serde_json::from_slice(&read_entry(&mut archive, MANIFEST_FILE, None).unwrap())
+                .unwrap();
 
         let future = BackupManifest {
             format_version: FORMAT_VERSION + 1,
@@ -563,7 +580,9 @@ mod tests {
             let mut writer = ZipWriter::new(Cursor::new(&mut buffer));
             let options = SimpleFileOptions::default();
             writer.start_file(MANIFEST_FILE, options).unwrap();
-            writer.write_all(&serde_json::to_vec(&future).unwrap()).unwrap();
+            writer
+                .write_all(&serde_json::to_vec(&future).unwrap())
+                .unwrap();
             writer.start_file(ACCOUNTS_FILE, options).unwrap();
             writer.write_all(&accounts).unwrap();
             writer.finish().unwrap();
@@ -571,7 +590,10 @@ mod tests {
         fs::write(&path, &buffer).unwrap();
 
         let error = inspect(&path).unwrap_err();
-        assert!(error.contains("newer than this app supports"), "unexpected error: {error}");
+        assert!(
+            error.contains("newer than this app supports"),
+            "unexpected error: {error}"
+        );
     }
 
     #[test]
@@ -597,7 +619,10 @@ mod tests {
             .map(|i| archive.by_index(i).unwrap().name().to_string())
             .collect();
 
-        assert!(names.iter().any(|n| n == "icons/______etc_passwd.png"), "{names:?}");
+        assert!(
+            names.iter().any(|n| n == "icons/______etc_passwd.png"),
+            "{names:?}"
+        );
 
         let result = import(&path, None).unwrap();
         assert_eq!(result.accounts[0].icon.value, PNG_DATA_URL);

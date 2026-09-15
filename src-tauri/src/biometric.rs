@@ -34,7 +34,9 @@ pub fn is_biometric_available() -> bool {
         use localauthentication::LAContext;
         if let Ok(context) = LAContext::new() {
             context
-                .can_evaluate_policy(localauthentication::LAPolicy::DeviceOwnerAuthenticationWithBiometrics)
+                .can_evaluate_policy(
+                    localauthentication::LAPolicy::DeviceOwnerAuthenticationWithBiometrics,
+                )
                 .unwrap_or(false)
         } else {
             false
@@ -119,9 +121,10 @@ pub fn reset_failures(app: &AppHandle) {
 
 #[cfg(target_os = "macos")]
 fn authenticate_macos(reason: &str) -> Result<bool, BiometricError> {
-    use localauthentication::{LAContext, LAPolicy, LAError};
+    use localauthentication::{LAContext, LAError, LAPolicy};
 
-    let context = LAContext::new().map_err(|e| BiometricError::SystemError(e.message().to_string()))?;
+    let context =
+        LAContext::new().map_err(|e| BiometricError::SystemError(e.message().to_string()))?;
 
     match context.evaluate_policy(LAPolicy::DeviceOwnerAuthenticationWithBiometrics, reason) {
         Ok(true) => Ok(true),

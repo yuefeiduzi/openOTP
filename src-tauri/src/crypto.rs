@@ -76,10 +76,6 @@ fn parse_password_hash(hash: &str) -> Option<(u32, &str, &str)> {
 mod tests {
     use super::*;
 
-
-
-
-
     #[test]
     fn hashes_and_verifies_a_password() {
         let hash = hash_password("123456");
