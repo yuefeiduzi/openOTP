@@ -95,5 +95,9 @@ Tauri 会在打包时自动签名并提交公证（`notarytool`）。
 - [ ] 三处版本号已同步，`CHANGELOG.md` 已更新
 - [ ] `pnpm test` 与 `cargo test` 通过（CI 绿）
 - [ ] 图标为最新设计（[ICON_STATUS.md](ICON_STATUS.md)）
-- [ ] 手动跑一遍关键路径：首次设置 → 添加账号（扫码/手输）→ 复制验证码 → 导出备份 → 导入备份 → 锁定 → 解锁 → 托盘/菜单栏模式 → 删除账号后重启确认未复现
+- [ ] 文档与实现一致：本次改动是否让 [STRUCTURE.md](STRUCTURE.md)、[TODO.md](../TODO.md)、
+      [CHANGELOG.md](../CHANGELOG.md) 过期
+- [ ] 手动跑一遍关键路径（用干净 profile，见 [DEV_ENVIRONMENT.md](DEV_ENVIRONMENT.md)）：
+      首次设置 → 添加账号（扫码 / 手输）→ 复制验证码 → 搜索 → 拖拽排序 → 导出备份 →
+      导入备份 → 锁定 → 解锁 → 托盘 / 菜单栏模式 → 删除账号后重启确认未复现
 - [ ] 确认本次release 的签名/公证环境变量已设置
