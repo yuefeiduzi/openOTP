@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core'
 
 export interface EncryptedData {
+  /** KDF work factor; absent on payloads written before it was recorded. */
+  iterations?: number
   nonce: string
   salt: string
   ciphertext: string
@@ -11,12 +13,10 @@ export async function encryptData(plaintext: string, password: string): Promise<
 }
 
 export async function decryptData(encrypted: EncryptedData, password: string): Promise<string> {
-  return invoke<string>('decrypt_data', {
-    nonce: encrypted.nonce,
-    salt: encrypted.salt,
-    ciphertext: encrypted.ciphertext,
-    password,
-  })
+  // The Rust command takes the payload as a single `encrypted` argument, so it
+  // must be forwarded as an object — flattening it makes Tauri fail to find the
+  // argument. Passing it whole also forwards the KDF parameters.
+  return invoke<string>('decrypt_data', { encrypted, password })
 }
 
 export function generateId(): string {
