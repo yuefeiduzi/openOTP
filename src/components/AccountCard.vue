@@ -24,6 +24,7 @@ const progress = ref(100)
 const isLongPress = ref(false)
 let timerInterval: ReturnType<typeof setInterval> | null = null
 let pressTimer: ReturnType<typeof setTimeout> | null = null
+let longPressFired = false
 
 function getCodeSpacing(code: string): string {
   if (code.length <= 6) {
@@ -76,17 +77,41 @@ function handleCopy() {
 }
 
 function handleCodeTap() {
+  if (consumeLongPress()) {
+    return
+  }
   if (props.copyOnTap === false) {
     return
   }
   handleCopy()
 }
 
+/**
+ * A long press is a delete gesture, so the click that follows the release must
+ * not also copy or open the editor. Returns true when the press was consumed.
+ */
+function consumeLongPress(): boolean {
+  if (!longPressFired) {
+    return false
+  }
+  longPressFired = false
+  return true
+}
+
+function handleIconTap() {
+  if (consumeLongPress()) {
+    return
+  }
+  handleEdit()
+}
+
 function startLongPress() {
+  longPressFired = false
   pressTimer = setTimeout(() => {
+    pressTimer = null
+    longPressFired = true
     isLongPress.value = true
     emit('delete')
-    pressTimer = null
   }, 500)
 }
 
@@ -95,6 +120,9 @@ function cancelLongPress() {
     clearTimeout(pressTimer)
     pressTimer = null
   }
+  // The scaled-down state belongs to the press itself: releasing, leaving the
+  // card or cancelling must return it to rest.
+  isLongPress.value = false
 }
 
 watch(() => props.account, () => {
@@ -124,7 +152,7 @@ onUnmounted(() => {
     @touchcancel="cancelLongPress"
   >
     <div class="card-content">
-      <div class="icon-area" @click.stop="handleEdit">
+      <div class="icon-area" @click.stop="handleIconTap">
         <IconDisplay :icon="account.icon" :name="account.name" />
       </div>
 
