@@ -11,23 +11,17 @@ export function getRandomBgColor(): string {
   return PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]
 }
 
-export function getIconDisplay(icon: AccountIcon, name?: string): string {
-  if (icon.type === 'emoji' || icon.type === 'image') {
-    return icon.value
-  }
-  if (name) {
-    return name.charAt(0).toUpperCase()
-  }
-  return icon.value.toUpperCase()
-}
-
-export function isEmojiIcon(icon: AccountIcon): boolean {
-  return icon.type === 'emoji'
-}
-
-export function getInitialStyle(icon: AccountIcon): Record<string, string> {
+export function createDefaultIcon(name: string): AccountIcon {
   return {
-    backgroundColor: icon.bgColor,
+    type: 'initial',
+    value: name.charAt(0).toUpperCase(),
+    bgColor: getRandomBgColor(),
+  }
+}
+
+function getInitialStyle(icon: AccountIcon): Record<string, string> {
+  return {
+    backgroundColor: icon.bgColor || PRESET_COLORS[0],
     color: '#fff',
     display: 'flex',
     alignItems: 'center',
@@ -41,16 +35,19 @@ export function getInitialStyle(icon: AccountIcon): Record<string, string> {
   }
 }
 
+/**
+ * What a renderer should draw for an account icon. Every surface that shows an
+ * icon (the account card, the pickers, the editors) goes through
+ * [`renderIcon`], so a new icon type only has to be registered here.
+ */
+export type IconRenderResult =
+  | { type: 'text'; value: string; style?: Record<string, string> }
+  | { type: 'image'; value: string }
+  | { type: 'placeholder' }
+
 export interface IconProvider {
   type: IconType
   renderIcon(icon: AccountIcon, name?: string): IconRenderResult
-  editorComponent?: string
-}
-
-export interface IconRenderResult {
-  type: 'text' | 'image' | 'component'
-  value?: string
-  style?: Record<string, string>
 }
 
 const providers = new Map<IconType, IconProvider>()
@@ -63,36 +60,51 @@ export function getIconProvider(type: IconType): IconProvider | undefined {
   return providers.get(type)
 }
 
+/** Letter shown for an account: its name wins, then the stored value. */
+function initialFor(icon: AccountIcon, name?: string): string {
+  const source = name || icon.value || '?'
+  return source.charAt(0).toUpperCase()
+}
+
+function textIcon(value: string, style?: Record<string, string>): IconRenderResult {
+  return { type: 'text', value, style }
+}
+
+const placeholder: IconRenderResult = { type: 'placeholder' }
+
 const emojiProvider: IconProvider = {
   type: 'emoji',
   renderIcon(icon) {
-    return { type: 'text', value: icon.value }
+    return textIcon(icon.value || '🔑')
   },
 }
 
 const initialProvider: IconProvider = {
   type: 'initial',
   renderIcon(icon, name) {
-    const initial = name ? name.charAt(0).toUpperCase() : icon.value.toUpperCase()
-    return {
-      type: 'text',
-      value: initial,
-      style: getInitialStyle(icon),
-    }
+    return textIcon(initialFor(icon, name), getInitialStyle(icon))
   },
 }
 
 const presetProvider: IconProvider = {
   type: 'preset',
-  renderIcon(icon) {
-    return { type: 'image', value: getPresetIconUrl(icon.value) || icon.value }
+  renderIcon(icon, name) {
+    const url = getPresetIconUrl(icon.value)
+    // An unknown preset name must not become a broken <img>, so fall back to
+    // the initial letter the same way the other text providers do.
+    return url ? { type: 'image', value: url } : textIcon(initialFor(icon, name), getInitialStyle(icon))
   },
 }
 
 const imageProvider: IconProvider = {
   type: 'image',
   renderIcon(icon) {
-    return { type: 'image', value: icon.value }
+    const value = icon.value || ''
+    if (value.startsWith('data:') || value.startsWith('http') || value.startsWith('/')) {
+      return { type: 'image', value }
+    }
+    // Old or hand-edited data may hold a bare file name we cannot resolve.
+    return placeholder
   },
 }
 
@@ -101,10 +113,12 @@ registerIconProvider(initialProvider)
 registerIconProvider(presetProvider)
 registerIconProvider(imageProvider)
 
-export function createDefaultIcon(name: string): AccountIcon {
-  return {
-    type: 'initial',
-    value: name.charAt(0).toUpperCase(),
-    bgColor: getRandomBgColor(),
+/** Single entry point for turning a stored icon into something renderable. */
+export function renderIcon(icon: AccountIcon | undefined | null, name?: string): IconRenderResult {
+  if (!icon) {
+    return placeholder
   }
+
+  const provider = getIconProvider(icon.type)
+  return provider ? provider.renderIcon(icon, name) : placeholder
 }

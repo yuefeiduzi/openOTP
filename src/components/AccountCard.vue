@@ -2,8 +2,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import type { Account } from '@/types'
 import { generateTOTP, getTOTPRemainingSeconds } from '@/utils/otp'
-import { getInitialStyle } from '@/utils/icons'
-import { getPresetIconUrl } from '@/utils/presetIcons'
+import IconDisplay from '@/components/IconDisplay.vue'
 
 const props = defineProps<{
   account: Account
@@ -126,29 +125,7 @@ onUnmounted(() => {
   >
     <div class="card-content">
       <div class="icon-area" @click.stop="handleEdit">
-        <span v-if="account.icon.type === 'emoji'" class="icon-emoji">{{ account.icon.value }}</span>
-        <div
-          v-else-if="account.icon.type === 'initial'"
-          :style="getInitialStyle(account.icon)"
-          class="icon-initial"
-        >
-          {{ account.icon.value || (account.name ? account.name.charAt(0).toUpperCase() : '?') }}
-        </div>
-        <div v-else-if="account.icon.type === 'preset'" class="icon-image">
-          <img :src="getPresetIconUrl(account.icon.value)" alt="" />
-        </div>
-        <div v-else class="icon-image">
-          <img
-            v-if="account.icon.value.startsWith('data:')"
-            :src="account.icon.value"
-            alt=""
-          />
-          <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-        </div>
+        <IconDisplay :icon="account.icon" :name="account.name" />
       </div>
 
       <div class="code-area" @click.stop="handleCodeTap">
@@ -202,6 +179,7 @@ onUnmounted(() => {
 
 .icon-area {
   flex-shrink: 0;
+  font-size: 28px;
   width: 36px;
   height: 36px;
   display: flex;
@@ -214,37 +192,6 @@ onUnmounted(() => {
 
 .icon-area:hover {
   background: rgba(0, 0, 0, 0.04);
-}
-
-.icon-emoji {
-  font-size: 28px;
-  line-height: 1;
-}
-
-.icon-initial {
-  border-radius: 50%;
-}
-
-.icon-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 50%;
-}
-
-.icon-image {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--bg-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-
-.icon-image svg {
-  color: var(--text-secondary);
 }
 
 .code-area {

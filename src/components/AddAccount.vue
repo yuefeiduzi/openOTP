@@ -3,7 +3,10 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Account, AccountIcon } from '@/types'
 import { parseOtpauthUrl } from '@/utils/otp'
-import { getRandomBgColor } from '@/utils/icons'
+import { createDefaultIcon } from '@/utils/icons'
+import IconDisplay from '@/components/IconDisplay.vue'
+import BottomSheet from '@/components/BottomSheet.vue'
+import IconPicker from '@/components/IconPicker.vue'
 import jsQR from 'jsqr'
 
 const props = defineProps<{
@@ -27,6 +30,9 @@ const manualSecret = ref('')
 const manualAlgorithm = ref<'sha1' | 'sha256' | 'sha512'>('sha1')
 const manualDigits = ref<6 | 7 | 8>(6)
 const manualPeriod = ref(30)
+
+const showIconPicker = ref(false)
+const pickedIcon = ref<AccountIcon | null>(null)
 
 const qrImageUrl = ref<string | null>(null)
 const qrScanning = ref(false)
@@ -60,6 +66,8 @@ watch(() => props.visible, (val) => {
     manualAlgorithm.value = 'sha1'
     manualDigits.value = 6
     manualPeriod.value = 30
+    pickedIcon.value = null
+    showIconPicker.value = false
     qrImageUrl.value = null
     qrScanning.value = false
     qrError.value = ''
@@ -156,6 +164,24 @@ function handleCancel() {
   emit('close')
 }
 
+/** Icon shown while adding: the user's pick, or a generated initial. */
+const draftIcon = computed<AccountIcon>(() => {
+  const name = accountName.value
+  return pickedIcon.value ?? createDefaultIcon(name || '?')
+})
+
+const accountName = computed(() => {
+  if (activeTab.value === 'url' && parsedPreview.value?.name) {
+    return parsedPreview.value.name
+  }
+  return manualName.value
+})
+
+function applyPickedIcon(icon: AccountIcon) {
+  pickedIcon.value = { ...icon }
+  showIconPicker.value = false
+}
+
 function handleAdd() {
   let data: Partial<Account>
 
@@ -177,13 +203,7 @@ function handleAdd() {
 
   if (!data.name || !data.secret) return
 
-  const icon: AccountIcon = {
-    type: 'initial',
-    value: (data.name || '').charAt(0).toUpperCase(),
-    bgColor: getRandomBgColor(),
-  }
-
-  data.icon = icon
+  data.icon = { ...(pickedIcon.value ?? createDefaultIcon(data.name)) }
 
   if (!data.algorithm) data.algorithm = 'sha1'
   if (!data.digits) data.digits = 6
@@ -233,6 +253,14 @@ function useParsedData() {
         >
           {{ t('addAccount.manual') }}
         </button>
+      </div>
+
+      <div class="icon-row">
+        <span class="field-label">{{ t('editAccount.icon') }}</span>
+        <div class="current-icon" @click="showIconPicker = true">
+          <IconDisplay :icon="draftIcon" :name="accountName" />
+          <button class="edit-icon-btn">{{ t('editAccount.changeIcon') }}</button>
+        </div>
       </div>
 
       <div v-if="!manualMode && activeTab === 'qr'" class="qr-section">
@@ -351,10 +379,48 @@ function useParsedData() {
         <button class="btn btn-add" @click="handleAdd">{{ t('common.add') }}</button>
       </div>
     </div>
+
+    <BottomSheet
+      :visible="showIconPicker"
+      :title="t('editAccount.changeIcon')"
+      hide-actions
+      @close="showIconPicker = false"
+    >
+      <IconPicker
+        :model-value="draftIcon"
+        :account-name="accountName"
+        @update:model-value="applyPickedIcon"
+      />
+    </BottomSheet>
   </div>
 </template>
 
 <style scoped>
+.icon-row {
+  margin-bottom: 12px;
+}
+
+.current-icon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.edit-icon-btn {
+  margin-left: auto;
+  padding: 4px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
 .overlay {
   position: fixed;
   inset: 0;

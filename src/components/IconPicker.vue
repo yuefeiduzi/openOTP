@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AccountIcon, IconType } from '@/types'
-import { getInitialStyle } from '@/utils/icons'
-import { PRESET_ICONS, getPresetIconUrl } from '@/utils/presetIcons'
+import IconDisplay from '@/components/IconDisplay.vue'
+import { PRESET_ICONS } from '@/utils/presetIcons'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: AccountIcon
@@ -38,20 +41,6 @@ watch(() => props.modelValue, (val) => {
   activeTab.value = val.type
 })
 
-const initialLetter = computed(() => {
-  if (props.accountName) {
-    return props.accountName.charAt(0).toUpperCase()
-  }
-  return 'A'
-})
-
-const initialPreviewStyle = computed(() => {
-  return getInitialStyle({
-    ...localIcon.value,
-    type: 'initial',
-  })
-})
-
 function selectEmoji(emoji: string) {
   localIcon.value = { type: 'emoji', value: emoji, bgColor: '' }
 }
@@ -82,7 +71,7 @@ function handleFileSelected(event: Event) {
   const file = input.files?.[0]
   if (!file) return
   if (file.size > 200 * 1024) {
-    imageError.value = '图片过大，请选择小于 200KB 的图片'
+    imageError.value = t('iconPicker.imageTooLarge')
     input.value = ''
     return
   }
@@ -99,19 +88,9 @@ function handleFileSelected(event: Event) {
 <template>
   <div class="icon-picker">
     <div class="preview-section">
-      <div class="preview-label">预览</div>
+      <div class="preview-label">{{ t('iconPicker.preview') }}</div>
       <div class="preview-icon">
-        <span v-if="localIcon.type === 'emoji'" class="preview-emoji">{{ localIcon.value }}</span>
-        <div v-else-if="localIcon.type === 'initial'" :style="initialPreviewStyle" class="preview-initial">
-          {{ initialLetter }}
-        </div>
-        <div v-else-if="localIcon.type === 'preset'" class="preview-image">
-          <img :src="getPresetIconUrl(localIcon.value)" alt="" />
-        </div>
-        <div v-else class="preview-image">
-          <img v-if="localIcon.value.startsWith('data:')" :src="localIcon.value" alt="" />
-          <span v-else>?</span>
-        </div>
+        <IconDisplay :icon="localIcon" :name="accountName" :size="36" />
       </div>
     </div>
 
@@ -126,19 +105,19 @@ function handleFileSelected(event: Event) {
         :class="['tab-btn', { active: activeTab === 'initial' }]"
         @click="activeTab = 'initial'"
       >
-        首字母
+        {{ t('editAccount.initial') }}
       </button>
       <button
         :class="['tab-btn', { active: activeTab === 'image' }]"
         @click="activeTab = 'image'"
       >
-        图片
+        {{ t('iconPicker.image') }}
       </button>
       <button
         :class="['tab-btn', { active: activeTab === 'preset' }]"
         @click="activeTab = 'preset'"
       >
-        预设
+        {{ t('iconPicker.preset') }}
       </button>
     </div>
 
@@ -180,7 +159,7 @@ function handleFileSelected(event: Event) {
 
     <div v-if="activeTab === 'image'" class="image-tab">
       <button class="upload-btn" @click="triggerFileInput">
-        选择图片
+        {{ t('iconPicker.selectImage') }}
       </button>
       <input
         ref="fileInput"
@@ -189,13 +168,13 @@ function handleFileSelected(event: Event) {
         style="display: none"
         @change="handleFileSelected"
       />
-      <p class="image-hint">支持 PNG / SVG 格式，小于 200KB</p>
+      <p class="image-hint">{{ t('iconPicker.imageHint') }}</p>
       <p v-if="imageError" class="image-error">{{ imageError }}</p>
     </div>
 
     <div class="actions">
-      <button class="btn btn-cancel" @click="cancelSelection">取消</button>
-      <button class="btn btn-confirm" @click="confirmSelection">确认</button>
+      <button class="btn btn-cancel" @click="cancelSelection">{{ t('common.cancel') }}</button>
+      <button class="btn btn-confirm" @click="confirmSelection">{{ t('common.confirm') }}</button>
     </div>
   </div>
 </template>

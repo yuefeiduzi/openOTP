@@ -146,6 +146,15 @@ export default {
     emojiPlaceholder: 'Choose an emoji',
     bgColor: 'Background Color',
   },
+  iconPicker: {
+    preview: 'Preview',
+    image: 'Image',
+    preset: 'Preset',
+    chooseColor: 'Choose a background colour',
+    selectImage: 'Choose an image',
+    imageHint: 'PNG / SVG, up to 200 KB',
+    imageTooLarge: 'Image is too large — pick one under 200 KB',
+  },
   deleteConfirm: {
     message: 'Are you sure you want to delete {name}?',
     warning: 'This action cannot be undone',

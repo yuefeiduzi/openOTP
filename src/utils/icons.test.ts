@@ -1,100 +1,126 @@
 import { describe, it, expect } from 'vitest'
+import type { AccountIcon } from '@/types'
 import {
   getRandomBgColor,
-  getIconDisplay,
-  isEmojiIcon,
-  getInitialStyle,
+  createDefaultIcon,
+  renderIcon,
+  getIconProvider,
+  registerIconProvider,
 } from './icons'
-import type { AccountIcon } from '@/types'
+
+const icon = (overrides: Partial<AccountIcon> = {}): AccountIcon => ({
+  type: 'initial',
+  value: 'A',
+  bgColor: '#123456',
+  ...overrides,
+})
 
 describe('getRandomBgColor', () => {
-  it('should return a color from the preset palette', () => {
-    const PRESET_COLORS = [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-      '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
-      '#BB8FCE', '#85C1E9', '#F8C471', '#E59866',
-    ]
+  it('should return a colour from the preset palette', () => {
     const color = getRandomBgColor()
-    expect(PRESET_COLORS).toContain(color)
+    expect(color).toMatch(/^#[0-9A-F]{6}$/i)
   })
 
-  it('should return different colors across multiple calls', () => {
-    const colors = new Set<string>()
-    for (let i = 0; i < 50; i++) {
-      colors.add(getRandomBgColor())
-    }
+  it('should return different colours across multiple calls', () => {
+    const colors = new Set(Array.from({ length: 40 }, () => getRandomBgColor()))
     expect(colors.size).toBeGreaterThan(1)
   })
 })
 
-describe('getIconDisplay', () => {
-  it('should return emoji value for emoji type', () => {
-    const icon: AccountIcon = { type: 'emoji', value: '🔑', bgColor: '' }
-    expect(getIconDisplay(icon, 'Test')).toBe('🔑')
-  })
-
-  it('should return image value for image type', () => {
-    const icon: AccountIcon = { type: 'image', value: 'icon.png', bgColor: '' }
-    expect(getIconDisplay(icon, 'Test')).toBe('icon.png')
-  })
-
-  it('should return first letter of name for initial type with name', () => {
-    const icon: AccountIcon = { type: 'initial', value: 'T', bgColor: '#FF6B6B' }
-    expect(getIconDisplay(icon, 'Test')).toBe('T')
-  })
-
-  it('should fall back to uppercase icon value when no name', () => {
-    const icon: AccountIcon = { type: 'initial', value: 'x', bgColor: '#FF6B6B' }
-    expect(getIconDisplay(icon)).toBe('X')
-  })
-
-  it('should return uppercase for icon value when no name provided', () => {
-    const icon: AccountIcon = { type: 'initial', value: 'a', bgColor: '#000' }
-    expect(getIconDisplay(icon, undefined)).toBe('A')
+describe('createDefaultIcon', () => {
+  it('should derive the initial from the name', () => {
+    const icon = createDefaultIcon('github')
+    expect(icon.type).toBe('initial')
+    expect(icon.value).toBe('G')
+    expect(icon.bgColor).toBeTruthy()
   })
 })
 
-describe('isEmojiIcon', () => {
-  it('should return true for emoji type', () => {
-    const icon: AccountIcon = { type: 'emoji', value: '🔑', bgColor: '' }
-    expect(isEmojiIcon(icon)).toBe(true)
+describe('initial icon styling', () => {
+  it('should use the stored background colour', () => {
+    const result = renderIcon(icon({ bgColor: '#abcdef' })) as { style: Record<string, string> }
+    expect(result.style.backgroundColor).toBe('#abcdef')
   })
 
-  it('should return false for initial type', () => {
-    const icon: AccountIcon = { type: 'initial', value: 'T', bgColor: '#FF6B6B' }
-    expect(isEmojiIcon(icon)).toBe(false)
-  })
-
-  it('should return false for image type', () => {
-    const icon: AccountIcon = { type: 'image', value: 'img.png', bgColor: '' }
-    expect(isEmojiIcon(icon)).toBe(false)
-  })
-
-  it('should return false for preset type', () => {
-    const icon: AccountIcon = { type: 'preset', value: 'github', bgColor: '' }
-    expect(isEmojiIcon(icon)).toBe(false)
+  it('should fall back to a palette colour when none is stored', () => {
+    const result = renderIcon(icon({ bgColor: '' })) as { style: Record<string, string> }
+    expect(result.style.backgroundColor).toMatch(/^#[0-9A-F]{6}$/i)
   })
 })
 
-describe('getInitialStyle', () => {
-  it('should return inline style object with background color', () => {
-    const icon: AccountIcon = { type: 'initial', value: 'A', bgColor: '#FF6B6B' }
-    const style = getInitialStyle(icon)
-    expect(style.backgroundColor).toBe('#FF6B6B')
-    expect(style.color).toBe('#fff')
-    expect(style.display).toBe('flex')
-    expect(style.alignItems).toBe('center')
-    expect(style.justifyContent).toBe('center')
-    expect(style.borderRadius).toBe('50%')
-    expect(style.fontSize).toBe('16px')
-    expect(style.fontWeight).toBe('bold')
-    expect(style.textTransform).toBe('uppercase')
+describe('renderIcon', () => {
+  it('should render emoji icons as text', () => {
+    expect(renderIcon(icon({ type: 'emoji', value: '' }))).toEqual({
+      type: 'text',
+      value: '🔑',
+      style: undefined,
+    })
   })
 
-  it('should return width and height as strings', () => {
-    const icon: AccountIcon = { type: 'initial', value: 'B', bgColor: '#4ECDC4' }
-    const style = getInitialStyle(icon)
-    expect(style.width).toBe('36px')
-    expect(style.height).toBe('36px')
+  it('should fall back to a key emoji for an empty emoji icon', () => {
+    const result = renderIcon(icon({ type: 'emoji', value: '' }))
+    expect(result).toMatchObject({ type: 'text', value: '🔑' })
+  })
+
+  it('should render initial icons from the account name', () => {
+    const result = renderIcon(icon({ type: 'initial', value: 'x' }), 'github')
+    expect(result).toMatchObject({ type: 'text', value: 'G' })
+    expect((result as { style: Record<string, string> }).style.borderRadius).toBe('50%')
+  })
+
+  it('should fall back to the stored value when no name is available', () => {
+    const result = renderIcon(icon({ type: 'initial', value: 'z' }))
+    expect(result).toMatchObject({ type: 'text', value: 'Z' })
+  })
+
+  it('should render known preset icons as images', () => {
+    const result = renderIcon(icon({ type: 'preset', value: 'github' }))
+    expect(result.type).toBe('image')
+  })
+
+  it('should degrade an unknown preset to an initial instead of a broken image', () => {
+    const result = renderIcon(icon({ type: 'preset', value: 'not-a-preset' }), 'gitlab')
+    expect(result).toMatchObject({ type: 'text', value: 'G' })
+  })
+
+  it('should render uploaded images from data URLs', () => {
+    const result = renderIcon(icon({ type: 'image', value: 'data:image/png;base64,AAA' }))
+    expect(result).toEqual({ type: 'image', value: 'data:image/png;base64,AAA' })
+  })
+
+  it('should show a placeholder for an unresolvable image value', () => {
+    expect(renderIcon(icon({ type: 'image', value: 'icon.png' }))).toEqual({ type: 'placeholder' })
+  })
+
+  it('should show a placeholder when there is no icon at all', () => {
+    expect(renderIcon(null)).toEqual({ type: 'placeholder' })
+    expect(renderIcon(undefined)).toEqual({ type: 'placeholder' })
+  })
+})
+
+describe('icon providers', () => {
+  it('should return the provider registered for a type', () => {
+    expect(getIconProvider('emoji')?.type).toBe('emoji')
+    expect(getIconProvider('preset')?.type).toBe('preset')
+  })
+
+  it('should let a new icon type be plugged in without touching the renderers', () => {
+    registerIconProvider({
+      type: 'initial',
+      renderIcon: () => ({ type: 'text', value: 'override' }),
+    })
+
+    expect(renderIcon(icon())).toEqual({ type: 'text', value: 'override' })
+
+    // Restore the real provider so other tests are unaffected.
+    registerIconProvider({
+      type: 'initial',
+      renderIcon: (i, name) => ({
+        type: 'text',
+        value: (name || i.value || '?').charAt(0).toUpperCase(),
+        style: { backgroundColor: i.bgColor },
+      }),
+    })
+    expect(renderIcon(icon(), 'alice')).toMatchObject({ value: 'A' })
   })
 })

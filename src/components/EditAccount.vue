@@ -2,8 +2,9 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Account, AccountIcon } from '@/types'
-import EmojiPicker from '@/components/EmojiPicker.vue'
-import { getPresetIconUrl } from '@/utils/presetIcons'
+import IconDisplay from '@/components/IconDisplay.vue'
+import BottomSheet from '@/components/BottomSheet.vue'
+import IconPicker from '@/components/IconPicker.vue'
 
 const props = defineProps<{
   visible: boolean
@@ -19,59 +20,28 @@ const { t } = useI18n()
 const editName = ref('')
 const editIssuer = ref('')
 const editNotes = ref('')
-const showIconEditor = ref(false)
-/** Only emoji/initial are editable here, so the draft tabs live on their own ref. */
-const draftIconType = ref<'emoji' | 'initial'>('emoji')
-/** Set once the user actually touches the icon editor; until then the stored icon is preserved verbatim. */
-const iconDirty = ref(false)
-const emojiValue = ref('')
-const bgColor = ref('')
-
-const PRESET_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-  '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
-  '#BB8FCE', '#85C1E9', '#F8C471', '#E59866',
-]
+const showIconPicker = ref(false)
+/** Set once the user actually picks an icon; until then the stored icon is preserved verbatim. */
+const pickedIcon = ref<AccountIcon | null>(null)
 
 watch(() => props.visible, (val) => {
   if (val && props.account) {
     editName.value = props.account.name
     editIssuer.value = props.account.issuer
     editNotes.value = props.account.notes || ''
-    draftIconType.value = props.account.icon.type === 'initial' ? 'initial' : 'emoji'
-    iconDirty.value = false
-    emojiValue.value = props.account.icon.type === 'emoji' ? props.account.icon.value : ''
-    bgColor.value = props.account.icon.bgColor || '#4A90D9'
-    showIconEditor.value = false
+    pickedIcon.value = null
+    showIconPicker.value = false
   }
 }, { immediate: true })
 
-/** The icon as it will be saved: the stored one untouched, or the edited draft. */
-const effectiveIcon = computed<AccountIcon>(() => {
-  const original = props.account?.icon
-
-  if (!iconDirty.value && original) {
-    return original
-  }
-
-  if (draftIconType.value === 'emoji') {
-    return { type: 'emoji', value: emojiValue.value || '🔑', bgColor: '' }
-  }
-
-  return {
-    type: 'initial',
-    value: editName.value.charAt(0).toUpperCase(),
-    bgColor: bgColor.value,
-  }
+/** The icon as it will be saved: the stored one untouched, or the picked one. */
+const effectiveIcon = computed<AccountIcon | null>(() => {
+  return pickedIcon.value ?? props.account?.icon ?? null
 })
 
-const presetIconUrl = computed(() =>
-  effectiveIcon.value.type === 'preset' ? getPresetIconUrl(effectiveIcon.value.value) : ''
-)
-
-function selectIconType(type: 'emoji' | 'initial') {
-  draftIconType.value = type
-  iconDirty.value = true
+function applyPickedIcon(icon: AccountIcon) {
+  pickedIcon.value = { ...icon }
+  showIconPicker.value = false
 }
 
 function handleSave() {
@@ -82,7 +52,7 @@ function handleSave() {
     name: editName.value,
     issuer: editIssuer.value,
     notes: editNotes.value,
-    icon: { ...effectiveIcon.value },
+    icon: { ...(effectiveIcon.value ?? props.account.icon) },
   })
 }
 
@@ -120,58 +90,9 @@ function handleCancel() {
 
       <div class="field-group">
         <label class="field-label">{{ t('editAccount.icon') }}</label>
-        <div class="current-icon" @click="showIconEditor = !showIconEditor">
-          <span v-if="effectiveIcon.type === 'emoji'" class="icon-emoji">{{ effectiveIcon.value || '&#x1F511;' }}</span>
-          <div
-            v-else-if="effectiveIcon.type === 'initial'"
-            class="icon-initial"
-            :style="{ backgroundColor: effectiveIcon.bgColor, color: '#fff', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 'bold' }"
-          >
-            {{ effectiveIcon.value || '?' }}
-          </div>
-          <img
-            v-else-if="effectiveIcon.type === 'preset'"
-            class="icon-preview-img"
-            :src="presetIconUrl"
-            alt=""
-          />
-          <img v-else class="icon-preview-img" :src="effectiveIcon.value" alt="" />
+        <div class="current-icon" @click="showIconPicker = true">
+          <IconDisplay :icon="effectiveIcon" :name="editName" />
           <button class="edit-icon-btn">{{ t('editAccount.changeIcon') }}</button>
-        </div>
-
-        <div v-if="showIconEditor" class="icon-editor">
-          <div class="icon-type-tabs">
-            <button
-              :class="['icon-type-btn', { active: effectiveIcon.type === 'emoji' }]"
-              @click="selectIconType('emoji')"
-            >
-              {{ t('editAccount.emoji') }}
-            </button>
-            <button
-              :class="['icon-type-btn', { active: effectiveIcon.type === 'initial' }]"
-              @click="selectIconType('initial')"
-            >
-              {{ t('editAccount.initial') }}
-            </button>
-          </div>
-
-          <div v-if="draftIconType === 'emoji'" class="field-group">
-            <label class="field-label">{{ t('editAccount.emoji') }}</label>
-            <EmojiPicker v-model="emojiValue" @update:model-value="iconDirty = true" />
-          </div>
-
-          <div v-if="draftIconType === 'initial'" class="field-group">
-            <label class="field-label">{{ t('editAccount.bgColor') }}</label>
-            <div class="color-grid">
-              <button
-                v-for="color in PRESET_COLORS"
-                :key="color"
-                :class="['color-item', { selected: bgColor === color }]"
-                :style="{ backgroundColor: color }"
-                @click="bgColor = color; selectIconType('initial')"
-              />
-            </div>
-          </div>
         </div>
       </div>
 
@@ -180,6 +101,19 @@ function handleCancel() {
         <button class="btn btn-save" @click="handleSave">{{ t('common.save') }}</button>
       </div>
     </div>
+
+    <BottomSheet
+      :visible="showIconPicker"
+      :title="t('editAccount.changeIcon')"
+      hide-actions
+      @close="showIconPicker = false"
+    >
+      <IconPicker
+        :model-value="effectiveIcon ?? account?.icon ?? { type: 'initial', value: '', bgColor: '' }"
+        :account-name="editName"
+        @update:model-value="applyPickedIcon"
+      />
+    </BottomSheet>
   </div>
 </template>
 

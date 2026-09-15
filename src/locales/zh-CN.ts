@@ -146,6 +146,15 @@ export default {
     emojiPlaceholder: '选择一个 emoji',
     bgColor: '背景颜色',
   },
+  iconPicker: {
+    preview: '预览',
+    image: '图片',
+    preset: '预设',
+    chooseColor: '选择背景颜色',
+    selectImage: '选择图片',
+    imageHint: '支持 PNG / SVG 格式，小于 200KB',
+    imageTooLarge: '图片过大，请选择小于 200KB 的图片',
+  },
   deleteConfirm: {
     message: '确定要删除 {name} 吗？',
     warning: '此操作不可撤销',
