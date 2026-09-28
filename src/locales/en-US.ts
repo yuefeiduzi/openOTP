@@ -20,9 +20,12 @@ export default {
     menuBarMode: 'Tray / menu bar mode',
     menuBarModeDesc: 'Hide the main window and check codes from the tray icon',
   },
+  trayMenu: {
+    preferences: 'Preferences',
+    quit: 'Quit',
+  },
   popover: {
     returnToApp: 'Back to app mode',
-    openMain: 'Open main window',
     quit: 'Quit OpenOTP',
   },
   setup: {
@@ -88,7 +91,7 @@ export default {
     backupPassword: 'Backup Password',
     exportSuccess: 'Exported to {path}',
     about: 'About',
-    version: 'OpenOTP v0.2.1',
+    version: 'OpenOTP v0.2.2',
     quit: 'Quit OpenOTP',
     linkCopied: 'Repository link copied',
     sourceCode: 'Source Code',

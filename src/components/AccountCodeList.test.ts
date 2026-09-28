@@ -69,11 +69,12 @@ afterEach(() => {
 })
 
 describe('AccountCodeList copy behaviour', () => {
-  it('should copy on tapping the card and hide the copy button by default', async () => {
+  it('should copy on tapping the card and still offer the copy button', async () => {
     const wrapper = await mountList(true)
     await flushPromises()
 
-    expect(wrapper.find('.copy-btn').exists()).toBe(false)
+    // 自动复制开着时按钮仍然可见：否则卡片看着像没有复制入口
+    expect(wrapper.find('.copy-btn').exists()).toBe(true)
 
     await wrapper.find('.code-area').trigger('click')
     await flushPromises()

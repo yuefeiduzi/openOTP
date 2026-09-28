@@ -104,8 +104,7 @@ html.popover-window body {
 html.popover-window #app {
   width: calc(100% - 24px);
   height: calc(100% - 24px);
-  margin: 12px;
-  background: var(--popover-surface);
+  margin: 12px;  background: var(--popover-surface);
   border: 1px solid var(--popover-border);
   border-radius: 12px;
   overflow: hidden;
@@ -117,4 +116,29 @@ html.popover-window #app {
   --sheet-bg: var(--popover-card);
   --icon-tile-bg: var(--popover-raised);
   --btn-secondary-bg: var(--popover-raised);
+}
+
+/* 列表本身再退一点，内容不要贴到面板边框上（卡片、分组框、搜索框都会跟着内缩）*/
+html.popover-window .account-code-list {
+  padding: 12px 12px 0;
+}
+
+/* 托盘右键菜单：同一套面板语言，边距更紧、圆角更小 */
+html.tray-menu-window,
+html.tray-menu-window body {
+  background: transparent;
+  overflow: hidden;
+}
+
+html.tray-menu-window #app {
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  margin: 8px;
+  background: var(--popover-surface);
+  border: 1px solid var(--popover-border);
+  border-radius: 10px;
+  overflow: hidden;
+  filter: var(--popover-shadow);
+  --bg-secondary: var(--popover-raised);
+  --border-color: var(--popover-border);
 }

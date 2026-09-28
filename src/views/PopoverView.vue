@@ -40,10 +40,6 @@ onUnmounted(() => {
   invoke('set_popover_pinned', { pinned: false }).catch(() => {})
 })
 
-async function openMainWindow() {
-  await invoke('show_main_window')
-}
-
 // macOS has no tray menu (AppKit opens it on any click, which would swallow the
 // popover toggle), so the popover carries the quit action itself.
 async function quitApp() {
@@ -95,9 +91,6 @@ async function returnToAppMode() {
             <path d="M12 19l-7-7 7-7" />
           </svg>
           <span>{{ t('popover.returnToApp') }}</span>
-        </button>
-        <button class="popover-icon-btn" :title="t('popover.openMain')" @click="openMainWindow">
-          <img class="popover-icon" src="/icon.png" alt="OpenOTP" />
         </button>
         <button class="popover-icon-btn" :title="t('popover.quit')" @click="quitApp">
           <svg
@@ -215,9 +208,4 @@ async function returnToAppMode() {
   background: var(--bg-secondary);
 }
 
-.popover-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-}
 </style>

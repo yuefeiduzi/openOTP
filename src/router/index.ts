@@ -25,6 +25,11 @@ const router = createRouter({
       component: () => import('@/views/Settings.vue')
     },
     {
+      path: '/tray-menu',
+      name: 'tray-menu',
+      component: () => import('@/views/TrayMenu.vue')
+    },
+    {
       path: '/popover',
       name: 'popover',
       component: () => import('@/views/PopoverView.vue')
@@ -48,7 +53,13 @@ router.beforeEach(async (to, _from, next) => {
     settingsStore.unlock()
   }
 
-  if (settingsStore.isLocked && to.name !== 'unlock' && to.name !== 'setup') {
+  // 托盘右键菜单（偏好设置 / 退出）不显示任何账号数据，锁屏时也要能用。
+  if (
+    settingsStore.isLocked &&
+    to.name !== 'unlock' &&
+    to.name !== 'setup' &&
+    to.name !== 'tray-menu'
+  ) {
     // Remember where the user was headed so unlocking returns them there.
     next({ name: 'unlock', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } })
     return

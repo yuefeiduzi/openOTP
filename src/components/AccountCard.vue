@@ -7,8 +7,10 @@ import IconDisplay from '@/components/IconDisplay.vue'
 const props = defineProps<{
   account: Account
   /**
-   * When true the card itself copies on tap and no copy button is shown;
-   * when false only the copy button copies, so a tap cannot copy by accident.
+   * When true a tap on the code copies it, so the copy button is an extra
+   * affordance rather than the only way in; when false only the button copies.
+   * The button is always rendered: with auto-copy on it used to be hidden as
+   * redundant, which left the card looking like it had no copy action at all.
    */
   copyOnTap?: boolean
   /**
@@ -159,7 +161,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <button v-if="copyOnTap === false" class="copy-btn" @click.stop="handleCopy">
+      <button class="copy-btn" @click.stop="handleCopy">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>

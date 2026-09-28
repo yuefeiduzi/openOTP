@@ -54,17 +54,19 @@
   --focus-ring: rgba(90, 163, 240, 0.25);
 }
 
-/* 菜单栏弹窗是自己一块面板：底色比 App 内高一档灰 + 一根描边，叠在桌面上能看出边界；
-   面板内部的卡片再高一档，否则会和面板同色（参考 Stat 的弹窗层次）。
-   只作用于弹窗窗口（`html.popover-window`，由 src/main.ts 按窗口 label 打上）。*/
-html.popover-window {
+/* 菜单栏弹窗与托盘右键菜单各自一块面板：底色比 App 内高一档灰 + 一根描边，叠在桌面上能看出
+   边界；面板内部的卡片再高一档，否则会和面板同色（参考 Stat 的弹窗层次）。
+   只作用于这两个窗口（由 src/main.ts 按窗口 label 打上类名）。*/
+html.popover-window,
+html.tray-menu-window {
   --popover-surface: #f2f2f7;
   --popover-card: #ffffff;
   --popover-raised: #e8e8ed;
   --popover-border: rgba(0, 0, 0, 0.12);
 }
 
-html.popover-window[data-theme="dark"] {
+html.popover-window[data-theme="dark"],
+html.tray-menu-window[data-theme="dark"] {
   --popover-surface: #2c2c2e;
   --popover-card: #3a3a3c;
   --popover-raised: #48484a;

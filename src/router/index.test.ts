@@ -38,6 +38,18 @@ describe('router lock guard', () => {
     expect(router.currentRoute.value.name).toBe('unlock')
   })
 
+  it('should let the tray menu through while locked', async () => {
+    // 托盘右键菜单只提供「偏好设置 / 退出」，不显示任何账号数据，锁屏时也必须能用，
+    // 否则锁屏后就没有退出入口了
+    const settings = useSettingsStore()
+    settings.completeSetup(true)
+    settings.lock()
+
+    await router.push('/tray-menu')
+
+    expect(router.currentRoute.value.name).toBe('tray-menu')
+  })
+
   it('should remember the popover as the post-unlock destination', async () => {
     const settings = useSettingsStore()
     settings.completeSetup(true)

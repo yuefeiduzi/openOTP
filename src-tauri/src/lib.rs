@@ -7,13 +7,18 @@ mod storage;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{AppHandle, Manager, PhysicalPosition};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
 /// Size of the menu bar / tray popover window.
 #[cfg(desktop)]
 const POPOVER_WIDTH: f64 = 320.0;
 #[cfg(desktop)]
 const POPOVER_HEIGHT: f64 = 480.0;
+/// Size of the tray's secondary-click menu window.
+#[cfg(desktop)]
+const TRAY_MENU_WIDTH: f64 = 200.0;
+#[cfg(desktop)]
+const TRAY_MENU_HEIGHT: f64 = 96.0;
 /// Gap between the tray icon and the popover.
 #[cfg(desktop)]
 const POPOVER_GAP: f64 = 12.0;
@@ -213,11 +218,66 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// Opens the main window on the settings page (the tray menu's 偏好设置).
+#[tauri::command]
+fn open_preferences(app: AppHandle) -> Result<(), String> {
+    if let Some(menu) = app.get_webview_window("tray-menu") {
+        let _ = menu.hide();
+    }
+    if let Some(main) = app.get_webview_window("main") {
+        main.show().map_err(|e| e.to_string())?;
+        main.set_focus().map_err(|e| e.to_string())?;
+    }
+    // The windows are separate webviews, so the route has to be switched by the
+    // main window itself.
+    app.emit_to("main", "navigate", "/settings")
+        .map_err(|e| e.to_string())
+}
+
+/// Builds one of the tray-anchored panels (popover / secondary-click menu).
+#[cfg(desktop)]
+fn build_panel(
+    app: &AppHandle,
+    label: &str,
+    route: &str,
+    width: f64,
+    height: f64,
+    position: LogicalPosition<f64>,
+) -> Option<tauri::WebviewWindow> {
+    let window = WebviewWindowBuilder::new(app, label, tauri::WebviewUrl::App("index.html".into()))
+        .title("OpenOTP")
+        .inner_size(width, height)
+        .position(position.x, position.y)
+        .decorations(false)
+        .resizable(false)
+        .always_on_top(true)
+        .transparent(true)
+        .shadow(false)
+        .visible(true)
+        .build()
+        .ok()?;
+
+    let _ = window.eval(format!("window.location.hash = '{route}'"));
+    Some(window)
+}
+
 /// Places the popover next to the tray icon, above it when the icon sits in
 /// the lower half of the screen (the Windows tray) and below it otherwise (the
 /// macOS menu bar), clamped so the window always lands inside that monitor.
 #[cfg(desktop)]
 fn popover_position(app: &AppHandle, clicked_at: PhysicalPosition<f64>) -> LogicalPosition<f64> {
+    panel_position(app, clicked_at, POPOVER_WIDTH, POPOVER_HEIGHT)
+}
+
+/// Places any tray-anchored panel: the same clamping as the popover, for a panel
+/// of the given size (the secondary-click menu is much smaller).
+#[cfg(desktop)]
+fn panel_position(
+    app: &AppHandle,
+    clicked_at: PhysicalPosition<f64>,
+    width: f64,
+    height: f64,
+) -> LogicalPosition<f64> {
     // The tray reports physical pixels, while tao's `monitor_from_point` compares
     // against `CGDisplayBounds`, which is in points: on a 2x display the physical
     // point never matches a monitor and the lookup returns nothing (which used to
@@ -232,12 +292,12 @@ fn popover_position(app: &AppHandle, clicked_at: PhysicalPosition<f64>) -> Logic
                 let position = monitor.position();
                 let size = monitor.size();
                 contains_physical(
-                    (
-                        position.x as f64,
-                        position.y as f64,
-                        size.width as f64,
-                        size.height as f64,
-                    ),
+                    Rect {
+                        x: position.x as f64,
+                        y: position.y as f64,
+                        width: size.width as f64,
+                        height: size.height as f64,
+                    },
                     (clicked_at.x, clicked_at.y),
                 )
             })
@@ -252,58 +312,70 @@ fn popover_position(app: &AppHandle, clicked_at: PhysicalPosition<f64>) -> Logic
             let scale = monitor.scale_factor();
             let origin = monitor.position().to_logical::<f64>(scale);
             let size = monitor.size().to_logical::<f64>(scale);
-            place_popover(
-                cursor.x,
-                cursor.y,
-                origin.x,
-                origin.y,
-                size.width,
-                size.height,
+            place_panel(
+                width,
+                height,
+                (cursor.x, cursor.y),
+                Rect {
+                    x: origin.x,
+                    y: origin.y,
+                    width: size.width,
+                    height: size.height,
+                },
             )
         }
-        None => (cursor.x - POPOVER_WIDTH / 2.0, cursor.y + POPOVER_GAP),
+        None => (cursor.x - width / 2.0, cursor.y + POPOVER_GAP),
     };
 
     LogicalPosition::new(x, y)
 }
 
-/// Whether a physical point lies inside a monitor's physical rectangle
-/// (`x`, `y`, `width`, `height`). Split out so the edge rules stay testable
-/// without a monitor handle.
+/// Whether a physical point lies inside a monitor's physical rectangle. Split out
+/// so the edge rules stay testable without a monitor handle.
 #[cfg(desktop)]
-fn contains_physical(rect: (f64, f64, f64, f64), point: (f64, f64)) -> bool {
-    let (x, y, width, height) = rect;
+fn contains_physical(rect: Rect, point: (f64, f64)) -> bool {
     let (px, py) = point;
 
-    px >= x && px < x + width && py >= y && py < y + height
+    px >= rect.x && px < rect.x + rect.width && py >= rect.y && py < rect.y + rect.height
 }
 
-/// Placement maths for the popover, split out so it can be tested without a
-/// window or monitor handle.
+/// A rectangle in whichever pixel space the caller works in: monitor areas and
+/// pointer positions are both physical or both logical at every call site.
 #[cfg(desktop)]
-fn place_popover(
-    cursor_x: f64,
-    cursor_y: f64,
-    origin_x: f64,
-    origin_y: f64,
-    monitor_width: f64,
-    monitor_height: f64,
-) -> (f64, f64) {
-    let x = cursor_x - POPOVER_WIDTH / 2.0;
+#[derive(Debug, Clone, Copy)]
+struct Rect {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+/// Placement maths for the popover: [`place_panel`] at the popover's size.
+#[cfg(all(test, desktop))]
+fn place_popover(cursor: (f64, f64), monitor: Rect) -> (f64, f64) {
+    place_panel(POPOVER_WIDTH, POPOVER_HEIGHT, cursor, monitor)
+}
+
+/// Placement maths shared by the tray-anchored panels, split out so it can be
+/// tested without a window or monitor handle.
+#[cfg(desktop)]
+fn place_panel(width: f64, height: f64, cursor: (f64, f64), monitor: Rect) -> (f64, f64) {
+    let (cursor_x, cursor_y) = cursor;
+    let x = cursor_x - width / 2.0;
     let mut y = cursor_y + POPOVER_GAP;
 
     // Tray icons live at the bottom on Windows and at the top on macOS, so the
     // panel flips above the cursor when the cursor is in the lower half.
-    if cursor_y > origin_y + monitor_height / 2.0 {
-        y = cursor_y - POPOVER_HEIGHT - POPOVER_GAP;
+    if cursor_y > monitor.y + monitor.height / 2.0 {
+        y = cursor_y - height - POPOVER_GAP;
     }
 
     let margin = 8.0;
-    let min_x = origin_x + margin;
-    let min_y = origin_y + margin;
-    // max(...) keeps the range valid on monitors smaller than the popover.
-    let max_x = (origin_x + monitor_width - POPOVER_WIDTH - margin).max(min_x);
-    let max_y = (origin_y + monitor_height - POPOVER_HEIGHT - margin).max(min_y);
+    let min_x = monitor.x + margin;
+    let min_y = monitor.y + margin;
+    // max(...) keeps the range valid on monitors smaller than the panel.
+    let max_x = (monitor.x + monitor.width - width - margin).max(min_x);
+    let max_y = (monitor.y + monitor.height - height - margin).max(min_y);
 
     (x.clamp(min_x, max_x), y.clamp(min_y, max_y))
 }
@@ -414,67 +486,107 @@ pub fn run() {
                     .on_tray_icon_event(|tray, event| {
                         // macOS fires a Click event for both mouseDown and mouseUp;
                         // only handle the Up event so one physical click toggles once.
-                        if let tauri::tray::TrayIconEvent::Click {
-                            button: tauri::tray::MouseButton::Left,
+                        let tauri::tray::TrayIconEvent::Click {
+                            button,
                             button_state: tauri::tray::MouseButtonState::Up,
                             position,
                             ..
                         } = event
-                        {
-                            let app = tray.app_handle();
+                        else {
+                            return;
+                        };
 
-                            if let Some(popover) = app.get_webview_window("popover") {
-                                if popover.is_visible().unwrap_or(false) {
-                                    let _ = popover.hide();
+                        let app = tray.app_handle();
+
+                        match button {
+                            tauri::tray::MouseButton::Left => {
+                                // The secondary-click menu is a separate panel; one
+                                // panel at a time.
+                                if let Some(menu) = app.get_webview_window("tray-menu") {
+                                    let _ = menu.hide();
+                                }
+
+                                if let Some(popover) = app.get_webview_window("popover") {
+                                    if popover.is_visible().unwrap_or(false) {
+                                        let _ = popover.hide();
+                                        return;
+                                    }
+
+                                    // NOTE: runtime set_position on this window is unreliable
+                                    // on macOS 26 (the window ends up offset); the position
+                                    // set at creation time sticks, so only show/hide here.
+                                    app.state::<PopoverState>()
+                                        .pinned
+                                        .store(false, Ordering::Relaxed);
+                                    let _ = popover.show();
+                                    let _ = app.show();
+                                    let _ = popover.set_focus();
                                     return;
                                 }
-                            }
 
-                            if let Some(main) = app.get_webview_window("main") {
-                                if main.is_visible().unwrap_or(false) {
-                                    let _ = main.hide();
+                                if let Some(main) = app.get_webview_window("main") {
+                                    if main.is_visible().unwrap_or(false) {
+                                        let _ = main.hide();
+                                    }
+                                }
+
+                                let position = popover_position(app, position);
+                                if let Some(popover) = build_panel(
+                                    app,
+                                    "popover",
+                                    "#/popover",
+                                    POPOVER_WIDTH,
+                                    POPOVER_HEIGHT,
+                                    position,
+                                ) {
+                                    app.state::<PopoverState>()
+                                        .pinned
+                                        .store(false, Ordering::Relaxed);
+                                    let _ = popover.show();
+                                    let _ = app.show();
+                                    let _ = popover.set_focus();
                                 }
                             }
+                            tauri::tray::MouseButton::Right => {
+                                // A menu attached to the status item would be opened by
+                                // AppKit on *any* click and swallow the left click, so the
+                                // secondary click gets its own small panel window instead.
+                                if let Some(popover) = app.get_webview_window("popover") {
+                                    if popover.is_visible().unwrap_or(false) {
+                                        let _ = popover.hide();
+                                    }
+                                }
 
-                            let position = popover_position(app, position);
+                                if let Some(menu) = app.get_webview_window("tray-menu") {
+                                    if menu.is_visible().unwrap_or(false) {
+                                        let _ = menu.hide();
+                                        return;
+                                    }
 
-                            if let Some(popover) = app.get_webview_window("popover") {
-                                // NOTE: runtime set_position on this window is unreliable on
-                                // macOS 26 (the window ends up offset); the position set at
-                                // creation time sticks, so only show/hide here.
-                                app.state::<PopoverState>()
-                                    .pinned
-                                    .store(false, Ordering::Relaxed);
-                                let _ = popover.show();
-                                let _ = app.show();
-                                let _ = popover.set_focus();
-                                return;
+                                    let _ = menu.show();
+                                    let _ = menu.set_focus();
+                                    return;
+                                }
+
+                                let position = panel_position(
+                                    app,
+                                    position,
+                                    TRAY_MENU_WIDTH,
+                                    TRAY_MENU_HEIGHT,
+                                );
+                                if let Some(menu) = build_panel(
+                                    app,
+                                    "tray-menu",
+                                    "#/tray-menu",
+                                    TRAY_MENU_WIDTH,
+                                    TRAY_MENU_HEIGHT,
+                                    position,
+                                ) {
+                                    let _ = menu.show();
+                                    let _ = menu.set_focus();
+                                }
                             }
-
-                            if let Ok(popover) = WebviewWindowBuilder::new(
-                                app,
-                                "popover",
-                                tauri::WebviewUrl::App("index.html".into()),
-                            )
-                            .title("OpenOTP")
-                            .inner_size(POPOVER_WIDTH, POPOVER_HEIGHT)
-                            .position(position.x, position.y)
-                            .decorations(false)
-                            .resizable(false)
-                            .always_on_top(true)
-                            .transparent(true)
-                            .shadow(false)
-                            .visible(true)
-                            .build()
-                            {
-                                let _ = popover.eval("window.location.hash = '#/popover'");
-                                app.state::<PopoverState>()
-                                    .pinned
-                                    .store(false, Ordering::Relaxed);
-                                let _ = popover.show();
-                                let _ = app.show();
-                                let _ = popover.set_focus();
-                            }
+                            _ => {}
                         }
                     })
                     .show_menu_on_left_click(false)
@@ -509,6 +621,20 @@ pub fn run() {
                     });
                 }
             }
+
+            // The tray's secondary-click menu is a normal popup: clicking anywhere
+            // else dismisses it.
+            if window.label() == "tray-menu" {
+                if let tauri::WindowEvent::Focused(false) = event {
+                    let w = window.clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(150));
+                        if w.is_visible().unwrap_or(false) && !w.is_focused().unwrap_or(false) {
+                            let _ = w.hide();
+                        }
+                    });
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             get_accounts,
@@ -535,6 +661,7 @@ pub fn run() {
             hide_main_window,
             set_menu_bar_only,
             quit_app,
+            open_preferences,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -547,7 +674,15 @@ mod popover_tests {
     /// 1512x982 macOS display, cursor on the menu bar icon at the top.
     #[test]
     fn places_below_the_cursor_on_macos() {
-        let (x, y) = place_popover(800.0, 10.0, 0.0, 0.0, 1512.0, 982.0);
+        let (x, y) = place_popover(
+            (800.0, 10.0),
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 1512.0,
+                height: 982.0,
+            },
+        );
 
         assert_eq!(y, 10.0 + POPOVER_GAP);
         assert_eq!(x, 800.0 - POPOVER_WIDTH / 2.0);
@@ -556,7 +691,15 @@ mod popover_tests {
     /// 1920x1080 Windows display, cursor on the tray icon at the bottom right.
     #[test]
     fn places_above_the_cursor_on_windows() {
-        let (x, y) = place_popover(1900.0, 1050.0, 0.0, 0.0, 1920.0, 1080.0);
+        let (x, y) = place_popover(
+            (1900.0, 1050.0),
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 1920.0,
+                height: 1080.0,
+            },
+        );
 
         assert_eq!(y, 1050.0 - POPOVER_HEIGHT - POPOVER_GAP);
         // Clamped by the right edge instead of hanging off the screen.
@@ -565,7 +708,15 @@ mod popover_tests {
 
     #[test]
     fn clamps_to_the_left_and_top_edges() {
-        let (x, y) = place_popover(4.0, 8.0, 0.0, 0.0, 1512.0, 982.0);
+        let (x, y) = place_popover(
+            (4.0, 8.0),
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 1512.0,
+                height: 982.0,
+            },
+        );
 
         assert_eq!(x, 8.0);
         assert_eq!(y, 8.0 + POPOVER_GAP);
@@ -575,7 +726,15 @@ mod popover_tests {
     /// still fit inside the clamp range.
     #[test]
     fn flips_above_a_tray_icon_in_the_lower_half() {
-        let (_, y) = place_popover(800.0, 600.0, 0.0, 0.0, 1512.0, 700.0);
+        let (_, y) = place_popover(
+            (800.0, 600.0),
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 1512.0,
+                height: 700.0,
+            },
+        );
 
         assert_eq!(y, 600.0 - POPOVER_HEIGHT - POPOVER_GAP);
     }
@@ -583,14 +742,30 @@ mod popover_tests {
     /// Cursor in the upper half places below, but the bottom edge still wins.
     #[test]
     fn clamps_the_bottom_edge_when_placing_below() {
-        let (_, y) = place_popover(800.0, 440.0, 0.0, 0.0, 1512.0, 900.0);
+        let (_, y) = place_popover(
+            (800.0, 440.0),
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 1512.0,
+                height: 900.0,
+            },
+        );
 
         assert_eq!(y, 900.0 - POPOVER_HEIGHT - 8.0);
     }
 
     #[test]
     fn stays_inside_a_monitor_smaller_than_the_popover() {
-        let (x, y) = place_popover(150.0, 200.0, 0.0, 0.0, 300.0, 400.0);
+        let (x, y) = place_popover(
+            (150.0, 200.0),
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 300.0,
+                height: 400.0,
+            },
+        );
 
         assert_eq!((x, y), (8.0, 8.0));
     }
@@ -598,14 +773,30 @@ mod popover_tests {
     #[test]
     fn accounts_for_a_second_monitor_offset() {
         // Monitor to the right of the primary one, cursor on its tray icon.
-        let (x, y) = place_popover(2100.0, 1050.0, 1920.0, 0.0, 1920.0, 1080.0);
+        let (x, y) = place_popover(
+            (2100.0, 1050.0),
+            Rect {
+                x: 1920.0,
+                y: 0.0,
+                width: 1920.0,
+                height: 1080.0,
+            },
+        );
 
         assert_eq!(y, 1050.0 - POPOVER_HEIGHT - POPOVER_GAP);
         // Centred under the cursor, still on that monitor.
         assert_eq!(x, 2100.0 - POPOVER_WIDTH / 2.0);
 
         // Cursor near the right edge of the second monitor clamps to it.
-        let (x, _) = place_popover(3800.0, 1050.0, 1920.0, 0.0, 1920.0, 1080.0);
+        let (x, _) = place_popover(
+            (3800.0, 1050.0),
+            Rect {
+                x: 1920.0,
+                y: 0.0,
+                width: 1920.0,
+                height: 1080.0,
+            },
+        );
         assert_eq!(x, 1920.0 + 1920.0 - POPOVER_WIDTH - 8.0);
     }
 
@@ -614,8 +805,18 @@ mod popover_tests {
     /// as (2160, 32) and must still resolve to the main display.
     #[test]
     fn matches_the_monitor_by_its_physical_rect() {
-        let main = (0.0, 0.0, 3024.0, 1964.0);
-        let external = (-1920.0, -98.0, 1920.0, 1080.0);
+        let main = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 3024.0,
+            height: 1964.0,
+        };
+        let external = Rect {
+            x: -1920.0,
+            y: -98.0,
+            width: 1920.0,
+            height: 1080.0,
+        };
 
         assert!(contains_physical(main, (2160.0, 32.0)));
         assert!(!contains_physical(main, (3600.0, 32.0)));

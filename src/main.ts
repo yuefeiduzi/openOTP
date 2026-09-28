@@ -16,8 +16,14 @@ import { useAccountStore } from './stores'
  * that true.
  */
 try {
-  if (getCurrentWindow().label === 'popover') {
+  const label = getCurrentWindow().label
+  if (label === 'popover') {
     document.documentElement.classList.add('popover-window')
+  }
+  // Same treatment, tighter inset: the tray's secondary-click menu is also a
+  // transparent window whose #app element draws the panel.
+  if (label === 'tray-menu') {
+    document.documentElement.classList.add('tray-menu-window')
   }
 } catch {
   // Running outside Tauri (unit tests, plain browser): nothing to mark.
