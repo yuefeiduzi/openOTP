@@ -37,7 +37,13 @@ const textStyle = computed(() => ({
   <span v-if="rendered.type === 'text'" class="icon-display-text" :style="textStyle">
     {{ rendered.value }}
   </span>
-  <img v-else-if="rendered.type === 'image'" class="icon-display-image" :style="boxStyle" :src="rendered.value" alt="" />
+  <img
+    v-else-if="rendered.type === 'image'"
+    :class="['icon-display-image', { 'preset-icon': props.icon?.type === 'preset' }]"
+    :style="boxStyle"
+    :src="rendered.value"
+    alt=""
+  />
   <span v-else class="icon-display-placeholder" :style="boxStyle">
     <svg
       width="20"

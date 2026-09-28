@@ -26,7 +26,7 @@ src/
 ├── types/         Account / AccountIcon / AppSettings 等
 ├── utils/         otp(生成与 otpauth 解析) · icons(图标渲染) · presetIcons
 │                  clipboard · backup(IPC 封装) · andotp(迁移导入) · debug
-└── assets/        preset-icons/ 12 个品牌 SVG
+└── assets/        preset-icons/ 23 个品牌 SVG（来源与规范见该目录 README）
 
 src-tauri/src/
 ├── lib.rs               Tauri 命令入口 + 托盘图标/菜单 + 托盘弹窗 + 常驻模式

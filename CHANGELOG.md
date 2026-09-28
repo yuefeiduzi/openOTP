@@ -18,6 +18,9 @@
 - 菜单栏 / 托盘弹窗内可添加、编辑、删除账号
 - 解锁后可返回被中断的页面（弹窗解锁后回到弹窗）
 - CI（前端构建与测试、后端 fmt / clippy / 测试）
+- 预设品牌图标由 12 个扩到 23 个：新增 Ubisoft / Epic Games / Firefox / Bitbucket / V2EX /
+  NVIDIA / EA / JetBrains / Cloudflare / Notion / Bitwarden（取自 Simple Icons，单色样式与
+  既有图标一致）
 
 ### Changed
 

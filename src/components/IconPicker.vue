@@ -153,7 +153,7 @@ function handleFileSelected(event: Event) {
         :title="icon.name"
         @click="selectPreset(icon.name)"
       >
-        <img :src="icon.url" :alt="icon.name" />
+        <img :src="icon.url" :alt="icon.name" class="preset-icon" />
       </button>
     </div>
 

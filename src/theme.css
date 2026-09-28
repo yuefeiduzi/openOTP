@@ -50,3 +50,10 @@
   --accent-hover: #4a90d9;
   --focus-ring: rgba(90, 163, 240, 0.25);
 }
+
+/* 预设品牌图标是单色 #333 的 SVG：深色背景上与之几乎同色，因此反相为浅色。
+   上传的图片图标不受影响（它们有自己的配色）。*/
+[data-theme="dark"] .preset-icon {
+  filter: invert(1);
+  background: transparent;
+}
