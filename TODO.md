@@ -19,6 +19,13 @@
      `CGWindowList` 按 owner=Dock 也没列到窗口，需换法定位后截图）；
      ④ 可能原因：ad-hoc 签名 + 缓存导致 macOS 显示通用图标 / 图标源图本身就是缩图
 
+验证小工具（本次排查用，未入 git，机器重启后 `/tmp` 可能清空）：
+`docs/superpowers/tools/` 的 `click.swift`（合成真实鼠标点击，可点菜单栏图标验证弹窗，
+用法 `swift click.swift <x> <y>`）与 `listwin.swift <pid>`（列出进程所有窗口的位置/层级，
+包括隐藏的窗口，用来确认弹窗是不是被放到了屏幕外）。菜单栏图标坐标可用
+`osascript -e 'tell application "System Events" to tell process "openotp" to return position of menu bar item 1 of menu bar 2'` 取。
+UI 截图核对：`screencapture -x -R x,y,w,h`（区域）或 `-l <windowId>`（单个窗口）。
+
 ## 待决策
 
 - [ ] **HOTP 支持**：目前明确拒绝 `otpauth://hotp` 链接（此前会被当作 TOTP 生成永远不匹配的验证码）。
