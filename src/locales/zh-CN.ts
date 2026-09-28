@@ -22,7 +22,6 @@ export default {
     menuBarModeDesc: '隐藏主窗口，仅通过托盘图标快速查看验证码',
   },
   trayMenu: {
-    preferences: '偏好设置',
     quit: '退出',
   },
   popover: {
@@ -92,7 +91,7 @@ export default {
     backupPassword: '备份密码',
     exportSuccess: '已导出到 {path}',
     about: '关于',
-    version: 'OpenOTP v0.2.3',
+    version: 'OpenOTP v0.2.4',
     quit: '退出 OpenOTP',
     linkCopied: '开源地址已复制',
     sourceCode: '开源地址',

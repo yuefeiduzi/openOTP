@@ -7,18 +7,18 @@ mod storage;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
+use tauri::{AppHandle, Manager, PhysicalPosition};
 
 /// Size of the menu bar / tray popover window.
 #[cfg(desktop)]
 const POPOVER_WIDTH: f64 = 320.0;
 #[cfg(desktop)]
 const POPOVER_HEIGHT: f64 = 480.0;
-/// Size of the tray's secondary-click menu window.
+/// Size of the tray's secondary-click menu window (a single 退出 row).
 #[cfg(desktop)]
 const TRAY_MENU_WIDTH: f64 = 200.0;
 #[cfg(desktop)]
-const TRAY_MENU_HEIGHT: f64 = 96.0;
+const TRAY_MENU_HEIGHT: f64 = 56.0;
 /// Gap between the tray icon and the popover.
 #[cfg(desktop)]
 const POPOVER_GAP: f64 = 12.0;
@@ -216,22 +216,6 @@ fn hide_main_window(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
-}
-
-/// Opens the main window on the settings page (the tray menu's 偏好设置).
-#[tauri::command]
-fn open_preferences(app: AppHandle) -> Result<(), String> {
-    if let Some(menu) = app.get_webview_window("tray-menu") {
-        let _ = menu.hide();
-    }
-    if let Some(main) = app.get_webview_window("main") {
-        main.show().map_err(|e| e.to_string())?;
-        main.set_focus().map_err(|e| e.to_string())?;
-    }
-    // The windows are separate webviews, so the route has to be switched by the
-    // main window itself.
-    app.emit_to("main", "navigate", "/settings")
-        .map_err(|e| e.to_string())
 }
 
 /// Focuses a tray panel so it can take keyboard input.
@@ -680,7 +664,6 @@ pub fn run() {
             hide_main_window,
             set_menu_bar_only,
             quit_app,
-            open_preferences,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
