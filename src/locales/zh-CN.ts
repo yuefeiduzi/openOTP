@@ -23,6 +23,7 @@ export default {
   popover: {
     returnToApp: '返回 App 模式',
     openMain: '打开主窗口',
+    quit: '退出 OpenOTP',
   },
   setup: {
     welcome: '欢迎使用 OpenOTP',
@@ -88,6 +89,7 @@ export default {
     exportSuccess: '已导出到 {path}',
     about: '关于',
     version: 'OpenOTP v0.1.0',
+    quit: '退出 OpenOTP',
     linkCopied: '开源地址已复制',
     sourceCode: '开源地址',
     debugMode: '调试模式',

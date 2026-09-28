@@ -206,15 +206,43 @@ fn hide_main_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Quits the app. macOS has no tray menu (see the tray setup), so the popover
+/// needs its own way out of menu-bar mode.
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 /// Places the popover next to the tray icon, above it when the icon sits in
 /// the lower half of the screen (the Windows tray) and below it otherwise (the
 /// macOS menu bar), clamped so the window always lands inside that monitor.
 #[cfg(desktop)]
 fn popover_position(app: &AppHandle, clicked_at: PhysicalPosition<f64>) -> LogicalPosition<f64> {
+    // The tray reports physical pixels, while tao's `monitor_from_point` compares
+    // against `CGDisplayBounds`, which is in points: on a 2x display the physical
+    // point never matches a monitor and the lookup returns nothing (which used to
+    // place the popover at twice the icon's coordinates, i.e. off-screen). Match
+    // the monitors' physical rectangles here instead, then convert to logical
+    // pixels, which is what places the window.
     let monitor = app
-        .monitor_from_point(clicked_at.x, clicked_at.y)
+        .available_monitors()
         .ok()
-        .flatten();
+        .and_then(|monitors| {
+            monitors.into_iter().find(|monitor| {
+                let position = monitor.position();
+                let size = monitor.size();
+                contains_physical(
+                    (
+                        position.x as f64,
+                        position.y as f64,
+                        size.width as f64,
+                        size.height as f64,
+                    ),
+                    (clicked_at.x, clicked_at.y),
+                )
+            })
+        })
+        .or_else(|| app.primary_monitor().ok().flatten());
 
     let scale = monitor.as_ref().map(|m| m.scale_factor()).unwrap_or(1.0);
     let cursor = clicked_at.to_logical::<f64>(scale);
@@ -237,6 +265,17 @@ fn popover_position(app: &AppHandle, clicked_at: PhysicalPosition<f64>) -> Logic
     };
 
     LogicalPosition::new(x, y)
+}
+
+/// Whether a physical point lies inside a monitor's physical rectangle
+/// (`x`, `y`, `width`, `height`). Split out so the edge rules stay testable
+/// without a monitor handle.
+#[cfg(desktop)]
+fn contains_physical(rect: (f64, f64, f64, f64), point: (f64, f64)) -> bool {
+    let (x, y, width, height) = rect;
+    let (px, py) = point;
+
+    px >= x && px < x + width && py >= y && py < y + height
 }
 
 /// Placement maths for the popover, split out so it can be tested without a
@@ -300,8 +339,8 @@ pub fn run() {
                 #[cfg(target_os = "macos")]
                 let tray_icon = tauri::image::Image::new(
                     include_bytes!("../icons/tray-template@2x.rgba"),
-                    44,
-                    44,
+                    36,
+                    36,
                 );
                 // Other desktops get the colour app icon. Kept as a checked-in
                 // raw RGBA asset so the build does not need a PNG decoder.
@@ -309,28 +348,42 @@ pub fn run() {
                 let tray_icon =
                     tauri::image::Image::new(include_bytes!("../icons/tray-32@2x.rgba"), 64, 64);
 
-                let en = settings.language == "en-US";
-                let return_item = tauri::menu::MenuItem::with_id(
-                    app,
-                    "tray_return_app",
-                    if en {
-                        "Back to App Mode"
-                    } else {
-                        "返回 App 模式"
-                    },
-                    true,
-                    None::<&str>,
-                )?;
-                let quit_item = tauri::menu::PredefinedMenuItem::quit(
-                    app,
-                    Some(if en { "Quit" } else { "退出" }),
-                )?;
-                let tray_menu = tauri::menu::Menu::with_items(app, &[&return_item, &quit_item])?;
+                // macOS attaches a menu to the status item and AppKit then opens it
+                // on *any* click, so a left click never reaches the click handler and
+                // `show_menu_on_left_click(false)` cannot override AppKit. To keep
+                // click-to-open-popover, macOS gets no tray menu; those two actions
+                // live in the popover UI instead (返回 App 模式 / 退出).
+                // Windows and Linux show the menu on right click, so they keep it.
+                #[cfg(not(target_os = "macos"))]
+                let tray_menu = {
+                    let en = settings.language == "en-US";
+                    let return_item = tauri::menu::MenuItem::with_id(
+                        app,
+                        "tray_return_app",
+                        if en {
+                            "Back to App Mode"
+                        } else {
+                            "返回 App 模式"
+                        },
+                        true,
+                        None::<&str>,
+                    )?;
+                    let quit_item = tauri::menu::PredefinedMenuItem::quit(
+                        app,
+                        Some(if en { "Quit" } else { "退出" }),
+                    )?;
+                    tauri::menu::Menu::with_items(app, &[&return_item, &quit_item])?
+                };
 
+                #[allow(unused_mut)]
                 let mut tray_builder = TrayIconBuilder::with_id("main-tray")
                     .tooltip("OpenOTP")
-                    .icon(tray_icon)
-                    .menu(&tray_menu);
+                    .icon(tray_icon);
+
+                #[cfg(not(target_os = "macos"))]
+                {
+                    tray_builder = tray_builder.menu(&tray_menu).show_menu_on_left_click(false);
+                }
 
                 // Monochrome template icons are a macOS menu bar convention.
                 #[cfg(target_os = "macos")]
@@ -339,6 +392,7 @@ pub fn run() {
                 }
 
                 let _tray = tray_builder
+                    // Only reachable where a tray menu exists (Windows/Linux).
                     .on_menu_event(|tray, event| {
                         if event.id().0 == "tray_return_app" {
                             let app = tray.app_handle();
@@ -480,6 +534,7 @@ pub fn run() {
             show_main_window,
             hide_main_window,
             set_menu_bar_only,
+            quit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -552,6 +607,25 @@ mod popover_tests {
         // Cursor near the right edge of the second monitor clamps to it.
         let (x, _) = place_popover(3800.0, 1050.0, 1920.0, 0.0, 1920.0, 1080.0);
         assert_eq!(x, 1920.0 + 1920.0 - POPOVER_WIDTH - 8.0);
+    }
+
+    /// Click points are physical: on the 2x main display (3024x1964 physical,
+    /// 1512x982 logical) a click on the menu bar icon at logical (1080, 16) arrives
+    /// as (2160, 32) and must still resolve to the main display.
+    #[test]
+    fn matches_the_monitor_by_its_physical_rect() {
+        let main = (0.0, 0.0, 3024.0, 1964.0);
+        let external = (-1920.0, -98.0, 1920.0, 1080.0);
+
+        assert!(contains_physical(main, (2160.0, 32.0)));
+        assert!(!contains_physical(main, (3600.0, 32.0)));
+        assert!(contains_physical(external, (-386.0, -84.0)));
+        // A monitor owns its top-left edge; the right/bottom edges belong to the next.
+        assert!(!contains_physical(main, (3024.0, 10.0)));
+        assert!(contains_physical(main, (0.0, 0.0)));
+        assert!(contains_physical(external, (-1920.0, -98.0)));
+        // The external display ends where the main one starts.
+        assert!(!contains_physical(external, (0.0, -98.0)));
     }
 }
 

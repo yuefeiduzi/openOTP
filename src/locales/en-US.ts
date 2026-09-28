@@ -23,6 +23,7 @@ export default {
   popover: {
     returnToApp: 'Back to app mode',
     openMain: 'Open main window',
+    quit: 'Quit OpenOTP',
   },
   setup: {
     welcome: 'Welcome to OpenOTP',
@@ -88,6 +89,7 @@ export default {
     exportSuccess: 'Exported to {path}',
     about: 'About',
     version: 'OpenOTP v0.1.0',
+    quit: 'Quit OpenOTP',
     linkCopied: 'Repository link copied',
     sourceCode: 'Source Code',
     debugMode: 'Debug Mode',

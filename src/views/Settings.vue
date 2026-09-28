@@ -448,6 +448,11 @@ function lockApp() {
   router.push('/unlock')
 }
 
+// macOS keeps no tray menu (see lib.rs), so App mode needs its own way to quit.
+function quitApp() {
+  invoke('quit_app')
+}
+
 function handleClipboardClearChange(seconds: number) {
   settingsStore.updateSettings({ clipboardClearTime: seconds })
   settingsStore.saveSettings()
@@ -642,6 +647,10 @@ async function exportDebugLogs() {
         <p class="about-line about-copy" @click="copyGithubLink()">
           {{ t('settings.sourceCode') }}<span class="about-url">github.com/yuefeiduzi/openOTP</span>
         </p>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="quitApp">{{ t('settings.quit') }}</button>
+        </div>
       </section>
 
       <div class="divider"></div>
