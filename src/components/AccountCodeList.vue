@@ -12,6 +12,17 @@ const settingsStore = useSettingsStore()
 const { t } = useI18n()
 const { show: showToast } = useToast()
 
+const props = withDefaults(defineProps<{
+  /**
+   * Whether this list may offer to add an account. Adding needs app mode (QR
+   * picker, manual entry), so the menu bar popover turns it off and says so
+   * instead.
+   */
+  allowAdd?: boolean
+}>(), {
+  allowAdd: true,
+})
+
 const emit = defineEmits<{
   (e: 'delete', account: Account): void
   (e: 'edit', account: Account): void
@@ -159,7 +170,8 @@ async function handleCopy(code: string) {
   >
     <div v-if="accounts.length === 0" class="empty">
       <p class="empty-text">{{ t('home.noAccounts', { type: t('home.totp') }) }}</p>
-      <button class="empty-add-btn" @click="emit('add')">
+      <p v-if="!props.allowAdd" class="empty-text">{{ t('home.addInAppMode') }}</p>
+      <button v-if="props.allowAdd" class="empty-add-btn" @click="emit('add')">
         {{ t('home.addFirstAccount') }}
       </button>
     </div>

@@ -5,7 +5,6 @@ import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
 import { useAccountEditor } from '@/composables/useAccountEditor'
 import AccountCodeList from '@/components/AccountCodeList.vue'
-import AddAccount from '@/components/AddAccount.vue'
 import DeleteConfirm from '@/components/DeleteConfirm.vue'
 import EditAccount from '@/components/EditAccount.vue'
 
@@ -13,15 +12,11 @@ const { t } = useI18n()
 const settingsStore = useSettingsStore()
 
 const {
-  showAdd,
   showDelete,
   showEdit,
   deletingAccount,
   editingAccount,
   isModalOpen,
-  openAdd,
-  closeAdd,
-  handleAddAccount,
   handleEdit,
   closeEdit,
   handleEditSave,
@@ -59,19 +54,6 @@ async function returnToAppMode() {
     <header class="popover-header">
       <span class="popover-title">OpenOTP</span>
       <div class="popover-actions">
-        <button class="popover-icon-btn" :title="t('addAccount.title')" @click="openAdd">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
         <button
           class="return-btn"
           :title="t('popover.returnToApp')"
@@ -110,15 +92,9 @@ async function returnToAppMode() {
       </div>
     </header>
     <AccountCodeList
+      :allow-add="false"
       @delete="handleDelete"
       @edit="handleEdit"
-      @add="openAdd"
-    />
-
-    <AddAccount
-      :visible="showAdd"
-      @close="closeAdd"
-      @add="handleAddAccount"
     />
 
     <DeleteConfirm

@@ -234,6 +234,22 @@ fn open_preferences(app: AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Focuses a tray panel so it can take keyboard input.
+///
+/// An accessory app with no visible windows is hidden by AppKit, and a hidden
+/// app's windows cannot become key, so the app has to be unhidden first. Unhiding
+/// also brings the main window back, which is why it is put away again right
+/// after: leaving it visible was what made repeated tray clicks look like they
+/// switched between app mode and tray mode.
+#[cfg(desktop)]
+fn focus_tray_panel(app: &AppHandle, panel: &tauri::WebviewWindow) {
+    let _ = app.show();
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.hide();
+    }
+    let _ = panel.set_focus();
+}
+
 /// Builds one of the tray-anchored panels (popover / secondary-click menu).
 #[cfg(desktop)]
 fn build_panel(
@@ -506,6 +522,17 @@ pub fn run() {
                                     let _ = menu.hide();
                                 }
 
+                                // The popover *is* menu bar mode: put the main window
+                                // away before anything else. Doing this only while
+                                // creating the popover left the main window open behind it
+                                // on every later click, which looked like clicking the tray
+                                // switched between app mode and tray mode.
+                                if let Some(main) = app.get_webview_window("main") {
+                                    if main.is_visible().unwrap_or(false) {
+                                        let _ = main.hide();
+                                    }
+                                }
+
                                 if let Some(popover) = app.get_webview_window("popover") {
                                     if popover.is_visible().unwrap_or(false) {
                                         let _ = popover.hide();
@@ -519,15 +546,8 @@ pub fn run() {
                                         .pinned
                                         .store(false, Ordering::Relaxed);
                                     let _ = popover.show();
-                                    let _ = app.show();
-                                    let _ = popover.set_focus();
+                                    focus_tray_panel(app, &popover);
                                     return;
-                                }
-
-                                if let Some(main) = app.get_webview_window("main") {
-                                    if main.is_visible().unwrap_or(false) {
-                                        let _ = main.hide();
-                                    }
                                 }
 
                                 let position = popover_position(app, position);
@@ -543,8 +563,7 @@ pub fn run() {
                                         .pinned
                                         .store(false, Ordering::Relaxed);
                                     let _ = popover.show();
-                                    let _ = app.show();
-                                    let _ = popover.set_focus();
+                                    focus_tray_panel(app, &popover);
                                 }
                             }
                             tauri::tray::MouseButton::Right => {

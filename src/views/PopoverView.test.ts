@@ -44,26 +44,27 @@ afterEach(() => {
 })
 
 describe('PopoverView', () => {
-  it('should open the add modal from the empty state', async () => {
+  it('should not offer adding an account', () => {
+    // 添加账号要用二维码 / 手动输入，只在 App 模式下做
     const wrapper = mount(PopoverView)
 
-    await wrapper.find('.empty-add-btn').trigger('click')
-
-    expect(wrapper.findComponent({ name: 'AddAccount' }).props('visible')).toBe(true)
+    expect(wrapper.findComponent({ name: 'AddAccount' }).exists()).toBe(false)
+    expect(wrapper.find('.empty-add-btn').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'AccountCodeList' }).props('allowAdd')).toBe(false)
   })
 
-  it('should open the add modal from the header button', async () => {
+  it('should point at app mode when there is nothing to show', () => {
     const wrapper = mount(PopoverView)
 
-    await wrapper.find('.popover-actions button').trigger('click')
-
-    expect(wrapper.findComponent({ name: 'AddAccount' }).props('visible')).toBe(true)
+    expect(wrapper.text()).toContain('home.addInAppMode')
   })
 
   it('should pin the popover window while a modal is open', async () => {
-    const wrapper = mount(PopoverView)
+    const store = useAccountStore()
+    store.accounts = [makeAccount()]
 
-    await wrapper.find('.popover-actions button').trigger('click')
+    const wrapper = mount(PopoverView)
+    await wrapper.find('.icon-area').trigger('click')
     await wrapper.vm.$nextTick()
 
     expect(invoke).toHaveBeenCalledWith('set_popover_pinned', { pinned: true })
