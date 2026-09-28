@@ -91,7 +91,7 @@ export default {
     backupPassword: '备份密码',
     exportSuccess: '已导出到 {path}',
     about: '关于',
-    version: 'OpenOTP v0.2.4',
+    version: 'OpenOTP v0.2.5',
     quit: '退出 OpenOTP',
     linkCopied: '开源地址已复制',
     sourceCode: '开源地址',

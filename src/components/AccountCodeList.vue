@@ -19,8 +19,14 @@ const props = withDefaults(defineProps<{
    * instead.
    */
   allowAdd?: boolean
+  /**
+   * Read-only list (the menu bar popover): codes can be read and copied, but
+   * accounts cannot be edited or deleted there.
+   */
+  readOnly?: boolean
 }>(), {
   allowAdd: true,
+  readOnly: false,
 })
 
 const emit = defineEmits<{
@@ -190,6 +196,7 @@ async function handleCopy(code: string) {
         :key="account.id"
         :account="account"
         :copy-on-tap="settingsStore.settings.autoCopy"
+        :read-only="props.readOnly"
         show-account-name
         @copy="handleCopy"
         @delete="emit('delete', account)"
@@ -202,6 +209,7 @@ async function handleCopy(code: string) {
       <AccountCard
         :account="group.accounts[0]"
         :copy-on-tap="settingsStore.settings.autoCopy"
+        :read-only="props.readOnly"
         :class="{ dragging: draggedId === group.accounts[0].id }"
         :data-drop-before="isDropTarget(group.accounts[0].id, false) ? '' : undefined"
         :data-drop-after="isDropTarget(group.accounts[0].id, true) ? '' : undefined"
@@ -230,6 +238,7 @@ async function handleCopy(code: string) {
           :key="account.id"
           :account="account"
           :copy-on-tap="settingsStore.settings.autoCopy"
+          :read-only="props.readOnly"
           :class="{ dragging: draggedId === account.id }"
           :data-drop-before="isDropTarget(account.id, false) ? '' : undefined"
           :data-drop-after="isDropTarget(account.id, true) ? '' : undefined"

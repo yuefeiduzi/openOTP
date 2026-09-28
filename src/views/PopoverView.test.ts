@@ -13,7 +13,6 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 import PopoverView from './PopoverView.vue'
 import { useAccountStore } from '@/stores'
-import { invoke } from '@tauri-apps/api/core'
 
 function makeAccount(overrides: Partial<Account> = {}): Account {
   return {
@@ -59,15 +58,39 @@ describe('PopoverView', () => {
     expect(wrapper.text()).toContain('home.addInAppMode')
   })
 
-  it('should pin the popover window while a modal is open', async () => {
+  it('should not let a card open the editor', async () => {
+    // 弹窗只做「看码 + 复制码」：点图标不再打开改图标的面板
     const store = useAccountStore()
     store.accounts = [makeAccount()]
 
     const wrapper = mount(PopoverView)
     await wrapper.find('.icon-area').trigger('click')
+
+    expect(wrapper.findComponent({ name: 'EditAccount' }).exists()).toBe(false)
+  })
+
+  it('should not let a long press delete an account', async () => {
+    vi.useFakeTimers()
+    const store = useAccountStore()
+    store.accounts = [makeAccount()]
+    const removeSpy = vi.spyOn(store, 'removeAccount')
+
+    const wrapper = mount(PopoverView)
+    await wrapper.find('.account-card').trigger('mousedown')
+    vi.advanceTimersByTime(600)
     await wrapper.vm.$nextTick()
 
-    expect(invoke).toHaveBeenCalledWith('set_popover_pinned', { pinned: true })
+    expect(wrapper.findComponent({ name: 'DeleteConfirm' }).exists()).toBe(false)
+    expect(removeSpy).not.toHaveBeenCalled()
+  })
+
+  it('should still copy a code', async () => {
+    const store = useAccountStore()
+    store.accounts = [makeAccount()]
+
+    const wrapper = mount(PopoverView)
+
+    expect(wrapper.find('.copy-btn').exists()).toBe(true)
   })
 
   it('should list the accounts held in the store', () => {
@@ -79,34 +102,4 @@ describe('PopoverView', () => {
     expect(wrapper.findAll('.account-card')).toHaveLength(1)
   })
 
-  it('should open the edit modal when a card is clicked', async () => {
-    const store = useAccountStore()
-    const account = makeAccount()
-    store.accounts = [account]
-
-    const wrapper = mount(PopoverView)
-    await wrapper.find('.icon-area').trigger('click')
-
-    const editor = wrapper.findComponent({ name: 'EditAccount' })
-    expect(editor.props('visible')).toBe(true)
-    expect(editor.props('account')).toMatchObject({ id: account.id })
-  })
-
-  it('should open the delete confirmation on long press and delete on confirm', async () => {
-    vi.useFakeTimers()
-    const store = useAccountStore()
-    store.accounts = [makeAccount()]
-    const removeSpy = vi.spyOn(store, 'removeAccount')
-
-    const wrapper = mount(PopoverView)
-    await wrapper.find('.account-card').trigger('mousedown')
-    vi.advanceTimersByTime(600)
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.findComponent({ name: 'DeleteConfirm' }).props('visible')).toBe(true)
-
-    await wrapper.find('.btn-delete').trigger('click')
-
-    expect(removeSpy).toHaveBeenCalledWith('a1')
-  })
 })

@@ -33,9 +33,9 @@ function makeAccount(): Account {
   }
 }
 
-async function mountCard(copyOnTap = true) {
+async function mountCard(copyOnTap = true, readOnly = false) {
   const wrapper = mount(AccountCard, {
-    props: { account: makeAccount(), copyOnTap },
+    props: { account: makeAccount(), copyOnTap, readOnly },
   })
   await flushPromises()
   return wrapper
@@ -136,5 +136,26 @@ describe('AccountCard long press', () => {
     await flushPromises()
 
     expect(wrapper.emitted('edit')).toHaveLength(1)
+  })
+
+  it('should ignore the icon tap and the long press when read-only', async () => {
+    // 托盘弹窗是只读的：看码、复制码，改图标与删除只能在 App 模式里做
+    const wrapper = await mountCard(true, true)
+
+    await wrapper.find('.icon-area').trigger('click')
+    await longPress(wrapper)
+    await flushPromises()
+
+    expect(wrapper.emitted('edit')).toBeUndefined()
+    expect(wrapper.emitted('delete')).toBeUndefined()
+  })
+
+  it('should still copy when read-only', async () => {
+    const wrapper = await mountCard(true, true)
+
+    await wrapper.find('.copy-btn').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.emitted('copy')).toHaveLength(1)
   })
 })

@@ -1,40 +1,15 @@
 <script setup lang="ts">
-import { onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
-import { useAccountEditor } from '@/composables/useAccountEditor'
 import AccountCodeList from '@/components/AccountCodeList.vue'
-import DeleteConfirm from '@/components/DeleteConfirm.vue'
-import EditAccount from '@/components/EditAccount.vue'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
 
-const {
-  showDelete,
-  showEdit,
-  deletingAccount,
-  editingAccount,
-  isModalOpen,
-  handleEdit,
-  closeEdit,
-  handleEditSave,
-  handleDelete,
-  closeDelete,
-  confirmDelete,
-} = useAccountEditor()
-
-// Modals that open a native file dialog move focus away from the popover, and the
-// Rust side hides the window on focus loss — pin the popover while one is open.
-watch(isModalOpen, (open) => {
-  invoke('set_popover_pinned', { pinned: open }).catch(() => {})
-})
-
-onUnmounted(() => {
-  invoke('set_popover_pinned', { pinned: false }).catch(() => {})
-})
-
+// The popover is a read-only surface: it shows codes and copies them. Editing,
+// deleting and adding belong to app mode — the list below is told so, which turns
+// off the icon tap and the long press on every card.
 // macOS has no tray menu (AppKit opens it on any click, which would swallow the
 // popover toggle), so the popover carries the quit action itself.
 async function quitApp() {
@@ -91,25 +66,7 @@ async function returnToAppMode() {
         </button>
       </div>
     </header>
-    <AccountCodeList
-      :allow-add="false"
-      @delete="handleDelete"
-      @edit="handleEdit"
-    />
-
-    <DeleteConfirm
-      :visible="showDelete"
-      :account-name="deletingAccount?.issuer || deletingAccount?.name || ''"
-      @close="closeDelete"
-      @confirm="confirmDelete"
-    />
-
-    <EditAccount
-      :visible="showEdit"
-      :account="editingAccount"
-      @close="closeEdit"
-      @save="handleEditSave"
-    />
+    <AccountCodeList :allow-add="false" read-only />
   </div>
 </template>
 

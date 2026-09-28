@@ -19,6 +19,12 @@ const props = defineProps<{
    * be distinguishable from its siblings.
    */
   showAccountName?: boolean
+  /**
+   * Menu bar popover mode: codes can be read and copied, nothing else. A tap on
+   * the icon and a long press (delete) are disabled, so the sheet that edits the
+   * icon can only be opened from app mode.
+   */
+  readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -96,13 +102,16 @@ function consumeLongPress(): boolean {
 }
 
 function handleIconTap() {
-  if (consumeLongPress()) {
+  if (props.readOnly || consumeLongPress()) {
     return
   }
   handleEdit()
 }
 
 function startLongPress() {
+  if (props.readOnly) {
+    return
+  }
   longPressFired = false
   pressTimer = setTimeout(() => {
     pressTimer = null
