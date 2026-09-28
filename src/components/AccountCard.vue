@@ -167,22 +167,24 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <div
-      class="progress-bar"
-      :class="{
-        'progress-green': progress > 50,
-        'progress-yellow': progress > 20 && progress <= 50,
-        'progress-red': progress <= 20,
-      }"
-      :style="{ width: progress + '%' }"
-    />
+    <div class="progress-track">
+      <div
+        class="progress-bar"
+        :class="{
+          'progress-green': progress > 50,
+          'progress-yellow': progress > 20 && progress <= 50,
+          'progress-red': progress <= 20,
+        }"
+        :style="{ width: progress + '%' }"
+      />
+    </div>
   </div>
 </template>
 
 <style scoped>
 .account-card {
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: var(--card-shadow);
   padding: 12px;
   margin-bottom: 8px;
@@ -212,7 +214,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 50%;
+  border-radius: 8px;
   transition: background 0.15s;
 }
 
@@ -271,12 +273,22 @@ onUnmounted(() => {
   background: var(--border-color);
 }
 
-.progress-bar {
+/* 进度条不作为卡片底边的一部分：卡片圆角会把贴着底边的那条线剪掉，
+   所以放进一条带内缩的轨道里。*/
+.progress-track {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  border-radius: 0 0 12px 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 2px;
   transition: width 0.3s linear, background-color 0.3s;
 }
 
