@@ -145,29 +145,14 @@ async function returnToAppMode() {
 </template>
 
 <style scoped>
-/* The popover window is transparent (see lib.rs); keep the page background
-   clear so only the rounded panel shows. The panel sits inset from the window
-   edges — the transparent margin lets the CSS drop-shadow render around the
-   rounded corners (a native window shadow would be a rectangle and stick out).
-   The shadow uses a tight 0.5px hard pass + a close blur, so the edge stays
-   crisp instead of hazy. */
-:global(html.popover-window),
-:global(html.popover-window body),
-:global(html.popover-window #app) {
-  background: transparent;
-  overflow: hidden;
-}
-
+/* The panel itself (window #app), the raised palette and the inset live in
+   style.css: the popover also renders the unlock screen, where this component
+   is never mounted and its styles would not load. */
 .popover {
-  position: absolute;
-  inset: 12px;
   display: flex;
   flex-direction: column;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  height: 100%;
   overflow: hidden;
-  filter: var(--popover-shadow);
 }
 
 .popover-header {

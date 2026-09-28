@@ -54,6 +54,23 @@
   --focus-ring: rgba(90, 163, 240, 0.25);
 }
 
+/* 菜单栏弹窗是自己一块面板：底色比 App 内高一档灰 + 一根描边，叠在桌面上能看出边界；
+   面板内部的卡片再高一档，否则会和面板同色（参考 Stat 的弹窗层次）。
+   只作用于弹窗窗口（`html.popover-window`，由 src/main.ts 按窗口 label 打上）。*/
+html.popover-window {
+  --popover-surface: #f2f2f7;
+  --popover-card: #ffffff;
+  --popover-raised: #e8e8ed;
+  --popover-border: rgba(0, 0, 0, 0.12);
+}
+
+html.popover-window[data-theme="dark"] {
+  --popover-surface: #2c2c2e;
+  --popover-card: #3a3a3c;
+  --popover-raised: #48484a;
+  --popover-border: rgba(255, 255, 255, 0.16);
+}
+
 /* 品牌图标保留品牌色；只有整幅都太暗（在深色底上等于看不见）的图标
    才被压成纯白剪影，而不是把全部图标都反相。*/
 [data-theme="dark"] .icon-display-image--low-contrast {

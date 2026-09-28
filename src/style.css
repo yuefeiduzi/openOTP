@@ -67,6 +67,8 @@ input[type="checkbox"]:focus-visible {
  */
 html.popover-window .unlock {
   padding: 24px 12px;
+  /* 弹窗的面板底色（#app）已经铺好了，解锁页不要再盖一层 */
+  background: transparent;
 }
 
 html.popover-window .unlock h1 {
@@ -81,4 +83,38 @@ html.popover-window .unlock .pin-box {
 
 html.popover-window .unlock .pin-input {
   gap: 4px;
+}
+
+/*
+ * 菜单栏弹窗（窗口本身透明，见 lib.rs）。
+ *
+ * 面板就是窗口的 #app：留 12px 边距给圆角外的投影（原生窗口阴影是矩形，会露在圆角外），
+ * 底色比 App 内高一档灰 + 一根描边，这样叠在桌面上能看出边界；面板内部再把卡片、悬停色、
+ * 边框色整体抬高一档，否则卡片会和面板同色（参考 Stat 弹窗的层次）。
+ *
+ * 必须放在全局样式表：锁屏时弹窗渲染的是解锁页，PopoverView 根本没挂载，
+ * 写在它 scoped 块里的规则不会加载。
+ */
+html.popover-window,
+html.popover-window body {
+  background: transparent;
+  overflow: hidden;
+}
+
+html.popover-window #app {
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
+  margin: 12px;
+  background: var(--popover-surface);
+  border: 1px solid var(--popover-border);
+  border-radius: 12px;
+  overflow: hidden;
+  filter: var(--popover-shadow);
+  --bg-primary: var(--popover-surface);
+  --card-bg: var(--popover-card);
+  --bg-secondary: var(--popover-raised);
+  --border-color: var(--popover-border);
+  --sheet-bg: var(--popover-card);
+  --icon-tile-bg: var(--popover-raised);
+  --btn-secondary-bg: var(--popover-raised);
 }
