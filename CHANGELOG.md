@@ -19,11 +19,16 @@
 - 解锁后可返回被中断的页面（弹窗解锁后回到弹窗）
 - CI（前端构建与测试、后端 fmt / clippy / 测试）
 - 预设品牌图标由 12 个扩到 23 个：新增 Ubisoft / Epic Games / Firefox / Bitbucket / V2EX /
-  NVIDIA / EA / JetBrains / Cloudflare / Notion / Bitwarden（取自 Simple Icons，单色样式与
-  既有图标一致）
+  NVIDIA / EA / JetBrains / Cloudflare / Notion / Bitwarden（取自 Simple Icons）
+- 弹窗与设置页新增「退出 OpenOTP」；macOS 不再挂托盘菜单（见 Fixed），退出入口必须有处可去
 
 ### Changed
 
+- 预设品牌图标改用品牌原色，图标位由圆形改为方形：一律压成 `#333` 的圆形既丢掉了品牌的
+  区分度，而 `#333` 在深色主题的背景上对比度只有 1.1:1，等于不可见。现在只有整幅过暗
+  （最亮颜色对比度 < 3:1）的图标会在深色主题下被压成纯白剪影，其余保留品牌色
+- 账号卡片圆角 12px → 8px；倒计时进度条改为带内缩的轨道，不再贴着底边被卡片圆角剪掉
+- 版本号提升到 0.2.0
 - 托盘模式入口与文案改为平台中立（托盘 / 菜单栏模式），桌面端均可见
 - 密码强度取舍：备份密码改为文本，至少 8 位（zip 的 AES 使用 PBKDF2-SHA1/1000 次，
   短密码无法提供有效保护）
@@ -35,6 +40,9 @@
 ### Fixed
 
 - 删除账号不落盘：被删账号仍留在 `data.json`，重启后复现
+- macOS 左键点菜单栏图标打不开弹窗：`NSStatusItem` 一旦挂了菜单，AppKit 会在任何点击时
+  自行打开菜单，点击事件到不了 `on_tray_icon_event`（`show_menu_on_left_click(false)`
+  只能影响程序化那一路）。因此 macOS 不再挂托盘菜单，Windows / Linux 保留
 - 备份导出剥离密钥、导入解密参数不匹配，导入功能此前从未成功过
 - 编辑账号会不可逆地破坏已上传图片图标与预设图标
 - 菜单栏 / 托盘弹窗不响应添加、编辑、删除操作
