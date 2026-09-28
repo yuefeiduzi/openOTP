@@ -1,6 +1,8 @@
 :root {
   --bg-primary: #ffffff;
   --bg-secondary: #f5f5f5;
+  /* 图标（预设品牌 / 上传图片）放在方形浅底上，与品牌色兼容 */
+  --icon-tile-bg: #f5f5f5;
   --text-primary: #222222;
   --text-secondary: #999999;
   --border-color: #dddddd;
@@ -29,6 +31,7 @@
 [data-theme="dark"] {
   --bg-primary: #1c1c1e;
   --bg-secondary: #2c2c2e;
+  --icon-tile-bg: #3a3a3c;
   --text-primary: #f5f5f7;
   --text-secondary: #8e8e93;
   --border-color: #38383a;
@@ -51,9 +54,8 @@
   --focus-ring: rgba(90, 163, 240, 0.25);
 }
 
-/* 预设品牌图标是单色 #333 的 SVG：深色背景上与之几乎同色，因此反相为浅色。
-   上传的图片图标不受影响（它们有自己的配色）。*/
-[data-theme="dark"] .preset-icon {
-  filter: invert(1);
-  background: transparent;
+/* 品牌图标保留品牌色；只有整幅都太暗（在深色底上等于看不见）的图标
+   才被压成纯白剪影，而不是把全部图标都反相。*/
+[data-theme="dark"] .icon-display-image--low-contrast {
+  filter: brightness(0) invert(1);
 }

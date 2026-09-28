@@ -93,7 +93,7 @@ describe('EditAccount icon handling', () => {
     const img = wrapper.find('.icon-display-image')
     expect(img.attributes('src')).toBe(DATA_URL)
     // 上传图片自带配色，不能套用预设图标的深色主题处理
-    expect(img.classes()).not.toContain('preset-icon')
+    expect(img.classes()).not.toContain('icon-display-image--low-contrast')
   })
 
   it('should preview a preset icon instead of a broken image', () => {
@@ -102,8 +102,8 @@ describe('EditAccount icon handling', () => {
     const img = wrapper.find('.icon-display-image')
     expect(img.exists()).toBe(true)
     expect(img.attributes('src')).toBeTruthy()
-    // 预设图标是单色 SVG，深色主题靠这个类把颜色反过来
-    expect(img.classes()).toContain('preset-icon')
+    // github 的 #181717 在深色底上等于看不见，靠这个类压成白色剪影
+    expect(img.classes()).toContain('icon-display-image--low-contrast')
   })
 
   it('should replace a preset icon with the picked emoji', async () => {

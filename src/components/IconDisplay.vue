@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { AccountIcon } from '@/types'
 import { renderIcon } from '@/utils/icons'
+import { getPresetIcon } from '@/utils/presetIcons'
 
 const props = withDefaults(defineProps<{
   icon: AccountIcon | null | undefined
@@ -14,6 +15,14 @@ const props = withDefaults(defineProps<{
 })
 
 const rendered = computed(() => renderIcon(props.icon, props.name))
+
+// Brand marks whose own colour is too dark for the dark theme are drawn as a
+// white silhouette there; coloured brands keep their colour.
+const isLowContrastPreset = computed(() =>
+  props.icon?.type === 'preset'
+    ? getPresetIcon(props.icon.value)?.lowContrastInDark ?? false
+    : false,
+)
 
 const boxStyle = computed(() => ({
   width: `${props.size}px`,
@@ -37,13 +46,13 @@ const textStyle = computed(() => ({
   <span v-if="rendered.type === 'text'" class="icon-display-text" :style="textStyle">
     {{ rendered.value }}
   </span>
-  <img
-    v-else-if="rendered.type === 'image'"
-    :class="['icon-display-image', { 'preset-icon': props.icon?.type === 'preset' }]"
-    :style="boxStyle"
-    :src="rendered.value"
-    alt=""
-  />
+  <span v-else-if="rendered.type === 'image'" class="icon-display-box" :style="boxStyle">
+    <img
+      :class="['icon-display-image', { 'icon-display-image--low-contrast': isLowContrastPreset }]"
+      :src="rendered.value"
+      alt=""
+    />
+  </span>
   <span v-else class="icon-display-placeholder" :style="boxStyle">
     <svg
       width="20"
@@ -69,18 +78,29 @@ const textStyle = computed(() => ({
   justify-content: center;
 }
 
+/* 图标底与图形分开：深色主题下要把图形压成纯白剪影，而 CSS filter 会连元素的
+   背景一起处理，所以底色留在外层，filter 只作用于图片本身。*/
+.icon-display-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--icon-tile-bg);
+  overflow: hidden;
+}
+
 .icon-display-image {
-  border-radius: 50%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  background: var(--bg-secondary);
 }
 
 .icon-display-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: var(--bg-secondary);
+  border-radius: 8px;
+  background: var(--icon-tile-bg);
   color: var(--text-secondary);
 }
 </style>
