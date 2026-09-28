@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    openOTP app icon master (1024x1024, transparent outside the tile).
+
+    macOS app icons are a full-bleed rounded square ("squircle"), so the tile is
+    824px with a 100px margin and a 185px corner radius — the shape Apple's own
+    icons use. The mark is the openOTP shield, drawn flat and vector-clean:
+    the previous source was a glossy 3D render with six dots and leftover
+    magenta fringe after the background was keyed out, which read as a washed
+    out grey tile in the Dock.
+
+    Three dots, not six: the mark has to survive being drawn at 16pt too
+    (see docs/tray-icon.svg, which uses the same shield and dot geometry).
+  -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#54a8f8"/>
+      <stop offset="0.55" stop-color="#3b86e8"/>
+      <stop offset="1" stop-color="#2758c4"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#tile)"/>
+
+  <!-- Shield (white) with the three dots knocked out to the tile colour. -->
+  <path
+    fill="#ffffff"
+    fill-rule="evenodd"
+    d="
+      M512 268
+      C 560 292 604 310 664 324
+      C 690 330 704 348 704 376
+      L 704 494
+      C 704 596 644 676 512 724
+      C 380 676 320 596 320 494
+      L 320 376
+      C 320 348 334 330 360 324
+      C 420 310 464 292 512 268
+      Z
+      M416 520
+      m -44 0
+      a 44 44 0 1 0 88 0
+      a 44 44 0 1 0 -88 0
+      Z
+      M512 520
+      m -44 0
+      a 44 44 0 1 0 88 0
+      a 44 44 0 1 0 -88 0
+      Z
+      M608 520
+      m -44 0
+      a 44 44 0 1 0 88 0
+      a 44 44 0 1 0 -88 0
+      Z
+    "
+  />
+</svg>

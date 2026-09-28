@@ -3,29 +3,6 @@
 > 只记录**尚未完成**的事项。已完成的工作见 [CHANGELOG.md](CHANGELOG.md) 与 git 记录。
 > 上次全量审计：2026-09-15（P0–P3 清单已全部处理，结论见提交历史）。
 
-## 进行中（2026-09-28，图标一轮）
-
-反馈自 0.2.0 首次安装试用，剩下的两项都是「图标」：
-
-- [ ] **菜单栏图标仍不够干净**（用户：中间的点比较小而且多，白色盾牌边缘线有点糊）
-     现状：`docs/tray-icon.svg` 是从 app 图标描出来的实心盾牌 + **六个** 1.25pt 圆点镂空，
-     36×36 @2x 渲染（46.1% 完全不透明、5 级 alpha）。方向：点改为 **3 个更大的**
-     （或单个锁孔），盾牌轮廓对齐 2x 像素网格；改完照 `docs/ICON_STATUS.md`
-     「更换 macOS 菜单栏图标」一节重新光栅化，并在真实菜单栏上截图核对
-     （可用 `screencapture -x -R x,y,w,h` + 3~4 倍放大看边缘）
-- [ ] **Dock 图标不正常**（用户反馈，尚未定位）：待查 ① `icon.icns` 里各尺寸是否齐全、
-     形状是否清晰（`iconutil -c iconset src-tauri/icons/icon.icns -o /tmp/x.iconset`）；
-     ② `Info.plist` 的 `CFBundleIconFile`；③ Dock 瓦片到底是什么样（AX 里 Dock 瓦片坐标不可信，
-     `CGWindowList` 按 owner=Dock 也没列到窗口，需换法定位后截图）；
-     ④ 可能原因：ad-hoc 签名 + 缓存导致 macOS 显示通用图标 / 图标源图本身就是缩图
-
-验证小工具（本次排查用，未入 git，机器重启后 `/tmp` 可能清空）：
-`docs/superpowers/tools/` 的 `click.swift`（合成真实鼠标点击，可点菜单栏图标验证弹窗，
-用法 `swift click.swift <x> <y>`）与 `listwin.swift <pid>`（列出进程所有窗口的位置/层级，
-包括隐藏的窗口，用来确认弹窗是不是被放到了屏幕外）。菜单栏图标坐标可用
-`osascript -e 'tell application "System Events" to tell process "openotp" to return position of menu bar item 1 of menu bar 2'` 取。
-UI 截图核对：`screencapture -x -R x,y,w,h`（区域）或 `-l <windowId>`（单个窗口）。
-
 ## 待决策
 
 - [ ] **HOTP 支持**：目前明确拒绝 `otpauth://hotp` 链接（此前会被当作 TOTP 生成永远不匹配的验证码）。
@@ -44,6 +21,10 @@ UI 截图核对：`screencapture -x -R x,y,w,h`（区域）或 `-l <windowId>`�
 
 ## 已知缺口
 
+- [ ] **两个账号仍用首字母图标**（`163邮箱`、`火箭+TNT-wugiro-两步验证码`）：这两个服务没有
+      干净来源的品牌 SVG。可选：换成 emoji（📧 / 🚀）、用户自传图片，或导入器在
+      `thumbnail` 落空时再按 issuer 匹配（V2EX / Notion 的 thumbnail 就是 `Default`，
+      目前是手工指定图标；改匹配规则会动到 `andotp.test.ts` 的一条既有断言）
 - [ ] **本地数据未加密**：`data.json` 中的 TOTP 密钥为明文，安全性依赖系统磁盘加密；
       主密码为 6 位 PIN，仅作界面解锁。若要真做本地加密，需重构解锁流程并处理
       「忘记密码即丢数据」与现有数据迁移

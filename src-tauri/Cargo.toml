@@ -1,6 +1,6 @@
 [package]
 name = "openotp"
-version = "0.2.0"
+version = "0.2.1"
 description = "Open source, cross-platform, local-only two-factor authenticator"
 authors = ["openOTP Team"]
 license = "MIT"
