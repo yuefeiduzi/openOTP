@@ -200,24 +200,4 @@ h1 {
   color: var(--text-secondary);
   font-size: 12px;
 }
-
-/* The menu bar popover is only 320pt wide, so the PIN row has to shrink to fit
-   (six 40pt boxes plus gaps overflow it). */
-:global(html.popover-window) .unlock {
-  padding: 24px 12px;
-}
-
-:global(html.popover-window) .unlock h1 {
-  font-size: 22px;
-}
-
-:global(html.popover-window) :deep(.pin-box) {
-  width: 34px;
-  height: 42px;
-  font-size: 17px;
-}
-
-:global(html.popover-window) :deep(.pin-input) {
-  gap: 4px;
-}
 </style>

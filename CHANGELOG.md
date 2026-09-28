@@ -21,6 +21,8 @@
 - 预设品牌图标由 12 个扩到 23 个：新增 Ubisoft / Epic Games / Firefox / Bitbucket / V2EX /
   NVIDIA / EA / JetBrains / Cloudflare / Notion / Bitwarden（取自 Simple Icons）
 - 弹窗与设置页新增「退出 OpenOTP」；macOS 不再挂托盘菜单（见 Fixed），退出入口必须有处可去
+- `src/styles.test.ts`：禁止 scoped 样式块里把 `:global()` 与 `:deep()` 写在同一选择器上
+  （记录 SFC 编译器会把后代部分丢掉的坑，见 Fixed）
 
 ### Changed
 
@@ -39,6 +41,11 @@
 
 ### Fixed
 
+- 菜单栏弹窗里的解锁页整页挤成一列：scoped 样式里把 `:global(html.popover-window)` 与
+  `:deep(.pin-box)` 写在同一条选择器上，SFC 编译器把后代部分丢掉，四条规则被合并成
+  `html.popover-window{width:34px;height:42px;padding:24px 12px;font-size:17px}`——直接作用在
+  `<html>` 上，内容宽度只剩 10px，于是标题、提示、PIN 输入框、按钮全部逐字换行。
+  规则改写进全局 `style.css`（`html.popover-window .unlock .pin-box` 编译结果与写法一致）
 - 删除账号不落盘：被删账号仍留在 `data.json`，重启后复现
 - macOS 左键点菜单栏图标打不开弹窗：`NSStatusItem` 一旦挂了菜单，AppKit 会在任何点击时
   自行打开菜单，点击事件到不了 `on_tray_icon_event`（`show_menu_on_left_click(false)`

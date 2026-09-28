@@ -57,3 +57,28 @@ input[type="checkbox"]:focus-visible {
 ::-webkit-scrollbar-thumb:hover {
   background: #aaa;
 }
+
+/*
+ * 菜单栏弹窗只有 320pt 宽，解锁页得按这个宽度收窄：一行六个 40pt 输入框放不下。
+ *
+ * 这些规则必须写在全局样式表里：在 scoped 块里写 `:global(html.popover-window)
+ * :deep(.pin-box)` 会被 SFC 编译器压成一条作用于 <html> 自身的规则
+ * （`html.popover-window{width:34px;...}`），于是整页宽度变成 34px、内容全部挤成一列。
+ */
+html.popover-window .unlock {
+  padding: 24px 12px;
+}
+
+html.popover-window .unlock h1 {
+  font-size: 22px;
+}
+
+html.popover-window .unlock .pin-box {
+  width: 34px;
+  height: 42px;
+  font-size: 17px;
+}
+
+html.popover-window .unlock .pin-input {
+  gap: 4px;
+}

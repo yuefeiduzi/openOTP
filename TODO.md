@@ -3,6 +3,22 @@
 > 只记录**尚未完成**的事项。已完成的工作见 [CHANGELOG.md](CHANGELOG.md) 与 git 记录。
 > 上次全量审计：2026-09-15（P0–P3 清单已全部处理，结论见提交历史）。
 
+## 进行中（2026-09-28，图标一轮）
+
+反馈自 0.2.0 首次安装试用，剩下的两项都是「图标」：
+
+- [ ] **菜单栏图标仍不够干净**（用户：中间的点比较小而且多，白色盾牌边缘线有点糊）
+     现状：`docs/tray-icon.svg` 是从 app 图标描出来的实心盾牌 + **六个** 1.25pt 圆点镂空，
+     36×36 @2x 渲染（46.1% 完全不透明、5 级 alpha）。方向：点改为 **3 个更大的**
+     （或单个锁孔），盾牌轮廓对齐 2x 像素网格；改完照 `docs/ICON_STATUS.md`
+     「更换 macOS 菜单栏图标」一节重新光栅化，并在真实菜单栏上截图核对
+     （可用 `screencapture -x -R x,y,w,h` + 3~4 倍放大看边缘）
+- [ ] **Dock 图标不正常**（用户反馈，尚未定位）：待查 ① `icon.icns` 里各尺寸是否齐全、
+     形状是否清晰（`iconutil -c iconset src-tauri/icons/icon.icns -o /tmp/x.iconset`）；
+     ② `Info.plist` 的 `CFBundleIconFile`；③ Dock 瓦片到底是什么样（AX 里 Dock 瓦片坐标不可信，
+     `CGWindowList` 按 owner=Dock 也没列到窗口，需换法定位后截图）；
+     ④ 可能原因：ad-hoc 签名 + 缓存导致 macOS 显示通用图标 / 图标源图本身就是缩图
+
 ## 待决策
 
 - [ ] **HOTP 支持**：目前明确拒绝 `otpauth://hotp` 链接（此前会被当作 TOTP 生成永远不匹配的验证码）。
