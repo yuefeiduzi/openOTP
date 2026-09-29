@@ -8,13 +8,13 @@
 ## 发布一个版本
 
 ```bash
-# 1. 三处版本号同步 + 把 CHANGELOG.md 的 [Unreleased] 改为 `## [0.2.6]`（见下节）
+# 1. 三处版本号同步 + 把 CHANGELOG.md 的 [Unreleased] 改为 `## [0.2.7]`（见下节）
 # 2. 本地跑一遍 gate（也可以只看 CI）
 pnpm build && pnpm test
 (cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test)
 # 3. 提交后打 tag 并推送（推送由你操作）
-git commit -m "chore(release): v0.2.6"
-git tag v0.2.6 && git push origin main v0.2.6
+git commit -m "chore(release): v0.2.7"
+git tag v0.2.7 && git push origin main v0.2.7
 # 4. Actions → Release 跑完后，到 Releases 检查草稿，确认无误再点 Publish
 ```
 
