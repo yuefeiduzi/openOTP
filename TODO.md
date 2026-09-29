@@ -1,7 +1,7 @@
 # TODO
 
-> 只记录**尚未完成**的事项。已完成的工作见 [CHANGELOG.md](CHANGELOG.md) 与 git 记录。
-> 上次全量审计：2026-09-15（P0–P3 清单已全部处理，结论见提交历史）。
+> 只记录**尚未完成**的事项；已完成的工作见 [CHANGELOG.md](CHANGELOG.md) 与 git 记录。
+> 目前只保留待决策的内容与平台（Android / Windows）事项，新发现的 bug 出现时再记入。
 
 ## 待决策
 
@@ -21,35 +21,17 @@
 - [ ] **摄像头实时扫码**：需要 macOS 摄像头用途声明 + `getUserMedia`，且需要人工在真机上授权验证。
       桌面端「截图 → 选择图片」已是主路径，价值有限
 
-## 发布链路（需要你的凭据）
+## Android
 
-打 tag 已经能自动出 universal DMG 与草稿 Release（`.github/workflows/release.yml`，
-见 [docs/RELEASE.md](docs/RELEASE.md)）；下面几项仍需要你的凭据：
-
-- [ ] macOS 签名 + 公证 —— **暂缓**：需要 Apple Developer 账号（99 USD/年），
-      现阶段用 [docs/UNSIGNED.md](docs/UNSIGNED.md)（随每个 Release 正文发布的放行与校验说明）替代
-- [ ] Windows 代码签名（代码签名证书）—— 顺带把 Windows 打包接进 `release.yml`
-- [ ] 自动更新（updater 密钥对 + 静态 `latest.json` 端点）
-
-具体步骤与需要写入的配置见 [docs/RELEASE.md](docs/RELEASE.md)。
-
-## 已知缺口
-
-- [ ] **两个账号仍用首字母图标**（`163邮箱`、`火箭+TNT-wugiro-两步验证码`）：这两个服务没有
-      干净来源的品牌 SVG。可选：换成 emoji（📧 / 🚀）、用户自传图片，或导入器在
-      `thumbnail` 落空时再按 issuer 匹配（V2EX / Notion 的 thumbnail 就是 `Default`，
-      目前是手工指定图标；改匹配规则会动到 `andotp.test.ts` 的一条既有断言）
-- [ ] **本地数据未加密**：`data.json` 中的 TOTP 密钥为明文，安全性依赖系统磁盘加密；
-      主密码为 6 位 PIN，仅作界面解锁。若要真做本地加密，需重构解锁流程并处理
-      「忘记密码即丢数据」与现有数据迁移
-- [ ] **弹窗与主窗口的锁定状态各自独立**：两个窗口是独立 webview，各自计时解锁；
-      在弹窗解锁后切回 App 模式可能要求再次解锁。统一需要把锁定状态移到 Rust 侧，
-      并重新定义「应用级」自动锁定（当前按窗口隐藏时长计算）
-- [ ] **Android 指纹**：`biometric.rs` 已如实报告不可用；接入需 `tauri android init` +
+- [ ] **指纹解锁**：`biometric.rs` 已如实报告不可用；接入需 `tauri android init` +
       注册 `tauri-plugin-biometric` + 权限声明（本机无 Android SDK/NDK，未验证）
-- [ ] **Windows 实机验证**：托盘模式与非 macOS 分支只做过 cfg 翻转的编译冒烟测试，
-      未在 Windows 上实际运行。已知一处具体缺口：**原生托盘菜单在启动时按当时的语言构建**，
-      之后切换语言不会更新（`tray_return_app` / 退出项的文案），需要重启才生效；macOS 不挂
-      托盘菜单所以看不到。修法是保存设置时重建菜单（保持 `tray_by_id` 句柄），并用
-      cfg 翻转做编译冒烟 —— 未实现也未经实机验证
-- [ ] **平台支持口径**：Linux 未实机验证；iOS 无任何实现（`docs/STRUCTURE.md` 已如实标注）
+
+## Windows
+
+- [ ] **实机验证**：托盘模式与非 macOS 分支只做过 cfg 翻转的编译冒烟测试，未在 Windows 上实际运行。
+      已知一处具体缺口：**原生托盘菜单在启动时按当时的语言构建**，之后切换语言不会更新
+      （`tray_return_app` / 退出项的文案），需要重启才生效；macOS 不挂托盘菜单所以看不到。
+      修法是保存设置时重建菜单（保持 `tray_by_id` 句柄），并用 cfg 翻转做编译冒烟 ——
+      未实现也未经实机验证
+- [ ] **代码签名与打包**：代码签名证书，并把 Windows 打包接进 `release.yml`；
+      具体配置见 [docs/RELEASE.md](docs/RELEASE.md)
