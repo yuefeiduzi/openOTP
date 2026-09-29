@@ -40,6 +40,9 @@
 - 因此 **key 必须以字面量出现**：不能用 `t('a.' + x)` 拼接，改为映射表（见
   `AddAccount.vue` 的 `PARSE_ERROR_KEYS`）
 - 中文注释不受限制
+- 语言只有 `zh-CN`（默认）与 `en-US`，没有「跟随系统」。语言存在设置里，由 `App.vue`
+  的 watcher 应用到每个窗口（弹窗 / 托盘菜单是长期复用的独立 webview，必须跟着设置切）；
+  `localStorage` 只作为首屏缓存，旧值（如 `auto`）一律归一到默认
 
 ## Git 提交与推送
 

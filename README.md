@@ -10,11 +10,12 @@
 - TOTP 验证码生成，账号列表支持搜索与拖拽排序
 - 添加账号：二维码图片识别（jsqr）· otpauth 链接 · 手动输入
 - 图标：Emoji / 首字母 / 23 个预设品牌图标 / 上传图片
-- 同网站多账号自动折叠；导入 andOTP 备份
+- 同网站多账号自动合并为一条（issuer 归一，`Microsoft - Microsoft` 与 `Microsoft` 同组），
+  卡片显示账号名以区分；导入 andOTP 备份
 - 解锁：6 位 PIN，macOS 可用 Touch ID / Face ID
-- 自动锁定（立即 / 1 / 5 分钟）与手动锁定；复制验证码后按设定清除剪贴板
+- 自动锁定（立即 / 1 / 5 分钟）与手动锁定
 - 备份：标准 zip 容器，可选密码（WinZip AES-256）或不加密；图标作为图片文件存入
-- 深浅色主题、跟随系统外观；中文 / English
+- 深浅色主题（跟随系统 / 浅色 / 深色）；中文（默认）/ English，菜单栏弹窗与托盘菜单同步切换
 - 托盘常驻模式：托盘弹窗查看验证码，主窗口关闭即隐藏到托盘（macOS 菜单栏 / Windows 托盘）
 
 ## 平台支持
@@ -66,7 +67,7 @@ cargo fmt --check
 |---|---|
 | [docs/STRUCTURE.md](docs/STRUCTURE.md) | 功能、技术栈、模块结构、数据与安全、平台支持 |
 | [docs/CODE_CONVENTIONS.md](docs/CODE_CONVENTIONS.md) | 代码风格、测试要求、提交与 i18n 规范 |
-| [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md) | 本地开发环境：dev 端口清理、macOS 已知坑 |
+| [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md) | 本地开发环境：dev 端口清理、macOS 已知坑、解锁 / 弹窗的脚本化回归 |
 | [docs/RELEASE.md](docs/RELEASE.md) | 发布流程、版本号同步、签名 / 公证 / 自动更新现状 |
 | [docs/ICON_STATUS.md](docs/ICON_STATUS.md) | 图标现状与重新生成流程 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本变更记录 |
