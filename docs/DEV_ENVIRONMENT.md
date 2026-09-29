@@ -64,3 +64,24 @@ pnpm tauri dev --config '{"identifier":"com.openotp.devcheck"}'
   vite 未启动则页面空白；调试必须 `pnpm tauri:dev` 或先起 `pnpm dev`
 - 本机 AppleScript 合成点击被系统权限拦截（错误 -25200），GUI 自动化只能查询窗口/按钮
   几何信息，不能代替人工点击
+
+### 解锁 / 弹窗回归（不点托盘也能做）
+
+合成**键盘**事件没有被拦（被拦的只有合成点击），所以「锁屏 → 输入 PIN → 解锁」这类回归
+可以脚本化。要点：
+
+- **别动真数据**：用测试数据目录跑 `pnpm tauri dev --config '{"identifier":"com.openotp.devcheck"}'`，
+  数据落在 `~/Library/Application Support/com.openotp.devcheck/`。三个文件都可预置：
+  `password.dat` 写 `pbkdf2_sha256:100000:<salt_hex>:<key_hex>`（PBKDF2-HMAC-SHA256、100k 次、
+  32B 输出，python `hashlib.pbkdf2_hmac` 直接能算），`settings.json` 存在才算已初始化，
+  `data.json` 放几条假账号
+- **让 app 当前台再输入**：`osascript -e 'tell application "System Events" to tell process "OpenOTP" to set frontmost to true'`，
+  然后 `keystroke tab`（PIN 首格没有 autofocus）再逐位 `keystroke "1"`；不激活的话按键会进
+  别的 app，弹窗也拿不到 key（此时弹窗会因失焦自行隐藏）
+- **弹窗不点托盘打不开**（图标被 Thaw 移出菜单栏，AX 也 press 不动）：需要临时在 `setup()` 里
+  加一段只读环境变量的 debug hook —— 起线程 sleep 十几秒后 `main.hide()` +
+  `build_panel(..., "popover", ...)` + `focus_tray_panel`，即模仿托盘左键；验证完删掉，不要提交
+- **看窗口是否还在**：
+  `osascript -e 'tell application "System Events" to tell process "OpenOTP" to get count of windows'`；
+  截图用 `screencapture -x`，弹窗在 (200,200)-(520,680) 点附近，可用
+  `sips -c 960 640 --cropOffset 400 400` 裁出来看
