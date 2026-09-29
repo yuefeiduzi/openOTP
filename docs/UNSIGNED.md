@@ -1,8 +1,3 @@
-<!--
-这份说明由 release.yml 原样 cat 进每个 Release 正文的开头，是用户看到的第一段内容，
-所以改这里就够了，不要再往 workflow 里复制一份。背景与决策见 docs/RELEASE.md。
--->
-
 # 未签名版本：放行与校验
 
 这个包没有代码签名，也没有公证（notarization）：本项目的发行者没有 Apple Developer 账号，

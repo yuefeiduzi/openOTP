@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-09-29
+
 ### Added
 
 - 备份改为标准 zip 容器：`manifest.json` + `accounts.json` + `icons/<id>.<ext>`，

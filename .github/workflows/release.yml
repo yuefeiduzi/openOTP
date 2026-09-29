@@ -139,12 +139,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          # The body is the changelog's own section for this version, so the
-          # two cannot drift. Cut that section (docs/RELEASE.md) before
-          # tagging, or the release goes out with only the note below.
+          # The body is the changelog's own section for this version — heading
+          # included, so the notes read on their own on the release page. Cut
+          # that section (docs/RELEASE.md) before tagging, or the release goes
+          # out with only docs/UNSIGNED.md and a warning.
           awk -v heading="## [$VERSION]" '
-            index($0, heading) == 1 { inside = 1; next }
-            /^## /                  { inside = 0 }
+            /^## / { inside = (index($0, heading) == 1); if (inside) print; next }
             inside
           ' CHANGELOG.md > changelog-section.md
 
@@ -152,9 +152,9 @@ jobs:
             echo "::warning::CHANGELOG.md has no '## [$VERSION]' section — the release body will only carry docs/UNSIGNED.md"
           fi
 
-          # docs/UNSIGNED.md is prepended verbatim: a downloader meets the
-          # unsigned-build note before the changelog, and there is one copy to
-          # review instead of a heredoc buried in this file.
+          # docs/UNSIGNED.md goes in verbatim: a downloader meets the
+          # unsigned-build note before the changelog. One copy to review, in a
+          # file, instead of a heredoc buried in this workflow.
           cat docs/UNSIGNED.md > release-body.md
           printf '\n---\n\n' >> release-body.md
           cat changelog-section.md >> release-body.md
