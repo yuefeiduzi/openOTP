@@ -6,6 +6,7 @@ const components = import.meta.glob('./**/*.vue', {
   import: 'default',
 }) as Record<string, string>
 
+
 function styleBlocks(source: string): string[] {
   return [...source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(match => match[1])
 }
@@ -33,5 +34,17 @@ describe('component styles', () => {
     }
 
     expect(offenders).toEqual([])
+  })
+})
+
+describe('setting row colours', () => {
+  it('should set a text colour on the setting rows', () => {
+    // Buttons do not inherit `color`. The rows style their own background, so
+    // without a colour of their own the labels fall back to the platform
+    // default — black, which is unreadable on the dark theme's cards.
+    const block = styleBlocks(components['./views/Settings.vue']).join('\n')
+    const rule = block.match(/\.setting-btn\s*\{([^}]*)\}/)?.[1] ?? ''
+
+    expect(rule).toMatch(/color\s*:/)
   })
 })

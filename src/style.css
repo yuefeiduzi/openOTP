@@ -18,6 +18,10 @@ html, body, #app {
 
 button {
   font-family: inherit;
+  /* Buttons do not inherit `color` by default, so a button that styles its own
+     background but no colour falls back to the platform default: black text on
+     the dark theme's cards, which made the settings rows unreadable. */
+  color: inherit;
 }
 
 input {

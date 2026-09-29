@@ -1002,6 +1002,7 @@ async function exportDebugLogs() {
   border: 1px solid var(--border-color);
   border-radius: 10px;
   background: var(--card-bg);
+  color: var(--text-primary);
   font-size: 14px;
   cursor: pointer;
   text-align: left;
