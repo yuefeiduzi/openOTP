@@ -56,6 +56,19 @@ describe('overlay layering', () => {
   })
 })
 
+describe('icon picker sizing', () => {
+  it('should fill the bottom sheet rather than carry its own width and padding', () => {
+    // The picker was a fixed 350px card with its own 20px padding, dropped into
+    // a .sheet-content that already pads 24px: in the 350px-wide main window it
+    // landed 24px past the content box and made the sheet scroll sideways.
+    const block = styleBlocks(components['./components/IconPicker.vue']).join('\n')
+    const rule = block.match(/\.icon-picker\s*\{([^}]*)\}/)?.[1] ?? ''
+
+    expect(rule).toMatch(/width:\s*100%/)
+    expect(rule).not.toMatch(/padding\s*:/)
+  })
+})
+
 describe('setting row colours', () => {
   it('should set a text colour on the setting rows', () => {
     // Buttons do not inherit `color`. The rows style their own background, so

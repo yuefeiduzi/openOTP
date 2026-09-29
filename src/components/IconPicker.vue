@@ -184,13 +184,11 @@ function handleFileSelected(event: Event) {
 </template>
 
 <style scoped>
+/* 面板挂在 BottomSheet 的 .sheet-content 里，间距与背景由那一层提供：
+   再写一份 350px + padding + 卡片底会两边都溢出（横向滚动）。这里只管填满。 */
 .icon-picker {
-  width: 350px;
-  padding: 20px;
-  background: var(--card-bg);
+  width: 100%;
   color: var(--text-primary);
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
 }
 
 .preview-section {
@@ -262,8 +260,8 @@ function handleFileSelected(event: Event) {
 }
 
 .emoji-item {
-  width: 44px;
-  height: 44px;
+  width: 100%;
+  aspect-ratio: 1;
   border: 2px solid transparent;
   border-radius: 10px;
   background: var(--bg-secondary);
@@ -320,14 +318,16 @@ function handleFileSelected(event: Event) {
 
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  /* minmax(0, 1fr)：预设项里的 <img> 有固有尺寸，不写 0 时列宽会被内容撑开，
+     整个面板又多出一条横向滚动。*/
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 16px;
 }
 
 .preset-item {
-  width: 44px;
-  height: 44px;
+  width: 100%;
+  aspect-ratio: 1;
   padding: 8px;
   border: 2px solid transparent;
   border-radius: 10px;
