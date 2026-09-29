@@ -68,6 +68,13 @@
 
 ### Fixed
 
+- CI 上 `cargo test` 直接崩（dyld: Library not loaded: `@rpath/libswift_Concurrency.dylib`）：
+  生物识别桥是 Swift，链接后唯一的 Swift 动态库引用是 `@rpath` 形式，而 rpath 只有本机工具链
+  那条（CI runner 上没有，普通用户没装 Xcode / Command Line Tools 也没有）。现在 `build.rs`
+  显式补 `/usr/lib/swift`（系统的 Swift 运行时就在这里），测试二进制与 App 都已带上
+  （`otool -l … | grep LC_RPATH` 可验）；CI 的测试步骤另加 `DYLD_FALLBACK_LIBRARY_PATH` 兼顾
+  runner 镜像差异。**这也修掉了一个真实的分发隐患：没装 CLT 的 Mac 上安装包会启动即崩**
+
 - Touch ID 解锁后窗口消失：`biometric_auth` 是同步命令，在 macOS 上跑在主线程，而 Touch ID
   弹窗会阻塞到用户应答；主线程被占住时窗口通知（包括弹窗归为「失焦」的那一条）只能排在后面，
   于是解锁成功、钉一撤，那条迟到的失焦就立刻把面板关掉，主窗口则停在后台/失活状态，看起来

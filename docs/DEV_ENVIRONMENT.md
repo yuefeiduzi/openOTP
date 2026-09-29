@@ -69,6 +69,10 @@ pnpm tauri dev --config '{"identifier":"com.openotp.devcheck"}'
   vite 未启动则页面空白；调试必须 `pnpm tauri:dev` 或先起 `pnpm dev`
 - 本机 AppleScript 合成点击被系统权限拦截（错误 -25200），GUI 自动化只能查询窗口/按钮
   几何信息，不能代替人工点击
+- 产物依赖 Swift 运行时：生物识别桥是 Swift，二进制里唯一的 Swift 动态库引用是
+  `@rpath/libswift_Concurrency.dylib`（其余都是绝对路径）。`src-tauri/build.rs` 会给
+  测试二进制与 App 补上 `/usr/lib/swift`；若看到 `dyld: Library not loaded` 就是这条 rpath
+  丢了，`otool -l <二进制> | grep LC_RPATH` 可直接确认
 
 ### 解锁 / 弹窗回归（不点托盘也能做）
 

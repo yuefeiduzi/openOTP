@@ -65,3 +65,10 @@ jobs:
       - name: Tests
         working-directory: src-tauri
         run: cargo test
+        env:
+          # Belt and braces for the Swift bridge: the linker records
+          # @rpath/libswift_Concurrency.dylib, and the OS copy lives in
+          # /usr/lib/swift — a directory that only exists inside the dyld shared
+          # cache. build.rs adds it as an rpath; this covers the case where the
+          # runner's cached image differs.
+          DYLD_FALLBACK_LIBRARY_PATH: /usr/lib/swift
