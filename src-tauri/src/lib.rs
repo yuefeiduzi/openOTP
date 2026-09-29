@@ -287,6 +287,34 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// What a left click on the tray icon does, given the persisted mode and whether
+/// the popover is on screen.
+#[cfg(desktop)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum TrayLeftClick {
+    ShowMainWindow,
+    HidePopover,
+    ShowPopover,
+}
+
+/// App mode stays in app mode: the menu bar / tray icon is only a shortcut back
+/// to the main window. It used to open the popover instead, which showed a menu
+/// bar panel without switching the activation policy — the Dock icon stayed and
+/// the click looked like a second, inconsistent way into menu bar mode.
+///
+/// Menu bar mode keeps the popover toggle: first click shows it, a second one
+/// puts it away.
+#[cfg(desktop)]
+fn tray_left_click_action(menu_bar_only: bool, popover_visible: bool) -> TrayLeftClick {
+    if !menu_bar_only {
+        TrayLeftClick::ShowMainWindow
+    } else if popover_visible {
+        TrayLeftClick::HidePopover
+    } else {
+        TrayLeftClick::ShowPopover
+    }
+}
+
 /// Focuses a tray panel so it can take keyboard input.
 ///
 /// An accessory app with no visible windows is hidden by AppKit, and a hidden
@@ -575,44 +603,73 @@ pub fn run() {
                                     let _ = menu.hide();
                                 }
 
-                                // The popover *is* menu bar mode: put the main window
-                                // away before anything else. Doing this only while
-                                // creating the popover left the main window open behind it
-                                // on every later click, which looked like clicking the tray
-                                // switched between app mode and tray mode.
-                                if let Some(main) = app.get_webview_window("main") {
-                                    if main.is_visible().unwrap_or(false) {
-                                        let _ = main.hide();
+                                let popover = app.get_webview_window("popover");
+                                let popover_visible = popover
+                                    .as_ref()
+                                    .map(|window| window.is_visible().unwrap_or(false))
+                                    .unwrap_or(false);
+                                let menu_bar_only = storage::load_settings(app).menu_bar_only;
+
+                                match tray_left_click_action(menu_bar_only, popover_visible) {
+                                    // App mode: bring the main window forward and stay in
+                                    // app mode (the policy already matches, but making it
+                                    // explicit keeps the Dock icon in step if a previous
+                                    // click left the app accessory).
+                                    TrayLeftClick::ShowMainWindow => {
+                                        apply_background_mode(app, false);
+                                        // Unhide the app as well, in case it was hidden
+                                        // (Cmd+H) rather than just covered.
+                                        let _ = app.show();
+                                        if let Some(popover) = popover {
+                                            let _ = popover.hide();
+                                        }
+                                        if let Some(main) = app.get_webview_window("main") {
+                                            let _ = main.show();
+                                            let _ = main.set_focus();
+                                        }
                                     }
-                                }
-
-                                if let Some(popover) = app.get_webview_window("popover") {
-                                    if popover.is_visible().unwrap_or(false) {
-                                        let _ = popover.hide();
-                                        return;
+                                    // Menu bar mode: a second click puts the popover away.
+                                    TrayLeftClick::HidePopover => {
+                                        if let Some(popover) = popover {
+                                            let _ = popover.hide();
+                                        }
                                     }
+                                    TrayLeftClick::ShowPopover => {
+                                        // The popover *is* menu bar mode: put the main window
+                                        // away before anything else. Doing this only while
+                                        // creating the popover left the main window open behind it
+                                        // on every later click, which looked like clicking the tray
+                                        // switched between app mode and tray mode.
+                                        if let Some(main) = app.get_webview_window("main") {
+                                            if main.is_visible().unwrap_or(false) {
+                                                let _ = main.hide();
+                                            }
+                                        }
 
-                                    // NOTE: runtime set_position on this window is unreliable
-                                    // on macOS 26 (the window ends up offset); the position
-                                    // set at creation time sticks, so only show/hide here.
-                                    app.state::<PopoverState>().unpin();
-                                    let _ = popover.show();
-                                    focus_tray_panel(app, &popover);
-                                    return;
-                                }
+                                        if let Some(popover) = popover {
+                                            // NOTE: runtime set_position on this window is unreliable
+                                            // on macOS 26 (the window ends up offset); the position
+                                            // set at creation time sticks, so only show/hide here.
+                                            app.state::<PopoverState>().unpin();
+                                            let _ = popover.show();
+                                            focus_tray_panel(app, &popover);
+                                            return;
+                                        }
 
-                                let position = popover_position(app, position);
-                                if let Some(popover) = build_panel(
-                                    app,
-                                    "popover",
-                                    "#/popover",
-                                    POPOVER_WIDTH,
-                                    POPOVER_HEIGHT,
-                                    position,
-                                ) {
-                                    app.state::<PopoverState>().unpin();
-                                    let _ = popover.show();
-                                    focus_tray_panel(app, &popover);
+                                        let position = popover_position(app, position);
+                                        if let Some(popover) = build_panel(
+                                            app,
+                                            "popover",
+                                            "#/popover",
+                                            POPOVER_WIDTH,
+                                            POPOVER_HEIGHT,
+                                            position,
+                                        ) {
+                                            app.state::<PopoverState>().unpin();
+                                            let _ = popover.show();
+                                            focus_tray_panel(app, &popover);
+                                        }
+                                    }
                                 }
                             }
                             tauri::tray::MouseButton::Right => {
@@ -761,6 +818,38 @@ mod popover_state_tests {
 
         state.suppress_hiding_for(Duration::ZERO);
         assert!(!state.hide_is_suppressed());
+    }
+}
+
+#[cfg(all(test, desktop))]
+mod tray_click_tests {
+    use super::*;
+
+    /// App mode never opens the popover, even when one is already on screen: the
+    /// Dock icon is still up, and two different-looking ways into menu bar mode
+    /// was exactly the inconsistency this replaced.
+    #[test]
+    fn app_mode_brings_the_main_window_forward() {
+        assert_eq!(
+            tray_left_click_action(false, false),
+            TrayLeftClick::ShowMainWindow
+        );
+        assert_eq!(
+            tray_left_click_action(false, true),
+            TrayLeftClick::ShowMainWindow
+        );
+    }
+
+    #[test]
+    fn menu_bar_mode_toggles_the_popover() {
+        assert_eq!(
+            tray_left_click_action(true, false),
+            TrayLeftClick::ShowPopover
+        );
+        assert_eq!(
+            tray_left_click_action(true, true),
+            TrayLeftClick::HidePopover
+        );
     }
 }
 
