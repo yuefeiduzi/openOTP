@@ -7,6 +7,8 @@ mod storage;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
 /// Size of the menu bar / tray popover window.
@@ -116,7 +118,12 @@ fn get_biometric_type() -> String {
     biometric::get_biometric_type()
 }
 
-#[tauri::command]
+/// Runs on a worker thread: the Touch ID prompt blocks until the user answers,
+/// and a synchronous command would block the main thread with it. Window
+/// notifications (including the focus loss that decides whether the popover
+/// hides) are delivered on the main thread, so blocking it left the popover
+/// closing right after a successful unlock and the app stuck in the background.
+#[tauri::command(async)]
 fn biometric_auth(app: AppHandle, reason: String) -> Result<bool, biometric::BiometricError> {
     biometric::authenticate_biometric(&app, &reason)
 }
@@ -156,16 +163,72 @@ fn is_desktop() -> bool {
     cfg!(desktop)
 }
 
+/// How long a released pin keeps the popover from hiding. Long enough to cover a
+/// focus-loss notification that was queued behind a blocking command.
+#[cfg(desktop)]
+const HIDE_GRACE: Duration = Duration::from_millis(1500);
+
 /// While pinned the popover ignores focus loss, so opening a native file dialog
-/// from one of its modals no longer hides the window underneath the dialog.
+/// or a system prompt does not hide the window underneath it.
 #[derive(Default)]
 struct PopoverState {
     pinned: AtomicBool,
+    /// Focus loss stops hiding the window until this instant. A pin is released
+    /// as soon as the unlock succeeds, but the focus loss the pin was holding
+    /// off (the biometric prompt taking focus) can still be on its way — the
+    /// prompt blocks the main thread, so its window notifications are only
+    /// delivered afterwards — and the panel would close just as it unlocked.
+    hide_grace_until: Mutex<Option<Instant>>,
+}
+
+impl PopoverState {
+    fn pin(&self) {
+        self.pinned.store(true, Ordering::Relaxed);
+    }
+
+    fn unpin(&self) {
+        self.pinned.store(false, Ordering::Relaxed);
+    }
+
+    /// Whether a focus loss should leave the popover alone right now.
+    fn hide_is_suppressed(&self) -> bool {
+        if self.pinned.load(Ordering::Relaxed) {
+            return true;
+        }
+        self.hide_grace_until
+            .lock()
+            .map(|until| until.is_some_and(|until| Instant::now() < until))
+            .unwrap_or(false)
+    }
+
+    fn release_pin_while_unfocused(&self) {
+        self.suppress_hiding_for(HIDE_GRACE);
+    }
+
+    fn suppress_hiding_for(&self, grace: Duration) {
+        if let Ok(mut until) = self.hide_grace_until.lock() {
+            *until = Some(Instant::now() + grace);
+        }
+    }
 }
 
 #[tauri::command]
-fn set_popover_pinned(state: tauri::State<PopoverState>, pinned: bool) {
-    state.pinned.store(pinned, Ordering::Relaxed);
+fn set_popover_pinned(window: tauri::Window, state: tauri::State<PopoverState>, pinned: bool) {
+    if pinned {
+        state.pin();
+        return;
+    }
+
+    state.unpin();
+    // Nothing left to hold the window open, but the focus loss that the pin was
+    // covering may not have been seen yet: keep a short grace period when the
+    // window is already unfocused.
+    if window.label() == "popover"
+        && window.is_visible().unwrap_or(false)
+        && !window.is_focused().unwrap_or(false)
+    {
+        state.release_pin_while_unfocused();
+    }
 }
 
 #[tauri::command]
@@ -532,9 +595,7 @@ pub fn run() {
                                     // NOTE: runtime set_position on this window is unreliable
                                     // on macOS 26 (the window ends up offset); the position
                                     // set at creation time sticks, so only show/hide here.
-                                    app.state::<PopoverState>()
-                                        .pinned
-                                        .store(false, Ordering::Relaxed);
+                                    app.state::<PopoverState>().unpin();
                                     let _ = popover.show();
                                     focus_tray_panel(app, &popover);
                                     return;
@@ -549,9 +610,7 @@ pub fn run() {
                                     POPOVER_HEIGHT,
                                     position,
                                 ) {
-                                    app.state::<PopoverState>()
-                                        .pinned
-                                        .store(false, Ordering::Relaxed);
+                                    app.state::<PopoverState>().unpin();
                                     let _ = popover.show();
                                     focus_tray_panel(app, &popover);
                                 }
@@ -621,7 +680,7 @@ pub fn run() {
                     let app = window.app_handle().clone();
                     std::thread::spawn(move || {
                         std::thread::sleep(std::time::Duration::from_millis(200));
-                        if app.state::<PopoverState>().pinned.load(Ordering::Relaxed) {
+                        if app.state::<PopoverState>().hide_is_suppressed() {
                             return;
                         }
                         if w.is_visible().unwrap_or(false) && !w.is_focused().unwrap_or(false) {
@@ -673,6 +732,36 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(all(test, desktop))]
+mod popover_state_tests {
+    use super::*;
+
+    #[test]
+    fn a_pin_suppresses_hiding() {
+        let state = PopoverState::default();
+        assert!(!state.hide_is_suppressed());
+
+        state.pin();
+        assert!(state.hide_is_suppressed());
+
+        state.unpin();
+        assert!(!state.hide_is_suppressed());
+    }
+
+    /// The focus loss that a pin covered can arrive after the pin is gone; the
+    /// panel must not close on it.
+    #[test]
+    fn a_released_pin_keeps_hiding_off_for_a_moment() {
+        let state = PopoverState::default();
+
+        state.suppress_hiding_for(Duration::from_secs(60));
+        assert!(state.hide_is_suppressed());
+
+        state.suppress_hiding_for(Duration::ZERO);
+        assert!(!state.hide_is_suppressed());
+    }
 }
 
 #[cfg(all(test, desktop))]

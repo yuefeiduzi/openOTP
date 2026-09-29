@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { Account } from '@/types'
 import { formatCode, generateTOTP, getTOTPRemainingSeconds } from '@/utils/otp'
 import IconDisplay from '@/components/IconDisplay.vue'
@@ -14,10 +14,15 @@ const props = defineProps<{
    */
   copyOnTap?: boolean
   /**
-   * Show the account name under the issuer. Cards label accounts by issuer
-   * because same-issuer accounts are grouped, so the name is only rendered
-   * where the issuer alone cannot tell two accounts apart: search results and
-   * sites with more than one account.
+   * The site to show as the card's title. Accounts are grouped by a normalised
+   * site (see `utils/site`), so the raw issuer — which importers can write as
+   * "Microsoft - Microsoft" — is not what the group is labelled with.
+   */
+  siteLabel?: string
+  /**
+   * Show the account name under the issuer. The card is the only place an
+   * account is identified at all — the list labels sites by issuer — so the name
+   * is shown on every card (it is skipped when it repeats the site).
    */
   showAccountName?: boolean
   /**
@@ -33,6 +38,9 @@ const emit = defineEmits<{
   delete: []
   edit: []
 }>()
+
+/** Title of the card: the site the account belongs to. */
+const site = computed(() => props.siteLabel || props.account.issuer || props.account.name)
 
 const currentCode = ref('')
 const progress = ref(100)
@@ -165,8 +173,8 @@ onUnmounted(() => {
 
       <div class="code-area" @click.stop="handleCodeTap">
         <div class="code-text">{{ currentCode }}</div>
-        <div class="issuer-name">{{ account.issuer }}</div>
-        <div v-if="showAccountName && account.name && account.name !== account.issuer" class="account-name">
+        <div class="issuer-name">{{ site }}</div>
+        <div v-if="showAccountName && account.name && account.name !== site" class="account-name">
           {{ account.name }}
         </div>
       </div>

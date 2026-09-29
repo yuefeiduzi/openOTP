@@ -106,6 +106,11 @@ async function useBiometric() {
       await invoke('reset_biometric_failures')
       settingsStore.unlock()
       router.replace(afterUnlockTarget())
+      // The system prompt takes activation away from the app, and the window can
+      // be left behind whatever the user was looking at — which reads as the app
+      // having disappeared. The popover is left alone here: focusing it would
+      // bring the main window back with it in menu bar mode.
+      if (!inPopover) await invoke('show_main_window').catch(() => {})
     }
   } catch (e) {
     const err = e as { type: string }

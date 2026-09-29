@@ -6,6 +6,7 @@ import type { Account } from '@/types'
 import AccountCard from '@/components/AccountCard.vue'
 import { useToast } from '@/composables/useToast'
 import { copyToClipboard, scheduleClearClipboard } from '@/utils/clipboard'
+import { siteIdentityOf } from '@/utils/site'
 
 const accountStore = useAccountStore()
 const settingsStore = useSettingsStore()
@@ -63,10 +64,10 @@ interface AccountGroup {
 const groups = computed<AccountGroup[]>(() => {
   const map = new Map<string, AccountGroup>()
   for (const account of accounts.value) {
-    const key = (account.issuer || account.name || '').trim().toLowerCase() || account.id
+    const { key, label } = siteIdentityOf(account)
     let group = map.get(key)
     if (!group) {
-      group = { key, issuer: account.issuer || account.name || '', accounts: [] }
+      group = { key, issuer: label, accounts: [] }
       map.set(key, group)
     }
     group.accounts.push(account)
@@ -197,6 +198,7 @@ async function handleCopy(code: string) {
         :account="account"
         :copy-on-tap="settingsStore.settings.autoCopy"
         :read-only="props.readOnly"
+        :site-label="siteIdentityOf(account).label"
         show-account-name
         @copy="handleCopy"
         @delete="emit('delete', account)"
@@ -210,7 +212,8 @@ async function handleCopy(code: string) {
         :account="group.accounts[0]"
         :copy-on-tap="settingsStore.settings.autoCopy"
         :read-only="props.readOnly"
-        :show-account-name="group.accounts.length > 1"
+        :site-label="group.issuer"
+        show-account-name
         :class="{ dragging: draggedId === group.accounts[0].id }"
         :data-drop-before="isDropTarget(group.accounts[0].id, false) ? '' : undefined"
         :data-drop-after="isDropTarget(group.accounts[0].id, true) ? '' : undefined"
@@ -240,6 +243,7 @@ async function handleCopy(code: string) {
           :account="account"
           :copy-on-tap="settingsStore.settings.autoCopy"
           :read-only="props.readOnly"
+          :site-label="group.issuer"
           show-account-name
           :class="{ dragging: draggedId === account.id }"
           :data-drop-before="isDropTarget(account.id, false) ? '' : undefined"

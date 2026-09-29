@@ -192,7 +192,7 @@ describe('AccountCodeList drag reorder', () => {
 
 })
 
-describe('AccountCodeList same-issuer grouping', () => {
+describe('AccountCodeList grouping', () => {
   async function mountGroup() {
     const accounts = useAccountStore()
     const settings = useSettingsStore()
@@ -222,7 +222,7 @@ describe('AccountCodeList same-issuer grouping', () => {
     expect(accountNames(wrapper)).toEqual(['personal@example.com', 'work@example.com'])
   })
 
-  it('should stay unnamed when the site has a single account', async () => {
+  it('should show the account name on a site with a single account too', async () => {
     const accounts = useAccountStore()
     const settings = useSettingsStore()
     settings.updateSettings({ autoCopy: true })
@@ -232,7 +232,27 @@ describe('AccountCodeList same-issuer grouping', () => {
     await flushPromises()
 
     expect(wrapper.find('.group-toggle').exists()).toBe(false)
-    expect(wrapper.find('.account-name').exists()).toBe(false)
+    expect(accountNames(wrapper)).toEqual(['solo@example.com'])
+  })
+
+  // andOTP 导出的 issuer 会写成 "Microsoft - Microsoft"，与 App 里新增的 "Microsoft"
+  // 是同一网站，按原字符串分组会拆成两条。
+  it('should merge an imported issuer with the plain one', async () => {
+    const accounts = useAccountStore()
+    const settings = useSettingsStore()
+    settings.updateSettings({ autoCopy: true })
+    accounts.accounts = [
+      makeAccount({ id: 'a', order: 0, name: 'work@example.com', issuer: 'Microsoft - Microsoft' }),
+      makeAccount({ id: 'b', order: 1, name: 'personal@example.com', issuer: 'Microsoft' }),
+    ]
+
+    const wrapper = mount(AccountCodeList)
+    await flushPromises()
+
+    expect(wrapper.findAll('.account-card')).toHaveLength(1)
+    expect(wrapper.find('.group-toggle').exists()).toBe(true)
+    expect(wrapper.find('.account-card').text()).toContain('Microsoft')
+    expect(wrapper.find('.account-card').text()).not.toContain('Microsoft - Microsoft')
   })
 })
 
