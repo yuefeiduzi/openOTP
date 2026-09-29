@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "OpenOTP",
   "version": "0.2.5",
-  "identifier": "com.openotp.app",
+  "identifier": "com.openotp.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",

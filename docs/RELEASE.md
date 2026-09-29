@@ -1,7 +1,9 @@
 # 发布流程
 
 > 状态：**tag 触发的自动发布已建立**（`.github/workflows/release.yml`），产出的是未签名的
-> universal DMG 草稿 Release。签名、公证与自动更新仍未配置，缺口见下文。
+> universal DMG 草稿 Release。签名与公证**不会做**：没有 Apple Developer 账号，而 Developer ID
+> 证书与公证都要求付费会员资格；改用 [UNSIGNED.md](UNSIGNED.md) 里的放行与校验说明替代，
+> 该说明会原样出现在每个 Release 正文的开头。自动更新仍未配置，见缺口三。
 
 ## 发布一个版本
 
@@ -28,10 +30,9 @@ git tag v0.2.6 && git push origin main v0.2.6
 - **演练**：Actions → Release → Run workflow（`workflow_dispatch`）只跑检查与构建，把 DMG 存成
   workflow artifact，不创建任何 Release。首次打 tag 前可以先用它验证整条构建链路
 - **未签名**：DMG 里的 App 是 ad-hoc 签名，`spctl --assess` 判定 `rejected: no usable signature`，
-  下载后会被 Gatekeeper 拦下。Release 正文开头写明「右键 → 打开」或
-  `xattr -dr com.apple.quarantine /Applications/OpenOTP.app`
-- **签名/公证**：拿到凭据后加成 repo secrets，并在 `release.yml` 的 Build 步骤加 `env:`
-  （变量名见缺口一）。**现在没有传这些变量，所以产物必定未签名**
+  下载后会被 Gatekeeper 拦下。Release 正文开头会原样带上 [UNSIGNED.md](UNSIGNED.md)
+  （放行方式 + 校验哈希 + 为什么可以放心 + 以后有账号了怎么办）
+- **签名/公证**：见缺口一 —— 现在做不了（没有 Apple Developer 账号），也没打算先去买
 
 ## 当前构建方式（本地）
 
@@ -65,11 +66,17 @@ pnpm tauri:build --target universal-apple-darwin --bundles dmg
 `release.yml` 会校验三处版本号与 tag 是否一致，不一致时直接失败——这是为了不让「产物自称的版本」
 与「tag / 界面显示」分裂。
 
-## ❌ 缺口一：代码签名与公证（macOS）
+## ⏸️ 缺口一：代码签名与公证（macOS）—— 暂不处理
 
-未配置时用户首次打开会看到「无法验证开发者」，且无法通过 Gatekeeper 分发。
+**结论：不做。** 没有 Apple Developer 账号（99 USD/年），拿不到 Developer ID 证书，也就无法公证；
+费用与这个项目的形态不匹配。取而代之的是 [UNSIGNED.md](UNSIGNED.md)：每个 Release 正文开头都会
+原样带上它，告诉用户怎么放行、怎么校验下载。
 
-需要（用户侧操作，需要 Apple Developer 账号）：
+有一点未实测：真实下载路径上弹的是「无法验证开发者」还是「已损坏」，两种提示对应不同的命令，
+所以 UNSIGNED.md 两条都写了。本机只能验证到 `spctl --assess` 判定
+`rejected: no usable signature`（打包产物已实测）。
+
+何时改主意：有了 Apple Developer 账号以后。做法：
 
 ```jsonc
 // src-tauri/tauri.conf.json
@@ -93,7 +100,7 @@ export APPLE_TEAM_ID="..."
 ```
 
 Tauri 会在打包时自动签名并提交公证（`notarytool`）。凭据就绪后还要把它们接到
-`release.yml` 的 Build 步骤（见上文「发布一个版本」），否则 CI 产物依旧是未签名的。
+`release.yml` 的 Build 步骤（变量名同上），否则 CI 产物依旧是未签名的。
 
 ## ❌ 缺口二：Windows 签名
 
@@ -151,4 +158,5 @@ Tauri 会在打包时自动签名并提交公证（`notarytool`）。凭据就�
       导入备份 → 锁定 → 解锁 → 托盘 / 菜单栏模式 → 删除账号后重启确认未复现
 - [ ] 打 tag（`git tag vX.Y.Z && git push origin vX.Y.Z`——推送由你操作）后，
       到 Releases 检查草稿的正文与资产，确认后再 Publish
-- [ ] 若已有签名/公证凭据，确认本次 release 的签名/公证环境变量已接入 `release.yml`
+- [ ] 若已有签名/公证凭据（见缺口一：目前没有），把变量接入 `release.yml` 的 Build 步骤，
+      并同步删掉 Release 正文里那段未签名说明

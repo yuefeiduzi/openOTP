@@ -27,10 +27,19 @@
 - 发布流程（`.github/workflows/release.yml`）：推送 `v*` tag 后自动跑一遍 CI 的全量检查、
   校验 tag 与三处版本号一致、构建 universal DMG（arm64 + x86_64，附带 SHA256），
   再建一个**草稿** Release 由人工确认发布；`workflow_dispatch` 可先演练（只出 artifact，
-  不碰 Release）。产物未签名，Release 正文会写明 Gatekeeper 的放行方式
+  不碰 Release）。产物未签名，正文开头原样带上 [docs/UNSIGNED.md](docs/UNSIGNED.md)
+  （放行方式 + 校验哈希 + 为什么可以放心）
+- [UNSIGNED.md](docs/UNSIGNED.md)：未签名包的开箱说明（右键打开 / 清 quarantine、`shasum -c`
+  校验、可自行构建），随每个 Release 正文发布
 - `.editorconfig`：统一 LF、单个结尾换行、行尾不留空白（Markdown 除外）
 
 ### Changed
+
+- 包标识 `com.openotp.app` → `com.openotp.desktop`：前者以 `.app` 结尾，与 macOS 的 bundle
+  扩展名冲突，`pnpm tauri:build` 每次都会警告。注意**旧标识下的数据目录不会自动搬**：
+  `~/Library/Application Support/com.openotp.app/` 里是账号、设置与 PIN 哈希，需要时手动
+  `mv` 到 `~/Library/Application Support/com.openotp.desktop/`（从未发布过旧标识的正式包，
+  所以不做迁移代码）
 
 - 设置页精简（按你的选择）：语言只留中文 / English，不再有「跟随系统」，默认中文；
   去掉「托盘 / 菜单栏模式」开关（切模式走主页面入口）与「复制后清除剪贴板」整项功能；

@@ -149,24 +149,15 @@ jobs:
           ' CHANGELOG.md > changelog-section.md
 
           if [ ! -s changelog-section.md ]; then
-            echo "::warning::CHANGELOG.md has no '## [$VERSION]' section — the release body will only carry the Gatekeeper note"
+            echo "::warning::CHANGELOG.md has no '## [$VERSION]' section — the release body will only carry docs/UNSIGNED.md"
           fi
 
-          # The DMG is ad-hoc signed, so `spctl --assess` rejects it and every
-          # download arrives quarantined. Say so up front instead of letting
-          # users conclude the app is broken. (The URL is built from the
-          # runner's own env so a fork links to its own docs, not ours.)
-          {
-            cat <<'NOTE'
-          > **未签名版本**：本包是 ad-hoc 签名（`spctl --assess` 判定 `rejected: no usable signature`），
-          > macOS 首次打开会拦下它。右键点击 App →「打开」；若提示「已损坏」，执行
-          > `xattr -dr com.apple.quarantine /Applications/OpenOTP.app` 后重开。
-          > 签名与公证未配置，现状与原因见
-          NOTE
-            printf '> [docs/RELEASE.md](%s/blob/main/docs/RELEASE.md)。\n\n' "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
-          } > gatekeeper.md
-
-          cat gatekeeper.md changelog-section.md > release-body.md
+          # docs/UNSIGNED.md is prepended verbatim: a downloader meets the
+          # unsigned-build note before the changelog, and there is one copy to
+          # review instead of a heredoc buried in this file.
+          cat docs/UNSIGNED.md > release-body.md
+          printf '\n---\n\n' >> release-body.md
+          cat changelog-section.md >> release-body.md
 
           gh release create "$GITHUB_REF_NAME" \
             --verify-tag \
