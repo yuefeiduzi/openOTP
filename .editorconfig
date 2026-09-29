@@ -1,0 +1,23 @@
+root = true
+
+# Every text file ends with exactly one newline: rustfmt (and so CI's
+# `cargo fmt --check`) refuses a file that lacks it, and the rest of the tree
+# follows the same rule. Editors read this file, so a save keeps it true —
+# hence no separate check for the non-Rust files.
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Two trailing spaces are a hard line break in Markdown.
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{ts,vue,js,json,css,html,yml,yaml,svg}]
+indent_style = space
+indent_size = 2
+
+[*.rs]
+indent_style = space
+indent_size = 4

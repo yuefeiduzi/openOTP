@@ -1,5 +1,12 @@
 # 代码与测试规范
 
+## 文件格式
+
+- 文本文件统一 LF + **单个结尾换行**，行尾不留空白（Markdown 除外，两个空格是硬换行），
+  见 `.editorconfig`
+- Rust 文件由 `cargo fmt --check` 兜底（缺结尾换行时 rustfmt 只打印一个孤零零的 `+`，
+  含义就是「补上文件末尾的换行」）；其余文件靠编辑器读 `.editorconfig` 遵守
+
 ## 前端（Vue 3 + TypeScript）
 
 - 组件使用 `<script setup lang="ts">` 与 Composition API；状态用 Pinia

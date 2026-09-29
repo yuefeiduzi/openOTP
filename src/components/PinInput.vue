@@ -30,7 +30,7 @@ function setInputRef(index: number) {
 function handleInput(index: number, event: Event) {
   const target = event.target as HTMLInputElement
   const val = target.value.replace(/\D/g, '')
-  
+
   if (val.length > 0) {
     digits.value[index] = val[val.length - 1]
   } else {
@@ -78,12 +78,12 @@ function handlePaste(event: ClipboardEvent) {
     digits.value[i] = nums[i] || ''
   }
   emit('update:modelValue', digits.value.join(''))
-  
+
   const lastFilled = Math.min(nums.length, 5)
   nextTick(() => {
     inputRefs.value[lastFilled]?.focus()
   })
-  
+
   if (digits.value.every(d => d !== '')) {
     nextTick(() => {
       emit('complete')
