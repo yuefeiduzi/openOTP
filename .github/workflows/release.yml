@@ -1,0 +1,179 @@
+name: Release
+
+# Pushing a `v*` tag is the entire trigger. The version job refuses to build
+# when the tag and the three version fields disagree, so a tag cannot ship a
+# DMG labelled as something else. Manual dispatch runs the same checks and the
+# same build but never touches a release — that is how to smoke-test all of
+# this before the first tag exists.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Never cancel a run that may be halfway through publishing a release; a
+# re-run is cheap, a half-uploaded asset is not. The `-publish` suffix is not
+# decoration: the `tests` job below calls ci.yml, whose own group is
+# `${{ github.workflow }}-${{ github.ref }}` — and inside a called workflow
+# `github.workflow` is the *caller's* name, so that evaluates to
+# `Release-<ref>` here. Concurrency groups are compared case-insensitively,
+# and ci.yml sets `cancel-in-progress: true`, so an unsuffixed
+# `release-${{ github.ref }}` would have this run cancel itself the moment the
+# called workflow started.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-publish
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    # The gate main already gets, against the very commit being tagged: the
+    # same workflow, so "green on main" keeps meaning "safe to tag".
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  version:
+    name: Version fields
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cross-check the tag against the three version fields
+        id: read
+        run: |
+          set -euo pipefail
+
+          # docs/RELEASE.md: package.json, tauri.conf.json and Cargo.toml each
+          # carry the version. A release whose parts disagree with each other
+          # is worse than no release, so fail before spending a runner on the
+          # build (and before any asset is published).
+          pkg=$(node -p "require('./package.json').version")
+          conf=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          cargo=$(awk '
+            /^\[package\]/ { inside = 1; next }
+            /^\[/         { inside = 0 }
+            inside && /^version[[:space:]]*=/ { gsub(/["[:space:]]/, "", $3); print $3; exit }
+          ' src-tauri/Cargo.toml)
+
+          echo "package.json:    $pkg"
+          echo "tauri.conf.json: $conf"
+          echo "Cargo.toml:      $cargo"
+
+          failed=0
+          report() { echo "::error::$1"; failed=1; }
+          [ "$pkg" = "$conf" ]  || report "package.json ($pkg) and tauri.conf.json ($conf) disagree"
+          [ "$pkg" = "$cargo" ] || report "package.json ($pkg) and Cargo.toml ($cargo) disagree"
+
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "tag:             $GITHUB_REF_NAME"
+            [ "v$pkg" = "$GITHUB_REF_NAME" ] || report "tag $GITHUB_REF_NAME does not match version $pkg"
+          fi
+
+          [ "$failed" = 0 ] || { echo "Bump all three, then re-tag (docs/RELEASE.md)."; exit 1; }
+          echo "version=$pkg" >> "$GITHUB_OUTPUT"
+
+  dmg:
+    name: Universal DMG
+    needs: [tests, version]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Both slices: one download that runs on Apple Silicon and on Intel, for
+      # a few extra minutes of cross-compiling and ~4 MB more DMG. The runner's
+      # own architecture does not matter, which is why this is not a matrix.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          # Distinct from ci.yml's cache: this job compiles two targets into
+          # target/universal-apple-darwin, that one a single native target.
+          key: universal
+
+      - name: Build
+        run: pnpm tauri:build --target universal-apple-darwin --bundles dmg
+
+      # One flat folder: both the workflow artifact and the release assets then
+      # carry the plain file names, and SHA256SUMS.txt names the asset as the
+      # download is actually called.
+      - name: Stage the DMG and its checksums
+        run: |
+          set -euo pipefail
+          mkdir -p staging
+          cp src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg staging/
+          cd staging
+          shasum -a 256 *.dmg | tee SHA256SUMS.txt
+
+      # Kept for dispatch runs, which publish nothing, and as a fallback if the
+      # release upload ever fails.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenOTP-${{ needs.version.outputs.version }}-dmg
+          path: staging/
+          if-no-files-found: error
+
+      - name: Draft the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          # The body is the changelog's own section for this version, so the
+          # two cannot drift. Cut that section (docs/RELEASE.md) before
+          # tagging, or the release goes out with only the note below.
+          awk -v heading="## [$VERSION]" '
+            index($0, heading) == 1 { inside = 1; next }
+            /^## /                  { inside = 0 }
+            inside
+          ' CHANGELOG.md > changelog-section.md
+
+          if [ ! -s changelog-section.md ]; then
+            echo "::warning::CHANGELOG.md has no '## [$VERSION]' section — the release body will only carry the Gatekeeper note"
+          fi
+
+          # The DMG is ad-hoc signed, so `spctl --assess` rejects it and every
+          # download arrives quarantined. Say so up front instead of letting
+          # users conclude the app is broken. (The URL is built from the
+          # runner's own env so a fork links to its own docs, not ours.)
+          {
+            cat <<'NOTE'
+          > **未签名版本**：本包是 ad-hoc 签名（`spctl --assess` 判定 `rejected: no usable signature`），
+          > macOS 首次打开会拦下它。右键点击 App →「打开」；若提示「已损坏」，执行
+          > `xattr -dr com.apple.quarantine /Applications/OpenOTP.app` 后重开。
+          > 签名与公证未配置，现状与原因见
+          NOTE
+            printf '> [docs/RELEASE.md](%s/blob/main/docs/RELEASE.md)。\n\n' "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          } > gatekeeper.md
+
+          cat gatekeeper.md changelog-section.md > release-body.md
+
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --draft \
+            --title "OpenOTP $VERSION" \
+            --notes-file release-body.md \
+            staging/*.dmg \
+            staging/SHA256SUMS.txt
+
+          echo "Draft created. Review it, then publish — a draft is invisible to everyone else."

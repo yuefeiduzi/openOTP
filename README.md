@@ -2,8 +2,11 @@
 
 开源、跨平台、纯本地的二步验证器（TOTP）。
 
-> 尚未提供预编译安装包（签名与公证未配置，见 [docs/RELEASE.md](docs/RELEASE.md)），
-> 当前需从源码构建运行。
+> 安装包：推送 tag 后由 CI 构建 universal DMG（arm64 + x86_64）并以草稿 Release 发布，
+> 见 [Releases](https://github.com/yuefeiduzi/openOTP/releases)。产物**未签名**，下载后
+> 首次打开需手动放行 —— 右键点击 App →「打开」，或
+> `xattr -dr com.apple.quarantine /Applications/OpenOTP.app`；原因与后续计划见
+> [docs/RELEASE.md](docs/RELEASE.md)。若 Releases 里没有你要的版本，就从源码构建运行。
 
 ## 功能
 

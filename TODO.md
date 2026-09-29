@@ -23,8 +23,11 @@
 
 ## 发布链路（需要你的凭据）
 
+打 tag 已经能自动出 universal DMG 与草稿 Release（`.github/workflows/release.yml`，
+见 [docs/RELEASE.md](docs/RELEASE.md)）；下面几项仍需要你的凭据：
+
 - [ ] macOS 签名 + 公证（Apple Developer 证书与 app 专用密码）
-- [ ] Windows 代码签名（代码签名证书）
+- [ ] Windows 代码签名（代码签名证书）—— 顺带把 Windows 打包接进 `release.yml`
 - [ ] 自动更新（updater 密钥对 + 静态 `latest.json` 端点）
 
 具体步骤与需要写入的配置见 [docs/RELEASE.md](docs/RELEASE.md)。

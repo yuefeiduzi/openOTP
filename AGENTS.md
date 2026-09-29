@@ -26,7 +26,8 @@
 - 代码风格、测试要求、提交与 i18n 规范 → [docs/CODE_CONVENTIONS.md](docs/CODE_CONVENTIONS.md)
 - 本地环境：dev 端口清理、macOS 托盘 / 窗口已知坑、解锁与弹窗的脚本化回归方法 →
   [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)
-- 发布流程与签名 / 更新机制现状 → [docs/RELEASE.md](docs/RELEASE.md)
+- 发布流程（打 tag 即构建 universal DMG 并建草稿 Release）与签名 / 更新机制现状 →
+  [docs/RELEASE.md](docs/RELEASE.md)
 - 图标现状与重新生成 → [docs/ICON_STATUS.md](docs/ICON_STATUS.md)
 - 待办与待决事项 → [TODO.md](TODO.md)（已完成的历史见 [CHANGELOG.md](CHANGELOG.md)）
 - 设计文档（仅本地，未入 git）→ `docs/superpowers/`

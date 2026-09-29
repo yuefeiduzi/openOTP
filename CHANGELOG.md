@@ -24,6 +24,11 @@
   打开、从而吃掉左键，所以这里也是一块自绘面板窗口（200×96，焦点丢失即收起）
 - `src/styles.test.ts`：禁止 scoped 样式块里把 `:global()` 与 `:deep()` 写在同一选择器上
   （记录 SFC 编译器会把后代部分丢掉的坑，见 Fixed）
+- 发布流程（`.github/workflows/release.yml`）：推送 `v*` tag 后自动跑一遍 CI 的全量检查、
+  校验 tag 与三处版本号一致、构建 universal DMG（arm64 + x86_64，附带 SHA256），
+  再建一个**草稿** Release 由人工确认发布；`workflow_dispatch` 可先演练（只出 artifact，
+  不碰 Release）。产物未签名，Release 正文会写明 Gatekeeper 的放行方式
+- `.editorconfig`：统一 LF、单个结尾换行、行尾不留空白（Markdown 除外）
 
 ### Changed
 
