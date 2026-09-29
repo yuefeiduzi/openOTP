@@ -11,6 +11,7 @@ vi.mock('@/composables/useToast', () => ({
 }))
 
 import App from './App.vue'
+import i18n from '@/locales'
 import { useSettingsStore, useAccountStore } from '@/stores'
 
 function setHidden(hidden: boolean) {
@@ -34,6 +35,24 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers()
   setHidden(false)
+})
+
+describe('App language', () => {
+  it('should follow the saved language, including a later change', async () => {
+    const settings = useSettingsStore()
+    settings.updateSettings({ language: 'zh-CN' })
+
+    await mountApp()
+    expect(i18n.global.locale.value).toBe('zh-CN')
+
+    // Reloading the settings (the Rust broadcast does the same) has to switch
+    // the strings, or the popover and tray menu keep the language they were
+    // created in.
+    settings.updateSettings({ language: 'en-US' })
+    await flushPromises()
+
+    expect(i18n.global.locale.value).toBe('en-US')
+  })
 })
 
 describe('App auto lock', () => {

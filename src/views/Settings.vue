@@ -10,7 +10,7 @@ import type { AppSettings } from '@/types'
 import { exportBackup, inspectBackup, importBackup, MIN_BACKUP_PASSWORD_LENGTH } from '@/utils/backup'
 import { copyToClipboard } from '@/utils/clipboard'
 import { importAndOTPBackup } from '@/utils/andotp'
-import { setLocale, getSavedLocalePreference } from '@/locales'
+import { setLocale, normalizeLocale, type Locale } from '@/locales'
 import PinInput from '@/components/PinInput.vue'
 import BottomSheet from '@/components/BottomSheet.vue'
 import { enableDebugLog, disableDebugLog, isDebugEnabled, exportLogsText } from '@/utils/debug'
@@ -26,7 +26,7 @@ const { setTheme } = useTheme()
 
 const REPOSITORY_URL = 'https://github.com/yuefeiduzi/openOTP'
 
-const languagePreference = ref<'auto' | 'zh-CN' | 'en-US'>('auto')
+const languagePreference = ref<Locale>('zh-CN')
 
 const themePreference = ref<'light' | 'dark' | 'auto'>('auto')
 const showThemeSheet = ref(false)
@@ -50,7 +50,6 @@ const showHintModal = ref(false)
 const hintValue = ref('')
 
 const biometricAvailable = ref(false)
-const isDesktop = ref(false)
 const biometricType = ref('')
 
 const showExportSheet = ref(false)
@@ -61,7 +60,6 @@ const exportPasswordError = ref('')
 
 const showLangSheet = ref(false)
 
-const showClipboardSheet = ref(false)
 const showLockSheet = ref(false)
 
 const showImportPasswordModal = ref(false)
@@ -80,20 +78,15 @@ const biometricLabel = computed(() => {
 })
 
 onMounted(async () => {
-  languagePreference.value = getSavedLocalePreference()
+  languagePreference.value = normalizeLocale(settingsStore.settings.language)
   themePreference.value = settingsStore.settings.theme
 
   try {
     const settings = await invoke<AppSettings>('get_settings')
     settingsStore.updateSettings(settings)
     themePreference.value = settings.theme
+    languagePreference.value = normalizeLocale(settings.language)
   } catch {
-  }
-
-  try {
-    isDesktop.value = await invoke<boolean>('is_desktop')
-  } catch {
-    isDesktop.value = false
   }
 
   try {
@@ -108,7 +101,7 @@ onMounted(async () => {
 
 
 
-function handleLanguageChange(value: 'auto' | 'zh-CN' | 'en-US') {
+function handleLanguageChange(value: Locale) {
   languagePreference.value = value
   setLocale(value)
   settingsStore.updateSettings({ language: value })
@@ -400,25 +393,6 @@ async function copyGithubLink() {
   showToast(copied ? t('settings.linkCopied') : t('errors.copyFailed'), !copied)
 }
 
-function handleMenuBarOnlyToggle(event: Event) {
-  const enabled = (event.target as HTMLInputElement).checked
-  settingsStore.updateSettings({ menuBarOnly: enabled })
-  settingsStore.saveSettings()
-  invoke('set_menu_bar_only', { enabled })
-}
-
-const CLIPBOARD_OPTIONS = [
-  { value: 30, label: 'settings.clipboard30s' },
-  { value: 60, label: 'settings.clipboard60s' },
-  { value: 0, label: 'settings.clipboardNever' },
-] as const
-
-const clipboardClearLabel = computed(() => {
-  const current = settingsStore.settings.clipboardClearTime
-  const option = CLIPBOARD_OPTIONS.find(o => o.value === current)
-  return option ? t(option.label) : t('settings.clipboardNever')
-})
-
 function handleAutoCopyToggle(event: Event) {
   const enabled = (event.target as HTMLInputElement).checked
   settingsStore.updateSettings({ autoCopy: enabled })
@@ -446,17 +420,6 @@ function handleLockTimeoutChange(minutes: number) {
 function lockApp() {
   settingsStore.lock()
   router.push('/unlock')
-}
-
-// macOS keeps no tray menu (see lib.rs), so App mode needs its own way to quit.
-function quitApp() {
-  invoke('quit_app')
-}
-
-function handleClipboardClearChange(seconds: number) {
-  settingsStore.updateSettings({ clipboardClearTime: seconds })
-  settingsStore.saveSettings()
-  showClipboardSheet.value = false
 }
 
 function handleBiometricToggle(event: Event) {
@@ -513,7 +476,7 @@ async function exportDebugLogs() {
         <h2 class="section-title">{{ t('settings.languageSettings') }}</h2>
         <div class="setting-item setting-action">
           <button class="setting-btn" @click="showLangSheet = true">
-            {{ languagePreference === 'auto' ? t('settings.languageAuto') : languagePreference === 'zh-CN' ? t('settings.languageZhCN') : t('settings.languageEnUS') }}
+            {{ languagePreference === 'zh-CN' ? t('settings.languageZhCN') : t('settings.languageEnUS') }}
             <span class="btn-arrow">›</span>
           </button>
         </div>
@@ -528,20 +491,6 @@ async function exportDebugLogs() {
             {{ themePreference === 'auto' ? t('settings.themeAuto') : themePreference === 'light' ? t('settings.themeLight') : t('settings.themeDark') }}
             <span class="btn-arrow">›</span>
           </button>
-        </div>
-
-        <div v-if="isDesktop" class="setting-item setting-row">
-          <span class="setting-label">{{ t('settings.menuBarOnly') }}</span>
-          <div class="setting-control">
-            <label class="toggle">
-              <input
-                type="checkbox"
-                :checked="settingsStore.settings.menuBarOnly"
-                @change="handleMenuBarOnlyToggle"
-              />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
         </div>
       </section>
 
@@ -592,6 +541,17 @@ async function exportDebugLogs() {
           </button>
         </div>
 
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="showLockSheet = true">
+            {{ t('settings.lockTimeout') }}
+            <span class="setting-hint-val">{{ lockTimeoutLabel }}</span>
+          </button>
+        </div>
+
+        <div class="setting-item setting-action">
+          <button class="setting-btn" @click="lockApp">{{ t('settings.lockApp') }}</button>
+        </div>
+
         <div v-if="biometricAvailable" class="setting-item setting-row">
           <span class="setting-label">{{ t('settings.biometricUnlock') }}</span>
           <div class="setting-control">
@@ -619,24 +579,6 @@ async function exportDebugLogs() {
             </label>
           </div>
         </div>
-
-        <div class="setting-item setting-action">
-          <button class="setting-btn" @click="showClipboardSheet = true">
-            {{ t('settings.clipboardClearTime') }}
-            <span class="setting-hint-val">{{ clipboardClearLabel }}</span>
-          </button>
-        </div>
-
-        <div class="setting-item setting-action">
-          <button class="setting-btn" @click="showLockSheet = true">
-            {{ t('settings.lockTimeout') }}
-            <span class="setting-hint-val">{{ lockTimeoutLabel }}</span>
-          </button>
-        </div>
-
-        <div class="setting-item setting-action">
-          <button class="setting-btn" @click="lockApp">{{ t('settings.lockApp') }}</button>
-        </div>
       </section>
 
       <div class="divider"></div>
@@ -647,10 +589,6 @@ async function exportDebugLogs() {
         <p class="about-line about-copy" @click="copyGithubLink()">
           {{ t('settings.sourceCode') }}<span class="about-url">github.com/yuefeiduzi/openOTP</span>
         </p>
-
-        <div class="setting-item setting-action">
-          <button class="setting-btn" @click="quitApp">{{ t('settings.quit') }}</button>
-        </div>
       </section>
 
       <div class="divider"></div>
@@ -697,26 +635,6 @@ async function exportDebugLogs() {
     </BottomSheet>
 
     <BottomSheet
-      :visible="showClipboardSheet"
-      :title="t('settings.clipboardClearTime')"
-      hide-actions
-      @close="showClipboardSheet = false"
-    >
-      <div class="lang-options">
-        <button
-          v-for="opt in CLIPBOARD_OPTIONS"
-          :key="opt.value"
-          class="lang-option"
-          :class="{ active: settingsStore.settings.clipboardClearTime === opt.value }"
-          @click="handleClipboardClearChange(opt.value)"
-        >
-          {{ t(opt.label) }}
-          <span v-if="settingsStore.settings.clipboardClearTime === opt.value" class="lang-check">✓</span>
-        </button>
-      </div>
-    </BottomSheet>
-
-    <BottomSheet
       :visible="showLangSheet"
       :title="t('settings.language')"
       hide-actions
@@ -724,11 +642,11 @@ async function exportDebugLogs() {
     >
       <div class="lang-options">
         <button
-          v-for="opt in [{ value: 'auto', label: t('settings.languageAuto') }, { value: 'zh-CN', label: t('settings.languageZhCN') }, { value: 'en-US', label: t('settings.languageEnUS') }]"
+          v-for="opt in [{ value: 'zh-CN', label: t('settings.languageZhCN') }, { value: 'en-US', label: t('settings.languageEnUS') }]"
           :key="opt.value"
           class="lang-option"
           :class="{ active: languagePreference === opt.value }"
-          @click="handleLanguageChange(opt.value as 'auto' | 'zh-CN' | 'en-US'); showLangSheet = false"
+          @click="handleLanguageChange(opt.value as Locale); showLangSheet = false"
         >
           {{ opt.label }}
           <span v-if="languagePreference === opt.value" class="lang-check">✓</span>

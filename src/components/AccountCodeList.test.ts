@@ -42,11 +42,11 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
   }
 }
 
-async function mountList(autoCopy: boolean, clipboardClearTime = 30) {
+async function mountList(autoCopy: boolean) {
   const accounts = useAccountStore()
   const settings = useSettingsStore()
   accounts.accounts = [makeAccount()]
-  settings.updateSettings({ autoCopy, clipboardClearTime })
+  settings.updateSettings({ autoCopy })
 
   const wrapper = mount(AccountCodeList)
   await flushPromises()
@@ -104,31 +104,6 @@ describe('AccountCodeList copy behaviour', () => {
     expect(writeText).toHaveBeenCalledWith('123456')
   })
 
-  it('should wipe the clipboard after the configured delay', async () => {
-    const wrapper = await mountList(true, 30)
-    await flushPromises()
-
-    await wrapper.find('.code-area').trigger('click')
-    await flushPromises()
-
-    vi.advanceTimersByTime(30_000)
-    await flushPromises()
-
-    expect(writeText).toHaveBeenLastCalledWith('')
-  })
-
-  it('should leave the clipboard alone when the delay is never', async () => {
-    const wrapper = await mountList(true, 0)
-    await flushPromises()
-
-    await wrapper.find('.code-area').trigger('click')
-    await flushPromises()
-
-    vi.advanceTimersByTime(300_000)
-    await flushPromises()
-
-    expect(writeText).not.toHaveBeenCalledWith('')
-  })
 })
 describe('AccountCodeList drag reorder', () => {
   async function mountThree() {

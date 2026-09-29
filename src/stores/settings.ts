@@ -7,10 +7,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<AppSettings>({
     biometricEnabled: true,
     autoCopy: true,
-    clipboardClearTime: 30,
     lockTimeout: 1,
     passwordHint: '',
-    language: 'auto',
+    language: 'zh-CN',
     theme: 'auto',
     menuBarOnly: false
   })

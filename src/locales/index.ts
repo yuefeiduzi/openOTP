@@ -2,44 +2,51 @@ import { createI18n } from 'vue-i18n'
 import zhCN from './zh-CN'
 import enUS from './en-US'
 
-function getSystemLocale(): 'zh-CN' | 'en-US' {
-  const systemLang = navigator.language || 'zh-CN'
-  return systemLang.startsWith('zh') ? 'zh-CN' : 'en-US'
+export type Locale = 'zh-CN' | 'en-US'
+
+/** The app's own language is Chinese; English is opt-in. */
+export const DEFAULT_LOCALE: Locale = 'zh-CN'
+
+/**
+ * Narrows a stored preference to a language the app has strings for. Historical
+ * values ("auto", or anything hand-edited) mean the default.
+ */
+export function normalizeLocale(value: unknown): Locale {
+  return value === 'en-US' ? 'en-US' : DEFAULT_LOCALE
 }
 
-function getInitialLocale(): 'zh-CN' | 'en-US' {
-  const saved = localStorage.getItem('locale')
-  
-  if (!saved || saved === 'auto') {
-    return getSystemLocale()
+/**
+ * Cache of the saved language, kept next to the settings file so the first
+ * render — which happens before the settings are loaded — is already in the
+ * right language instead of flashing the default one.
+ */
+function getInitialLocale(): Locale {
+  try {
+    return normalizeLocale(localStorage.getItem('locale'))
+  } catch {
+    // No storage (a plain browser without it, a test environment, hardened
+    // webview profiles): start on the default and let the saved settings say.
+    return DEFAULT_LOCALE
   }
-  
-  return saved as 'zh-CN' | 'en-US'
 }
 
 const i18n = createI18n({
   legacy: false,
   locale: getInitialLocale(),
-  fallbackLocale: 'zh-CN',
+  fallbackLocale: DEFAULT_LOCALE,
   messages: {
     'zh-CN': zhCN,
     'en-US': enUS,
   },
 })
 
-export function setLocale(locale: 'auto' | 'zh-CN' | 'en-US'): void {
-  if (locale === 'auto') {
-    const systemLocale = getSystemLocale()
-    i18n.global.locale.value = systemLocale
-  } else {
-    i18n.global.locale.value = locale
+export function setLocale(locale: Locale): void {
+  i18n.global.locale.value = locale
+  try {
+    localStorage.setItem('locale', locale)
+  } catch {
+    // The cache is an optimisation; the settings file is the real record.
   }
-  
-  localStorage.setItem('locale', locale)
-}
-
-export function getSavedLocalePreference(): 'auto' | 'zh-CN' | 'en-US' {
-  return (localStorage.getItem('locale') as 'auto' | 'zh-CN' | 'en-US') || 'auto'
 }
 
 export default i18n

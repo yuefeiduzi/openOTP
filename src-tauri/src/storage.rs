@@ -41,8 +41,6 @@ pub struct AppSettings {
     pub biometric_enabled: bool,
     #[serde(rename = "autoCopy")]
     pub auto_copy: bool,
-    #[serde(rename = "clipboardClearTime")]
-    pub clipboard_clear_time: u32,
     #[serde(rename = "lockTimeout")]
     pub lock_timeout: u32,
     #[serde(rename = "passwordHint")]
@@ -60,10 +58,9 @@ impl Default for AppSettings {
         Self {
             biometric_enabled: false,
             auto_copy: true,
-            clipboard_clear_time: 30,
             lock_timeout: 1,
             password_hint: String::new(),
-            language: String::from("auto"),
+            language: String::from("zh-CN"),
             theme: String::from("auto"),
             menu_bar_only: false,
         }

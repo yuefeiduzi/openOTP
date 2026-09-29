@@ -5,7 +5,7 @@ import { useAccountStore, useSettingsStore } from '@/stores'
 import type { Account } from '@/types'
 import AccountCard from '@/components/AccountCard.vue'
 import { useToast } from '@/composables/useToast'
-import { copyToClipboard, scheduleClearClipboard } from '@/utils/clipboard'
+import { copyToClipboard } from '@/utils/clipboard'
 import { siteIdentityOf } from '@/utils/site'
 
 const accountStore = useAccountStore()
@@ -163,8 +163,6 @@ async function handleCopy(code: string) {
   }
 
   showToast(t('home.copied'))
-  // 0 means the user asked for the clipboard to be left alone.
-  scheduleClearClipboard(settingsStore.settings.clipboardClearTime)
 }
 </script>
 

@@ -39,7 +39,7 @@ vi.mock('@/composables/useTheme', () => ({
 
 vi.mock('@/locales', () => ({
   setLocale: vi.fn(),
-  getSavedLocalePreference: () => 'auto',
+  normalizeLocale: (value: unknown) => (value === 'en-US' ? 'en-US' : 'zh-CN'),
 }))
 
 import Settings from './Settings.vue'
@@ -91,6 +91,61 @@ beforeEach(() => {
   invokeMock.mockResolvedValue({})
   saveMock.mockResolvedValue('/tmp/backup.zip')
   openMock.mockResolvedValue('/tmp/backup.zip')
+})
+
+describe('Settings layout', () => {
+  function securitySection(wrapper: ReturnType<typeof mountSettings>) {
+    return wrapper.findAll('.section').find(s => s.text().includes('settings.securitySettings'))!
+  }
+
+  /// 2 个 switch 挪到安全设置最后两条：原本夹在按钮中间，看着突兵。
+  it('should keep the security switches at the end of the section', async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'check_biometric') return Promise.resolve(true)
+      return Promise.resolve({})
+    })
+
+    const wrapper = mountSettings()
+    // A master password exists, so the first row is "change password".
+    useSettingsStore().completeSetup(true)
+    await flushPromises()
+
+    const keys = [
+      'settings.changePassword',
+      'settings.passwordHint',
+      'settings.lockTimeout',
+      'settings.lockApp',
+      'settings.biometricUnlock',
+      'settings.autoCopy',
+    ]
+    const found = keys.map(key => securitySection(wrapper).text().indexOf(key))
+
+    expect(found.every(index => index >= 0)).toBe(true)
+    expect(found).toEqual([...found].sort((a, b) => a - b))
+  })
+
+  it('should not offer the tray switch, the clipboard wipe or a quit button', async () => {
+    const wrapper = mountSettings()
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('settings.menuBarOnly')
+    expect(wrapper.text()).not.toContain('settings.clipboardClearTime')
+    expect(wrapper.text()).not.toContain('settings.quit')
+  })
+
+  it('should offer Chinese and English, without a follow-system option', async () => {
+    const wrapper = mountSettings()
+    await flushPromises()
+
+    const button = wrapper.findAll('.setting-btn').find(b => b.text().includes('settings.languageZhCN'))!
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(body().findAll('.lang-option').map(o => o.text().replace('✓', '').trim())).toEqual([
+      'settings.languageZhCN',
+      'settings.languageEnUS',
+    ])
+  })
 })
 
 describe('Settings backup export', () => {

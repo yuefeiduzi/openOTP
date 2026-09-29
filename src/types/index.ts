@@ -25,7 +25,6 @@ export interface Account {
 export interface AppSettings {
   biometricEnabled: boolean
   autoCopy: boolean
-  clipboardClearTime: number
   lockTimeout: number
   passwordHint: string
   language: 'auto' | 'zh-CN' | 'en-US'

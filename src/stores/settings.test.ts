@@ -35,7 +35,6 @@ describe('settings store', () => {
       store.updateSettings({
         biometricEnabled: true,
         autoCopy: false,
-        clipboardClearTime: 60,
         lockTimeout: 5,
         passwordHint: 'test hint',
         language: 'zh-CN',
@@ -48,7 +47,6 @@ describe('settings store', () => {
         settings: {
           biometricEnabled: true,
           autoCopy: false,
-          clipboardClearTime: 60,
           lockTimeout: 5,
           passwordHint: 'test hint',
           language: 'zh-CN',
@@ -69,22 +67,21 @@ describe('settings store', () => {
       expect(Object.keys(settings)).toContain('language')
       expect(Object.keys(settings)).toContain('biometricEnabled')
       expect(Object.keys(settings)).toContain('autoCopy')
-      expect(Object.keys(settings)).toContain('clipboardClearTime')
       expect(Object.keys(settings)).toContain('lockTimeout')
       expect(Object.keys(settings)).toContain('passwordHint')
       expect(Object.keys(settings)).toContain('theme')
       expect(Object.keys(settings)).toContain('menuBarOnly')
-      expect(Object.keys(settings)).toHaveLength(8)
+      expect(Object.keys(settings)).toHaveLength(7)
     })
 
-    it('should default language to auto', async () => {
+    it('should default to Chinese', async () => {
       const store = useSettingsStore()
 
       await store.saveSettings()
 
       const callArgs = vi.mocked(invoke).mock.calls[0]
       const settings = (callArgs[1] as { settings: Record<string, unknown> }).settings
-      expect(settings.language).toBe('auto')
+      expect(settings.language).toBe('zh-CN')
     })
   })
 
