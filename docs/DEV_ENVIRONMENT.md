@@ -57,6 +57,11 @@ pnpm tauri dev --config '{"identifier":"com.openotp.devcheck"}'
   `tauri.conf.json` 的 `app.macOSPrivateApi: true`
 - 弹窗在失焦 200ms 后自动隐藏；打开系统对话框（文件选择、生物识别）时需先用
   `set_popover_pinned` 钉住，否则弹窗会在对话框下面被关掉
+- **托盘模式下的程序坞图标**：进入托盘模式后应用会切到 Accessory 激活策略（不再算「运行中」），
+  但**固定（pinned）在程序坞上的图标不会被 macOS 去掉**，它属于用户的程序坞。想验证到底哪
+  一种：`lsappinfo list | grep -A 2 openotp` 看 `type="UIElement"`（托盘）/ `"Foreground"`
+  （App），再看程序坞的 AX 属性 `AXIsApplicationRunning`——未固定时托盘模式下这个 tile 会
+  整个消失，固定时只是 running=false。用 System Events 读 Dock 的 `list 1` 即可确认
 
 ### 调试
 
