@@ -1,26 +1,43 @@
 # openOTP
 
-开源、跨平台、纯本地的二步验证器（TOTP）。
+**[English](README.en.md)** · 中文
 
-> 安装包：推送 tag 后由 CI 构建 universal DMG（arm64 + x86_64）并以草稿 Release 发布，
-> 见 [Releases](https://github.com/yuefeiduzi/openOTP/releases)。产物**未签名**，下载后首次打开
-> 需要手动放行 —— 具体步骤与校验方法见 [docs/UNSIGNED.md](docs/UNSIGNED.md)，
-> 每个 Release 正文开头也带着这份说明。
-> 若 Releases 里没有你要的版本，就从源码构建运行。
+开源、跨平台、纯本地的二步验证器（TOTP）。验证码在本机生成，账号与密钥不上传，代码全部开源。
+桌面端 Tauri 2（Rust），前端 Vue 3 + TypeScript，数据存本地 JSON 文件。
+
+[![CI](https://github.com/yuefeiduzi/openOTP/actions/workflows/ci.yml/badge.svg)](https://github.com/yuefeiduzi/openOTP/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/yuefeiduzi/openOTP)](LICENSE)
 
 ## 功能
 
-- TOTP 验证码生成，账号列表支持搜索与拖拽排序
-- 添加账号：二维码图片识别（jsqr）· otpauth 链接 · 手动输入
-- 图标：Emoji / 首字母 / 23 个预设品牌图标 / 上传图片
-- 同网站多账号自动合并为一条（issuer 归一，`Microsoft - Microsoft` 与 `Microsoft` 同组），
-  卡片显示账号名以区分；导入 andOTP 备份
-- 解锁：6 位 PIN，macOS 可用 Touch ID / Face ID
+**验证码**
+
+- TOTP（SHA-1 / SHA-256 / SHA-512，RFC 6238）；`otpauth://hotp` 明确拒绝，不做半吊子支持
+- 账号列表：搜索（账号名 / 发行方）、拖拽排序、点卡片即复制、倒计时进度条
+- 同网站多账号自动归一合并为一条，卡片显示账号名区分，发行方分组可折叠
+
+**添加与导入**
+
+- 二维码图片识别（jsqr）· `otpauth://` 链接 · 手动输入
+- 导入 andOTP 备份
+- 图标：Emoji / 首字母 / 23 个预设品牌图标 / 上传图片（PNG / SVG）
+
+**解锁**
+
+- 6 位 PIN；macOS 上可用 Touch ID / Face ID
 - 自动锁定（立即 / 1 / 5 分钟）与手动锁定
-- 备份：标准 zip 容器，可选密码（WinZip AES-256）或不加密；图标作为图片文件存入
-- 深浅色主题（跟随系统 / 浅色 / 深色）；中文（默认）/ English，菜单栏弹窗与托盘菜单同步切换
-- 托盘常驻模式：点菜单栏 / 托盘图标开关弹窗查看验证码（App 模式下点它则回到主窗口），
-  主窗口关闭即隐藏到托盘（macOS 菜单栏 / Windows 托盘）
+
+**桌面集成**
+
+- 菜单栏 / 托盘常驻模式：点图标开关验证码弹窗；App 模式下点图标则把主窗口带到前台
+- 主窗口关闭即隐藏到托盘；退出入口在托盘菜单（Windows / Linux）与弹窗里
+- 深浅色主题（跟随系统 / 浅色 / 深色）；中文（默认）与 English，所有窗口同步切换
+
+**备份**
+
+- 标准 zip 容器（`manifest.json` + `accounts.json` + `icons/<id>.<ext>`），可用 7-Zip / Keka
+  直接打开
+- 可选密码（WinZip AES-256）或不加密，导入时自动识别
 
 ## 平台支持
 
@@ -32,19 +49,29 @@
 | Android | ❌ 工程未初始化 | 计划支持指纹（待接入） |
 | iOS | ❌ 工程未初始化 | 无，使用 PIN |
 
-## 技术栈
+## 安装
 
-- 前端：Vue 3 + TypeScript + Pinia + Vue Router + vue-i18n
-- 桌面端：Tauri 2.0（Rust）
-- 存储：本地 JSON 文件（`data.json` / `settings.json` / `password.dat`），非数据库
-- 密码：PBKDF2-HMAC-SHA256（100k 次）哈希，常量时间比较
-- 备份：zip + 可选 WinZip AES-256
+### 下载安装包
+
+见 [Releases](https://github.com/yuefeiduzi/openOTP/releases)：推送 `v*` tag 后由 CI 构建
+universal DMG（arm64 + x86_64）并以草稿 Release 发布。产物**未签名**，首次打开需要手动放行，
+步骤与校验方法见 [docs/UNSIGNED.md](docs/UNSIGNED.md)（每个 Release 正文开头也带着这份说明）。
+
+### 从源码构建
+
+需要 Node（pnpm）与 Rust：
+
+```bash
+pnpm install
+pnpm tauri:build      # 产物在 src-tauri/target/release/bundle/
+```
 
 ## 安全说明
 
-主密码为 6 位数字 PIN，用于**界面解锁**；本地数据为**明文 JSON**，安全性依赖磁盘加密
-（FileVault / BitLocker）。备份可选择加密，但 zip 的 AES 按规范仅使用 PBKDF2-HMAC-SHA1 1000 次迭代，
-因此备份密码要求至少 8 位。详见 [docs/STRUCTURE.md](docs/STRUCTURE.md)。
+主密码为 6 位数字 PIN，用于**界面解锁**；本地数据（`data.json`）中的 TOTP 密钥是**明文**，
+安全性依赖系统磁盘加密（FileVault / BitLocker）。备份可加密，但 zip 的 AES 按规范只使用
+PBKDF2-HMAC-SHA1 1000 次迭代，因此备份密码要求至少 8 位。应用没有任何对外网络请求，
+详见 [docs/STRUCTURE.md](docs/STRUCTURE.md)。
 
 ## 开发
 
@@ -66,6 +93,8 @@ cargo fmt --check
 见 [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)。
 
 ## 文档
+
+仓库内文档当前均为中文。
 
 | 文档 | 内容 |
 |---|---|
