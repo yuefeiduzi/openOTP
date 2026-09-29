@@ -3,9 +3,9 @@
 开源、跨平台、纯本地的二步验证器（TOTP）。
 
 > 安装包：推送 tag 后由 CI 构建 universal DMG（arm64 + x86_64）并以草稿 Release 发布，
-> 见 [Releases](https://github.com/yuefeiduzi/openOTP/releases)。产物**未签名**（没有 Apple
-> Developer 账号），下载后首次打开需要手动放行 —— 具体命令、校验方法与理由见
-> [docs/UNSIGNED.md](docs/UNSIGNED.md)，每个 Release 正文开头也带着这份说明。
+> 见 [Releases](https://github.com/yuefeiduzi/openOTP/releases)。产物**未签名**，下载后首次打开
+> 需要手动放行 —— 具体步骤与校验方法见 [docs/UNSIGNED.md](docs/UNSIGNED.md)，
+> 每个 Release 正文开头也带着这份说明。
 > 若 Releases 里没有你要的版本，就从源码构建运行。
 
 ## 功能

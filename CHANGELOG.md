@@ -10,6 +10,11 @@
 - 编辑 / 添加账号里点「修改图标」时，图标选择面板会被弹窗盖住、点不到：BottomSheet 一律
   Teleport 到 body，层级却低于弹窗（`--z-sheet` 200 < `--z-modal` 300）。现在面板层排在弹窗之上
 
+### Changed
+
+- Release 正文精简为两部分：macOS 放行步骤（[docs/UNSIGNED.md](docs/UNSIGNED.md) 原样）
+  + 该版本的更新信息（`CHANGELOG.md` 段落）；不再跟用户交代签名背景
+
 ## [0.2.5] - 2026-09-29
 
 ### Added
@@ -35,9 +40,9 @@
   校验 tag 与三处版本号一致、构建 universal DMG（arm64 + x86_64，附带 SHA256），
   再建一个**草稿** Release 由人工确认发布；`workflow_dispatch` 可先演练（只出 artifact，
   不碰 Release）。产物未签名，正文开头原样带上 [docs/UNSIGNED.md](docs/UNSIGNED.md)
-  （放行方式 + 校验哈希 + 为什么可以放心）
-- [UNSIGNED.md](docs/UNSIGNED.md)：未签名包的开箱说明（右键打开 / 清 quarantine、`shasum -c`
-  校验、可自行构建），随每个 Release 正文发布
+  （放行方式 + 校验哈希）
+- [UNSIGNED.md](docs/UNSIGNED.md)：未签名包的放行说明（右键打开 / 清 quarantine、`shasum -c`
+  校验），随每个 Release 正文发布
 - `.editorconfig`：统一 LF、单个结尾换行、行尾不留空白（Markdown 除外）
 
 ### Changed

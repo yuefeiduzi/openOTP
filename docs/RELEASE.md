@@ -31,7 +31,8 @@ git tag v0.2.6 && git push origin main v0.2.6
   workflow artifact，不创建任何 Release。首次打 tag 前可以先用它验证整条构建链路
 - **未签名**：DMG 里的 App 是 ad-hoc 签名，`spctl --assess` 判定 `rejected: no usable signature`，
   下载后会被 Gatekeeper 拦下。Release 正文开头会原样带上 [UNSIGNED.md](UNSIGNED.md)
-  （放行方式 + 校验哈希 + 为什么可以放心 + 以后有账号了怎么办）
+  （放行方式 + 校验哈希）——正文保持这个结构：**第一部分 macOS 放行，第二部分更新信息**，
+  不再写签名背景之类的自述
 - **签名/公证**：见缺口一 —— 现在做不了（没有 Apple Developer 账号），也没打算先去买
 
 ## 当前构建方式（本地）
