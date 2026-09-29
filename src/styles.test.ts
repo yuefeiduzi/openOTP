@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+// Vitest only hands over the real source with `css: true` (see vitest.config.ts).
+import themeSource from './theme.css?raw'
 
 const components = import.meta.glob('./**/*.vue', {
   eager: true,
@@ -34,6 +36,23 @@ describe('component styles', () => {
     }
 
     expect(offenders).toEqual([])
+  })
+})
+
+describe('overlay layering', () => {
+  it('should stack sheets above modals', () => {
+    // The icon picker is a BottomSheet opened from inside the edit/add modal,
+    // and BottomSheet teleports to <body> — outside the modal's stacking
+    // context. If its layer sits below `--z-modal`, the dialog paints over the
+    // sheet and swallows the clicks meant for it.
+    const layer = (name: string) => {
+      const match = themeSource.match(new RegExp(`--${name}:\\s*(\\d+)`))
+      expect(match, `--${name} not found in theme.css`).toBeTruthy()
+      return Number(match![1])
+    }
+
+    expect(layer('z-modal')).toBeLessThan(layer('z-sheet'))
+    expect(layer('z-sheet')).toBeLessThan(layer('z-toast'))
   })
 })
 

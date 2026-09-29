@@ -7,6 +7,9 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     include: ['src/**/*.test.ts'],
+    // styles.test.ts reads theme.css with `?raw`; without this Vitest replaces
+    // every stylesheet with an empty string, `?raw` included.
+    css: true,
   },
   resolve: {
     alias: {

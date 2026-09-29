@@ -23,8 +23,10 @@
   --accent-soft: #eef4ff;
   --accent-hover: #3a7bc8;
   --focus-ring: rgba(74, 144, 217, 0.15);
-  --z-sheet: 200;
   --z-modal: 300;
+  /* BottomSheet 一律 Teleport 到 body，且常常是从弹窗内部打开的（编辑账号 / 添加账号里的
+     图标选择器），所以它必须压过弹窗，否则面板会藏在弹窗背后、点不到；toast 始终最上。*/
+  --z-sheet: 400;
   --z-toast: 9999;
 }
 

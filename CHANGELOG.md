@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- 编辑 / 添加账号里点「修改图标」时，图标选择面板会被弹窗盖住、点不到：BottomSheet 一律
+  Teleport 到 body，层级却低于弹窗（`--z-sheet` 200 < `--z-modal` 300）。现在面板层排在弹窗之上
+
 ## [0.2.5] - 2026-09-29
 
 ### Added
