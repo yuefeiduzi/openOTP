@@ -210,6 +210,7 @@ async function handleCopy(code: string) {
         :account="group.accounts[0]"
         :copy-on-tap="settingsStore.settings.autoCopy"
         :read-only="props.readOnly"
+        :show-account-name="group.accounts.length > 1"
         :class="{ dragging: draggedId === group.accounts[0].id }"
         :data-drop-before="isDropTarget(group.accounts[0].id, false) ? '' : undefined"
         :data-drop-after="isDropTarget(group.accounts[0].id, true) ? '' : undefined"
@@ -239,6 +240,7 @@ async function handleCopy(code: string) {
           :account="account"
           :copy-on-tap="settingsStore.settings.autoCopy"
           :read-only="props.readOnly"
+          show-account-name
           :class="{ dragging: draggedId === account.id }"
           :data-drop-before="isDropTarget(account.id, false) ? '' : undefined"
           :data-drop-after="isDropTarget(account.id, true) ? '' : undefined"

@@ -14,9 +14,10 @@ const props = defineProps<{
    */
   copyOnTap?: boolean
   /**
-   * Show the account name under the issuer. Cards normally show only the
-   * issuer because same-issuer accounts are grouped, but a search result has to
-   * be distinguishable from its siblings.
+   * Show the account name under the issuer. Cards label accounts by issuer
+   * because same-issuer accounts are grouped, so the name is only rendered
+   * where the issuer alone cannot tell two accounts apart: search results and
+   * sites with more than one account.
    */
   showAccountName?: boolean
   /**

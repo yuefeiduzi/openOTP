@@ -192,6 +192,50 @@ describe('AccountCodeList drag reorder', () => {
 
 })
 
+describe('AccountCodeList same-issuer grouping', () => {
+  async function mountGroup() {
+    const accounts = useAccountStore()
+    const settings = useSettingsStore()
+    settings.updateSettings({ autoCopy: true })
+    accounts.accounts = [
+      makeAccount({ id: 'a', order: 0, name: 'personal@example.com', issuer: 'GitHub' }),
+      makeAccount({ id: 'b', order: 1, name: 'work@example.com', issuer: 'GitHub' }),
+    ]
+    const wrapper = mount(AccountCodeList)
+    await flushPromises()
+    return wrapper
+  }
+
+  function accountNames(wrapper: ReturnType<typeof mount>): string[] {
+    return wrapper.findAll('.account-name').map(node => node.text())
+  }
+
+  // 同一网站下有两个账号时只显示 issuer 就分不清谁是谁，分组内的卡片要带上账号名。
+  it('should name every account of a grouped site', async () => {
+    const wrapper = await mountGroup()
+
+    expect(accountNames(wrapper)).toEqual(['personal@example.com'])
+
+    await wrapper.find('.group-toggle').trigger('click')
+    await flushPromises()
+
+    expect(accountNames(wrapper)).toEqual(['personal@example.com', 'work@example.com'])
+  })
+
+  it('should stay unnamed when the site has a single account', async () => {
+    const accounts = useAccountStore()
+    const settings = useSettingsStore()
+    settings.updateSettings({ autoCopy: true })
+    accounts.accounts = [makeAccount({ name: 'solo@example.com', issuer: 'GitHub' })]
+
+    const wrapper = mount(AccountCodeList)
+    await flushPromises()
+
+    expect(wrapper.find('.group-toggle').exists()).toBe(false)
+    expect(wrapper.find('.account-name').exists()).toBe(false)
+  })
+})
+
 describe('AccountCodeList search', () => {
   async function mountSearchable() {
     const accounts = useAccountStore()

@@ -19,6 +19,13 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 let routeQuery: Record<string, string> = {}
 
+// The popover is the only window whose unlock screen pins the panel; the main
+// window is covered by the same view and has to stay unpinned.
+let popoverWindow = false
+vi.mock('@/utils/windowMode', () => ({
+  isPopoverWindow: () => popoverWindow,
+}))
+
 import Unlock from './Unlock.vue'
 import { useSettingsStore } from '@/stores'
 
@@ -45,7 +52,9 @@ async function enterPin(wrapper: UnlockWrapper) {
 
 beforeEach(() => {
   routeQuery = {}
+  popoverWindow = false
   replace.mockClear()
+  invokeMock.mockClear()
   setActivePinia(createPinia())
   invokeMock.mockImplementation((command: string) => {
     if (command === 'has_setup') return Promise.resolve({ is_setup: true, has_password: true })
@@ -98,6 +107,27 @@ describe('Unlock', () => {
     expect(replace).not.toHaveBeenCalled()
     expect(settings.isLocked).toBe(true)
     expect(wrapper.find('.error').exists()).toBe(true)
+  })
+
+  it('should pin the popover while the unlock screen is up in the popover window', async () => {
+    popoverWindow = true
+    const wrapper = await mountUnlock()
+
+    let pins = invokeMock.mock.calls.filter(call => call[0] === 'set_popover_pinned')
+    expect(pins[0][1]).toEqual({ pinned: true })
+
+    wrapper.unmount()
+    await flushPromises()
+
+    pins = invokeMock.mock.calls.filter(call => call[0] === 'set_popover_pinned')
+    expect(pins[pins.length - 1][1]).toEqual({ pinned: false })
+  })
+
+  it('should leave the main window unpinned while it shows the unlock screen', async () => {
+    await mountUnlock()
+
+    const pins = invokeMock.mock.calls.filter(call => call[0] === 'set_popover_pinned')
+    expect(pins).toHaveLength(0)
   })
 
   it('should pin the popover while the biometric prompt is up', async () => {

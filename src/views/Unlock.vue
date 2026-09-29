@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores'
 import { invoke } from '@tauri-apps/api/core'
 import PinInput from '@/components/PinInput.vue'
+import { popoverPin } from '@/utils/popoverPin'
+import { isPopoverWindow } from '@/utils/windowMode'
 
 const router = useRouter()
 const route = useRoute()
@@ -20,6 +22,22 @@ const biometricError = ref('')
 
 watch([error, biometricError], () => {
   errorNonce.value++
+})
+
+/**
+ * The popover hides itself 200 ms after it loses key status. Losing focus while
+ * the unlock screen is up (app deactivated, system prompt) used to close the
+ * panel the user was typing into, so the unlock screen pins it for as long as it
+ * is mounted. The main window has no such handler and stays unpinned.
+ */
+const inPopover = isPopoverWindow()
+
+onMounted(() => {
+  if (inPopover) void popoverPin.pin('unlock')
+})
+
+onUnmounted(() => {
+  if (inPopover) void popoverPin.unpin('unlock')
 })
 
 const biometricLabel = computed(() => {
@@ -81,7 +99,7 @@ async function useBiometric() {
   // The system prompt takes focus away from the popover window, which hides
   // itself on focus loss; pin it for the duration so the prompt is not left
   // floating over a closed panel.
-  await invoke('set_popover_pinned', { pinned: true }).catch(() => {})
+  await popoverPin.pin('biometric')
   try {
     const success = await invoke<boolean>('biometric_auth', { reason: t('biometric.unlock') })
     if (success) {
@@ -99,7 +117,7 @@ async function useBiometric() {
       biometricError.value = t('errors.verifyFailed')
     }
   } finally {
-    await invoke('set_popover_pinned', { pinned: false }).catch(() => {})
+    await popoverPin.unpin('biometric')
   }
 }
 </script>

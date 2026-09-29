@@ -1,6 +1,5 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { getCurrentWindow } from '@tauri-apps/api/window'
 import router from './router'
 import i18n from './locales'
 import './style.css'
@@ -8,6 +7,8 @@ import './theme.css'
 import App from './App.vue'
 import { useSettingsStore } from './stores'
 import { useAccountStore } from './stores'
+import { currentWindowLabel } from './utils/windowMode'
+import { syncSettingsOnChange } from './utils/settingsSync'
 
 /**
  * The menu bar popover is a borderless, transparent window, and that has to
@@ -15,18 +16,14 @@ import { useAccountStore } from './stores'
  * the app is locked. Marking the document per window rather than per view keeps
  * that true.
  */
-try {
-  const label = getCurrentWindow().label
-  if (label === 'popover') {
-    document.documentElement.classList.add('popover-window')
-  }
-  // Same treatment, tighter inset: the tray's secondary-click menu is also a
-  // transparent window whose #app element draws the panel.
-  if (label === 'tray-menu') {
-    document.documentElement.classList.add('tray-menu-window')
-  }
-} catch {
-  // Running outside Tauri (unit tests, plain browser): nothing to mark.
+const label = currentWindowLabel()
+if (label === 'popover') {
+  document.documentElement.classList.add('popover-window')
+}
+// Same treatment, tighter inset: the tray's secondary-click menu is also a
+// transparent window whose #app element draws the panel.
+if (label === 'tray-menu') {
+  document.documentElement.classList.add('tray-menu-window')
 }
 
 const app = createApp(App)
@@ -38,6 +35,7 @@ app.use(i18n)
 const settingsStore = useSettingsStore()
 settingsStore.checkSetup().then(() => {
   settingsStore.loadSettings()
+  void syncSettingsOnChange(() => settingsStore.loadSettings())
 })
 
 app.mount('#app')

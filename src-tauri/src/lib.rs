@@ -7,7 +7,7 @@ mod storage;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{AppHandle, Manager, PhysicalPosition};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
 /// Size of the menu bar / tray popover window.
 #[cfg(desktop)]
@@ -68,7 +68,13 @@ fn get_settings(app: AppHandle) -> storage::AppSettings {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, settings: storage::AppSettings) -> Result<(), String> {
-    storage::save_settings(&app, &settings)
+    storage::save_settings(&app, &settings)?;
+    // Each window is its own webview with its own store, and the menu bar popover
+    // and tray menu are long-lived windows that are only shown and hidden. Without
+    // this broadcast they keep the settings they read when they were created: a
+    // theme or language change made in the main window never reached them.
+    let _ = app.emit("settings-changed", ());
+    Ok(())
 }
 
 #[tauri::command]
