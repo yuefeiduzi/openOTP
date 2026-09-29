@@ -18,18 +18,18 @@ jobs:
     name: Frontend (build + tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Pinned rather than declared in package.json: pnpm 12 would then treat
       # its own executable as a dependency and bloat the lockfile with
       # per-platform binaries.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 12.4.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -47,7 +47,7 @@ jobs:
     # need a full webkitgtk toolchain for a target we do not ship.
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
         with:

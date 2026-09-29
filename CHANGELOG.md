@@ -35,6 +35,9 @@
 
 ### Changed
 
+- CI 的 Actions 升到 Node 24 运行时：`checkout@v7`、`setup-node@v7`、`pnpm/action-setup@v6`、
+  `upload-artifact@v7`（GitHub 已把声明 node20 的 Action 强制跑在 node24 上并警告）；
+  构建与测试用的 Node 从 22 升到 24（当前 LTS）
 - 包标识 `com.openotp.app` → `com.openotp.desktop`：前者以 `.app` 结尾，与 macOS 的 bundle
   扩展名冲突，`pnpm tauri:build` 每次都会警告。注意**旧标识下的数据目录不会自动搬**：
   `~/Library/Application Support/com.openotp.app/` 里是账号、设置与 PIN 哈希，需要时手动

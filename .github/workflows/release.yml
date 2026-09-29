@@ -40,7 +40,7 @@ jobs:
     outputs:
       version: ${{ steps.read.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cross-check the tag against the three version fields
         id: read
@@ -81,15 +81,15 @@ jobs:
     needs: [tests, version]
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 12.4.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -125,7 +125,7 @@ jobs:
 
       # Kept for dispatch runs, which publish nothing, and as a fallback if the
       # release upload ever fails.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: OpenOTP-${{ needs.version.outputs.version }}-dmg
           path: staging/
