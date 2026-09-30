@@ -99,7 +99,7 @@ export default {
       malformed: '链接格式不正确',
       unsupportedProtocol: '这不是一个 otpauth 链接',
       unsupportedType: '不支持的验证码类型',
-      hotpUnsupported: '暂不支持 HOTP（计数器型）账号',
+      hotpUnsupported: '不支持 HOTP（计数器型）账号',
       missingSecret: '链接里缺少密钥参数',
     },
     title: '添加账号',
@@ -178,7 +178,7 @@ export default {
     changePasswordSuccess: '密码修改成功',
     copyFailed: '复制失败，请检查剪贴板权限',
     andOTPImportFailed: 'andOTP 导入失败：{error}',
-    andOTPImportPartial: '已导入 {count} 个账户，跳过 {skipped} 个（HOTP 暂不支持）',
+    andOTPImportPartial: '已导入 {count} 个账户，跳过 {skipped} 个（不支持 HOTP）',
     andOTPImportSuccess: '成功从 andOTP 导入 {count} 个账户',
   },
   biometric: {

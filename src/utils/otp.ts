@@ -125,9 +125,10 @@ export function parseOtpauthUrl(url: string): Partial<Account> {
 
   const type = parsed.hostname
   if (type === 'hotp') {
-    // Counter based codes would need a manually advanced counter; until that
-    // exists, refusing beats adding an account that always shows wrong codes.
-    throw new OtpauthUrlError('hotpUnsupported', 'HOTP accounts are not supported yet')
+    // Counter based accounts are out of scope; refusing beats adding an account
+    // that always shows wrong codes. TOTP itself is HOTP driven by a time
+    // derived counter, so the primitive below stays.
+    throw new OtpauthUrlError('hotpUnsupported', 'HOTP accounts are not supported')
   }
 
   if (type !== 'totp') {

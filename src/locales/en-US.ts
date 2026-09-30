@@ -99,7 +99,7 @@ export default {
       malformed: 'That does not look like a valid link',
       unsupportedProtocol: 'This is not an otpauth link',
       unsupportedType: 'Unsupported code type',
-      hotpUnsupported: 'HOTP (counter based) accounts are not supported yet',
+      hotpUnsupported: 'HOTP (counter based) accounts are not supported',
       missingSecret: 'The link has no secret parameter',
     },
     title: 'Add Account',
@@ -178,7 +178,7 @@ export default {
     changePasswordSuccess: 'Password changed successfully',
     copyFailed: 'Copy failed — check clipboard permissions',
     andOTPImportFailed: 'andOTP import failed: {error}',
-    andOTPImportPartial: 'Imported {count} accounts, skipped {skipped} (HOTP is not supported yet)',
+    andOTPImportPartial: 'Imported {count} accounts, skipped {skipped} (HOTP is not supported)',
     andOTPImportSuccess: 'Successfully imported {count} accounts from andOTP',
   },
   biometric: {

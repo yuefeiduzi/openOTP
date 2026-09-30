@@ -13,8 +13,8 @@ Tauri 2 (Rust) with a Vue 3 + TypeScript front end; data lives in local JSON fil
 
 **Codes**
 
-- TOTP (SHA-1 / SHA-256 / SHA-512, RFC 6238); `otpauth://hotp` links are rejected outright rather
-  than half-supported
+- TOTP (SHA-1 / SHA-256 / SHA-512, RFC 6238); HOTP (counter based) is out of scope, so
+  `otpauth://hotp` links are rejected outright rather than half-supported
 - Account list with search (name / issuer), drag-and-drop ordering, click-to-copy and a countdown bar
 - Accounts for the same site are merged into one entry with the account name on each card, and
   issuer groups collapse

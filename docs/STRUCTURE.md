@@ -10,6 +10,8 @@
   兼容旧 `salt:hash` 格式），常量时间比较
 - 备份：zip 容器（`manifest.json` + `accounts.json` + `icons/*`），可选 WinZip AES-256
 - 二维码：jsqr 解析图片（无摄像头扫描）
+- 验证码范围：只做 TOTP；HOTP（计数器型）不在支持计划内，`otpauth://hotp` 与 andOTP 中的
+  HOTP 账号会被明确拒绝 / 跳过（TOTP 内部复用 HOTP 原语，计数器由时间派生）
 
 ## 模块结构
 

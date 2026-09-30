@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 明确 HOTP 不在支持计划内（只做 TOTP）：TODO 中移除该项，界面与解析错误文案从
+  「暂不支持 / not supported yet」改为确定的「不支持 / not supported」
+
 ## [0.2.6] - 2026-09-29
 
 ### Fixed
