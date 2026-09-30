@@ -102,4 +102,16 @@ describe('PopoverView', () => {
     expect(wrapper.findAll('.account-card')).toHaveLength(1)
   })
 
+  it('should not open a context menu on a card', async () => {
+    // 弹窗只做「看码 + 复制码」：右键不该出现删除菜单（webview 自带菜单也在
+    // src/main.ts 里被抑制）
+    const store = useAccountStore()
+    store.accounts = [makeAccount()]
+
+    const wrapper = mount(PopoverView)
+    await wrapper.find('.account-card').trigger('contextmenu', { clientX: 100, clientY: 100 })
+
+    expect(document.body.querySelector('.context-menu')).toBeNull()
+  })
+
 })

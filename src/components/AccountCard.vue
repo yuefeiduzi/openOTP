@@ -27,8 +27,8 @@ const props = defineProps<{
   showAccountName?: boolean
   /**
    * Menu bar popover mode: codes can be read and copied, nothing else. A tap on
-   * the icon and a long press (delete) are disabled, so the sheet that edits the
-   * icon can only be opened from app mode.
+   * the icon, a long press (delete) and the right-click menu are disabled, so
+   * the sheet that edits the icon can only be opened from app mode.
    */
   readOnly?: boolean
 }>()
@@ -37,6 +37,7 @@ const emit = defineEmits<{
   copy: [code: string]
   delete: []
   edit: []
+  menu: [position: { x: number; y: number }]
 }>()
 
 /** Title of the card: the site the account belongs to. */
@@ -117,8 +118,28 @@ function handleIconTap() {
   handleEdit()
 }
 
-function startLongPress() {
+/**
+ * A right click opens the list's own menu at the pointer. The webview's native
+ * menu is swallowed even when read-only — the popover has nothing to offer
+ * there, and the main window replaces it with the delete entry.
+ */
+function handleContextMenu(event: MouseEvent) {
+  event.preventDefault()
   if (props.readOnly) {
+    return
+  }
+  // A left press may be in flight; the right click supersedes it either way.
+  cancelLongPress()
+  emit('menu', { x: event.clientX, y: event.clientY })
+}
+
+function startLongPress(event: MouseEvent | TouchEvent) {
+  if (props.readOnly) {
+    return
+  }
+  // Only a primary press is the delete gesture: the right button belongs to
+  // the context menu and must not start the hold timer.
+  if (event instanceof MouseEvent && event.button !== 0) {
     return
   }
   longPressFired = false
@@ -165,6 +186,7 @@ onUnmounted(() => {
     @touchstart="startLongPress"
     @touchend="cancelLongPress"
     @touchcancel="cancelLongPress"
+    @contextmenu="handleContextMenu"
   >
     <div class="card-content">
       <div class="icon-area" @click.stop="handleIconTap">

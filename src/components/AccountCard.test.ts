@@ -159,3 +159,45 @@ describe('AccountCard long press', () => {
     expect(wrapper.emitted('copy')).toHaveLength(1)
   })
 })
+
+describe('AccountCard context menu', () => {
+  it('should report the click position instead of deleting', async () => {
+    const wrapper = await mountCard()
+
+    await wrapper.find('.account-card').trigger('contextmenu', { clientX: 120, clientY: 80 })
+
+    expect(wrapper.emitted('menu')).toEqual([[{ x: 120, y: 80 }]])
+    expect(wrapper.emitted('delete')).toBeUndefined()
+  })
+
+  it('should not start the delete gesture from the right button', async () => {
+    const wrapper = await mountCard()
+
+    await wrapper.find('.account-card').trigger('mousedown', { button: 2 })
+    vi.advanceTimersByTime(600)
+    await flushPromises()
+
+    expect(wrapper.emitted('delete')).toBeUndefined()
+  })
+
+  it('should still start it from the primary button', async () => {
+    const wrapper = await mountCard()
+
+    await wrapper.find('.account-card').trigger('mousedown', { button: 0 })
+    vi.advanceTimersByTime(600)
+    await flushPromises()
+
+    expect(wrapper.emitted('delete')).toHaveLength(1)
+  })
+
+  it('should swallow the native menu when read-only', async () => {
+    const wrapper = await mountCard(true, true)
+
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    wrapper.find('.account-card').element.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(wrapper.emitted('menu')).toBeUndefined()
+    expect(wrapper.emitted('delete')).toBeUndefined()
+  })
+})

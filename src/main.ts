@@ -8,6 +8,7 @@ import App from './App.vue'
 import { useSettingsStore } from './stores'
 import { useAccountStore } from './stores'
 import { currentWindowLabel } from './utils/windowMode'
+import { suppressNativeContextMenu } from './utils/contextMenu'
 import { syncSettingsOnChange } from './utils/settingsSync'
 
 /**
@@ -19,6 +20,9 @@ import { syncSettingsOnChange } from './utils/settingsSync'
 const label = currentWindowLabel()
 if (label === 'popover') {
   document.documentElement.classList.add('popover-window')
+  // 弹窗只用来读码：右键不该弹出 webview 自带的菜单（带锁时它显示的是解锁页）。
+  // 主窗口不抑制：账号卡片自己画删除菜单，卡片以外保持默认。
+  suppressNativeContextMenu()
 }
 // Same treatment, tighter inset: the tray's secondary-click menu is also a
 // transparent window whose #app element draws the panel.

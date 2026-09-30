@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useAccountStore, useSettingsStore } from '@/stores'
 import type { Account } from '@/types'
 import AccountCard from '@/components/AccountCard.vue'
+import ContextMenu from '@/components/ContextMenu.vue'
 import { useToast } from '@/composables/useToast'
 import { copyToClipboard } from '@/utils/clipboard'
 import { siteIdentityOf } from '@/utils/site'
@@ -76,6 +77,32 @@ const groups = computed<AccountGroup[]>(() => {
 })
 
 const expandedGroups = ref<Set<string>>(new Set())
+
+/**
+ * Right-click menu of a card. Deleting stays a two-step action either way —
+ * the menu opens the same confirmation dialog as the long press — and the menu
+ * holds only what app mode offers, so the read-only popover never opens one.
+ */
+const contextMenu = ref<{ account: Account; x: number; y: number } | null>(null)
+
+function openContextMenu(account: Account, position: { x: number; y: number }) {
+  if (props.readOnly) {
+    return
+  }
+  contextMenu.value = { account, ...position }
+}
+
+function closeContextMenu() {
+  contextMenu.value = null
+}
+
+function deleteFromContextMenu() {
+  const account = contextMenu.value?.account
+  closeContextMenu()
+  if (account) {
+    emit('delete', account)
+  }
+}
 
 function toggleGroup(key: string) {
   const next = new Set(expandedGroups.value)
@@ -201,6 +228,7 @@ async function handleCopy(code: string) {
         @copy="handleCopy"
         @delete="emit('delete', account)"
         @edit="emit('edit', account)"
+        @menu="openContextMenu(account, $event)"
       />
       <p v-if="!searchResults.length" class="no-results">{{ t('home.noSearchResults') }}</p>
     </template>
@@ -223,6 +251,7 @@ async function handleCopy(code: string) {
         @copy="handleCopy"
         @delete="emit('delete', group.accounts[0])"
         @edit="emit('edit', group.accounts[0])"
+        @menu="openContextMenu(group.accounts[0], $event)"
       />
       <button
         v-if="group.accounts.length > 1"
@@ -254,9 +283,18 @@ async function handleCopy(code: string) {
           @copy="handleCopy"
           @delete="emit('delete', account)"
           @edit="emit('edit', account)"
+          @menu="openContextMenu(account, $event)"
         />
       </template>
     </template>
+
+    <ContextMenu
+      :visible="contextMenu !== null"
+      :x="contextMenu?.x ?? 0"
+      :y="contextMenu?.y ?? 0"
+      @close="closeContextMenu"
+      @delete="deleteFromContextMenu"
+    />
   </div>
 </template>
 

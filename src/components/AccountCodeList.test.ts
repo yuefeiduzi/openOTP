@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import type { Account } from '@/types'
 
@@ -307,5 +307,42 @@ describe('AccountCodeList search', () => {
 
     expect(wrapper.find('.search-input').exists()).toBe(false)
     expect(wrapper.find('.empty').exists()).toBe(true)
+  })
+})
+
+describe('AccountCodeList context menu', () => {
+  it('should offer delete on right click and ask for confirmation after it', async () => {
+    const wrapper = await mountList(true)
+
+    await wrapper.find('.account-card').trigger('contextmenu', { clientX: 100, clientY: 100 })
+
+    const menu = new DOMWrapper(document.body)
+    expect(menu.find('.context-menu').exists()).toBe(true)
+
+    await menu.find('.context-menu-item').trigger('click')
+
+    // The list only asks for the delete; Home owns the confirmation dialog.
+    const deleted = wrapper.emitted('delete')
+    expect(deleted).toHaveLength(1)
+    expect((deleted?.[0][0] as Account).id).toBe('a1')
+    expect(menu.find('.context-menu').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('should not open a menu in the read-only popover list', async () => {
+    const accounts = useAccountStore()
+    const settings = useSettingsStore()
+    accounts.accounts = [makeAccount()]
+    settings.updateSettings({ autoCopy: true })
+
+    const wrapper = mount(AccountCodeList, { props: { readOnly: true } })
+    await flushPromises()
+
+    await wrapper.find('.account-card').trigger('contextmenu', { clientX: 100, clientY: 100 })
+
+    expect(new DOMWrapper(document.body).find('.context-menu').exists()).toBe(false)
+
+    wrapper.unmount()
   })
 })
