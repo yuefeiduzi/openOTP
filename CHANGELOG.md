@@ -3,6 +3,17 @@
 本项目的重要变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### Fixed
+
+- 多显示器下托盘弹窗总出现在主显示器：macOS 上托盘点击坐标（全局 points × 图标所在显示器的
+  scale）与 tao 的显示器矩形（全局 points × **各自** scale）是两套坐标，2x + 1x 混用时矩形
+  互相重叠，匹配结果落到主屏；改为用 `cursor_position()` 还原成 points 后匹配，弹窗落在
+  点击图标的那块显示器上
+- 托盘弹窗 / 右键菜单是创建一次后复用的窗口，切到另一块显示器点击图标时仍停在首次创建的位置；
+  现在每次弹出前按本次点击的位置 `set_position`（逻辑坐标在 macOS 上实测精确）
+
 ## [0.3.0] - 2026-09-30
 
 ### Added

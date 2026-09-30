@@ -48,11 +48,23 @@ pnpm tauri dev --config '{"identifier":"com.openotp.devcheck"}'
   屏幕外的 `(-1, 981)`）。**菜单栏看不到图标 ≠ 托盘没创建**；用 System Events 查该进程
   `menu bar 2` 的状态项及其 position 确认，或点开 Thaw 的 ˅ 浮层查看
 - 受此影响，自动化脚本**无法点开托盘弹窗**（图标在屏幕外），涉及弹窗的改动需人工验证
+- 多显示器时托盘点击坐标不能直接和 `Monitor::position()/size()` 比对：macOS 上点击坐标 =
+  全局 points × 图标所在显示器的 scale，而 tao 的显示器矩形 = 全局 points × **各自**的
+  scale；1x + 2x 混用时两套矩形会重叠（本机：内建 3024×1964@2x 主屏 + PHL 243i7Q
+  1920×1080@1x 在左侧），旧逻辑会匹配到主屏、弹窗永远弹在主屏上。定位时先用
+  `cursor_position()`（全局 points × 主屏 scale）还原成 points，再与
+  `position/scale`、`size/scale` 的矩形匹配（`lib.rs::tray_anchor`）。单元测试覆盖两类
+  布局（1x 在左 / 在右）；真实光标可用 `CGWarpMouseCursorPosition` 配合临时 hook 验证
+- 弹窗是**一次性创建后复用**的窗口：切换显示器必须显式 `set_position`，否则一直停在
+  首次创建的位置
 
 ### 窗口
 
-- 运行时 `set_position` 在 macOS 26 上不可靠（窗口偏移 ~50px）；弹窗位置必须用
-  `WebviewWindowBuilder::position()` 在创建时定位
+- 运行时 `set_position` 传 `PhysicalPosition` 时会被窗口当前所在屏幕的 scale 换算，容易偏；
+  传 **`LogicalPosition`** 则在本机 macOS（`sw_vers` 报 27.0.1 / 26A434）上实测精确（1x/2x
+  显示器间往返移动，`outer_position` / CGWindowList 与目标一致，2026-09-30 验证；移动后
+  ~7ms 内到位，不会看到闪烁）。靠近屏幕顶部约 30–40px 内 AppKit 的 `constrainFrameRect`
+  会把窗口往下压几个 point（菜单栏高度，随显示器不同），属系统行为、不影响菜单栏弹窗观感
 - 透明窗口需双层开关：`Cargo.toml` 的 `tauri` feature `macos-private-api` +
   `tauri.conf.json` 的 `app.macOSPrivateApi: true`
 - 弹窗在失焦 200ms 后自动隐藏；打开系统对话框（文件选择、生物识别）时需先用

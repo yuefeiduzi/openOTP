@@ -331,6 +331,22 @@ fn focus_tray_panel(app: &AppHandle, panel: &tauri::WebviewWindow) {
     let _ = panel.set_focus();
 }
 
+/// Shows a cached tray panel, moving it to this click's position first.
+///
+/// The panels are long-lived windows that get their position once, at creation.
+/// Without moving them, a click on the other display's menu bar icon kept
+/// showing the panel where it was first opened — in practice on the display the
+/// first click happened on. A logical position is exact on macOS; the old
+/// "set_position lands offset" note was about the physical, already-scaled
+/// coordinates it used to be called with.
+#[cfg(desktop)]
+fn show_moved_panel(panel: &tauri::WebviewWindow, position: LogicalPosition<f64>) {
+    if let Err(e) = panel.set_position(position) {
+        log::error!("failed to move {}: {}", panel.label(), e);
+    }
+    let _ = panel.show();
+}
+
 /// Builds one of the tray-anchored panels (popover / secondary-click menu).
 #[cfg(desktop)]
 fn build_panel(
@@ -375,69 +391,171 @@ fn panel_position(
     width: f64,
     height: f64,
 ) -> LogicalPosition<f64> {
-    // The tray reports physical pixels, while tao's `monitor_from_point` compares
-    // against `CGDisplayBounds`, which is in points: on a 2x display the physical
-    // point never matches a monitor and the lookup returns nothing (which used to
-    // place the popover at twice the icon's coordinates, i.e. off-screen). Match
-    // the monitors' physical rectangles here instead, then convert to logical
-    // pixels, which is what places the window.
-    let monitor = app
-        .available_monitors()
-        .ok()
-        .and_then(|monitors| {
-            monitors.into_iter().find(|monitor| {
-                let position = monitor.position();
-                let size = monitor.size();
-                contains_physical(
-                    Rect {
-                        x: position.x as f64,
-                        y: position.y as f64,
-                        width: size.width as f64,
-                        height: size.height as f64,
-                    },
-                    (clicked_at.x, clicked_at.y),
-                )
-            })
-        })
-        .or_else(|| app.primary_monitor().ok().flatten());
-
-    let scale = monitor.as_ref().map(|m| m.scale_factor()).unwrap_or(1.0);
-    let cursor = clicked_at.to_logical::<f64>(scale);
-
-    let (x, y) = match monitor {
-        Some(monitor) => {
-            let scale = monitor.scale_factor();
-            let origin = monitor.position().to_logical::<f64>(scale);
-            let size = monitor.size().to_logical::<f64>(scale);
-            place_panel(
-                width,
-                height,
-                (cursor.x, cursor.y),
-                Rect {
-                    x: origin.x,
-                    y: origin.y,
-                    width: size.width,
-                    height: size.height,
-                },
-            )
+    let (x, y) = match tray_anchor(app, clicked_at) {
+        Some((monitor, cursor)) => place_panel(width, height, cursor, monitor),
+        // No monitor to place inside (the queries failed): hang the panel off
+        // the click rather than dropping it.
+        None => {
+            let scale = app
+                .primary_monitor()
+                .ok()
+                .flatten()
+                .map(|monitor| monitor.scale_factor())
+                .unwrap_or(1.0);
+            let cursor = clicked_at.to_logical::<f64>(scale);
+            (cursor.x - width / 2.0, cursor.y + POPOVER_GAP)
         }
-        None => (cursor.x - width / 2.0, cursor.y + POPOVER_GAP),
     };
 
     LogicalPosition::new(x, y)
 }
 
-/// Whether a physical point lies inside a monitor's physical rectangle. Split out
-/// so the edge rules stay testable without a monitor handle.
+/// The monitor the tray click happened on and the click position inside it, both
+/// in the units [`place_panel`] works in. `None` when the platform could not name
+/// a monitor at all.
+///
+/// This cannot simply match the click against the monitors on macOS: the tray
+/// reports the click as `NSEvent::mouseLocation` (global points) multiplied by the
+/// scale factor of the display the icon is on, while tao reports a monitor's
+/// `position`/`size` multiplied by *that monitor's own* factor. With a 2x and a
+/// 1x display those rectangles stop tiling — they overlap, so the first match is
+/// often the primary display wherever the click happened. The cursor query is the
+/// same points multiplied by the primary display's factor instead, so dividing
+/// that factor back out gives the click in the one space the monitors tile in.
 #[cfg(desktop)]
-fn contains_physical(rect: Rect, point: (f64, f64)) -> bool {
+fn tray_anchor(app: &AppHandle, clicked_at: PhysicalPosition<f64>) -> Option<(Rect, (f64, f64))> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(anchor) = macos_tray_anchor(app) {
+            return Some(anchor);
+        }
+    }
+
+    reported_click_anchor(app, clicked_at)
+}
+
+/// macOS: resolves the click from [`AppHandle::cursor_position`] (see
+/// [`tray_anchor`]). `None` when the platform cannot answer, so the caller falls
+/// back to the reported click.
+#[cfg(all(desktop, target_os = "macos"))]
+fn macos_tray_anchor(app: &AppHandle) -> Option<(Rect, (f64, f64))> {
+    let primary_scale = app
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|monitor| monitor.scale_factor())
+        .unwrap_or(1.0);
+    let queried = app.cursor_position().ok()?;
+    let cursor = cursor_in_points((queried.x, queried.y), primary_scale);
+
+    let monitor = app
+        .available_monitors()
+        .ok()?
+        .into_iter()
+        .find(|monitor| contains_point(logical_monitor_rect(monitor), cursor))?;
+
+    Some((logical_monitor_rect(&monitor), cursor))
+}
+
+/// The monitor rect in the space tao reports (physical on Windows/Linux; see
+/// [`logical_monitor_rect`] for the macOS twist).
+#[cfg(desktop)]
+fn reported_monitor_rect(monitor: &tauri::Monitor) -> Rect {
+    let position = monitor.position();
+    let size = monitor.size();
+
+    Rect {
+        x: position.x as f64,
+        y: position.y as f64,
+        width: size.width as f64,
+        height: size.height as f64,
+    }
+}
+
+/// Resolves the click against the rectangles tao reports, clamped to the primary
+/// monitor when none matches. Correct on Windows/Linux, where the tray click and
+/// those rectangles share one physical space; macOS uses it only as the fallback
+/// for [`macos_tray_anchor`], including the primary-monitor clamp that used to
+/// send every mixed-scale click to the primary display.
+#[cfg(desktop)]
+fn reported_click_anchor(
+    app: &AppHandle,
+    clicked_at: PhysicalPosition<f64>,
+) -> Option<(Rect, (f64, f64))> {
+    let monitor = app
+        .available_monitors()
+        .ok()
+        .and_then(|monitors| {
+            monitors.into_iter().find(|monitor| {
+                contains_point(reported_monitor_rect(monitor), (clicked_at.x, clicked_at.y))
+            })
+        })
+        .or_else(|| app.primary_monitor().ok().flatten())?;
+
+    let scale = monitor.scale_factor();
+    let origin = monitor.position().to_logical::<f64>(scale);
+    let size = monitor.size().to_logical::<f64>(scale);
+    let cursor = clicked_at.to_logical::<f64>(scale);
+
+    Some((
+        Rect {
+            x: origin.x,
+            y: origin.y,
+            width: size.width,
+            height: size.height,
+        },
+        (cursor.x, cursor.y),
+    ))
+}
+
+/// A monitor's rectangle in global logical points: tao multiplies the physical
+/// `position`/`size` by the monitor's own scale factor, and dividing it back out
+/// gives the rectangle `CGDisplayBounds` (and the flipped `NSEvent::mouseLocation`)
+/// live in. Those tile even when the displays' scale factors differ.
+#[cfg(all(desktop, target_os = "macos"))]
+fn logical_monitor_rect(monitor: &tauri::Monitor) -> Rect {
+    let position = monitor.position();
+    let size = monitor.size();
+
+    logical_rect(
+        (position.x as f64, position.y as f64),
+        (size.width as f64, size.height as f64),
+        monitor.scale_factor(),
+    )
+}
+
+/// [`logical_monitor_rect`]'s maths, split out so it stays testable without a
+/// monitor handle.
+#[cfg(all(desktop, target_os = "macos"))]
+fn logical_rect(position: (f64, f64), size: (f64, f64), scale: f64) -> Rect {
+    Rect {
+        x: position.0 / scale,
+        y: position.1 / scale,
+        width: size.0 / scale,
+        height: size.1 / scale,
+    }
+}
+
+/// [`tray_anchor`]'s conversion of the cursor query: the query is in points
+/// multiplied by the primary display's scale factor, so dividing it out gives the
+/// click's global points.
+#[cfg(all(desktop, target_os = "macos"))]
+fn cursor_in_points(queried: (f64, f64), primary_scale: f64) -> (f64, f64) {
+    (queried.0 / primary_scale, queried.1 / primary_scale)
+}
+
+/// Whether a point lies inside a rectangle. Both must be in the same space (see
+/// [`tray_anchor`]); split out so the edge rules stay testable without a monitor
+/// handle.
+#[cfg(desktop)]
+fn contains_point(rect: Rect, point: (f64, f64)) -> bool {
     let (px, py) = point;
 
     px >= rect.x && px < rect.x + rect.width && py >= rect.y && py < rect.y + rect.height
 }
 
-/// A rectangle in whichever pixel space the caller works in: monitor areas and
-/// pointer positions are both physical or both logical at every call site.
+/// A rectangle in a single coordinate space. Every caller keeps both sides of a
+/// comparison in the same space (see [`tray_anchor`]).
 #[cfg(desktop)]
 #[derive(Debug, Clone, Copy)]
 struct Rect {
@@ -646,17 +764,15 @@ pub fn run() {
                                             }
                                         }
 
+                                        let position = popover_position(app, position);
+
                                         if let Some(popover) = popover {
-                                            // NOTE: runtime set_position on this window is unreliable
-                                            // on macOS 26 (the window ends up offset); the position
-                                            // set at creation time sticks, so only show/hide here.
                                             app.state::<PopoverState>().unpin();
-                                            let _ = popover.show();
+                                            show_moved_panel(&popover, position);
                                             focus_tray_panel(app, &popover);
                                             return;
                                         }
 
-                                        let position = popover_position(app, position);
                                         if let Some(popover) = build_panel(
                                             app,
                                             "popover",
@@ -682,23 +798,24 @@ pub fn run() {
                                     }
                                 }
 
-                                if let Some(menu) = app.get_webview_window("tray-menu") {
-                                    if menu.is_visible().unwrap_or(false) {
-                                        let _ = menu.hide();
-                                        return;
-                                    }
-
-                                    let _ = menu.show();
-                                    let _ = menu.set_focus();
-                                    return;
-                                }
-
                                 let position = panel_position(
                                     app,
                                     position,
                                     TRAY_MENU_WIDTH,
                                     TRAY_MENU_HEIGHT,
                                 );
+
+                                if let Some(menu) = app.get_webview_window("tray-menu") {
+                                    if menu.is_visible().unwrap_or(false) {
+                                        let _ = menu.hide();
+                                        return;
+                                    }
+
+                                    show_moved_panel(&menu, position);
+                                    let _ = menu.set_focus();
+                                    return;
+                                }
+
                                 if let Some(menu) = build_panel(
                                     app,
                                     "tray-menu",
@@ -986,11 +1103,12 @@ mod popover_tests {
         assert_eq!(x, 1920.0 + 1920.0 - POPOVER_WIDTH - 8.0);
     }
 
-    /// Click points are physical: on the 2x main display (3024x1964 physical,
-    /// 1512x982 logical) a click on the menu bar icon at logical (1080, 16) arrives
-    /// as (2160, 32) and must still resolve to the main display.
+    /// Click points can be matched against the rectangles tao reports as long as
+    /// both are in the same space: on the 2x main display (3024x1964 physical,
+    /// 1512x982 logical) a click on the menu bar icon at logical (1080, 16)
+    /// arrives as (2160, 32) and must match the main display's physical rect.
     #[test]
-    fn matches_the_monitor_by_its_physical_rect() {
+    fn matches_the_monitor_by_its_reported_rect() {
         let main = Rect {
             x: 0.0,
             y: 0.0,
@@ -1004,15 +1122,103 @@ mod popover_tests {
             height: 1080.0,
         };
 
-        assert!(contains_physical(main, (2160.0, 32.0)));
-        assert!(!contains_physical(main, (3600.0, 32.0)));
-        assert!(contains_physical(external, (-386.0, -84.0)));
+        assert!(contains_point(main, (2160.0, 32.0)));
+        assert!(!contains_point(main, (3600.0, 32.0)));
+        assert!(contains_point(external, (-386.0, -84.0)));
         // A monitor owns its top-left edge; the right/bottom edges belong to the next.
-        assert!(!contains_physical(main, (3024.0, 10.0)));
-        assert!(contains_physical(main, (0.0, 0.0)));
-        assert!(contains_physical(external, (-1920.0, -98.0)));
+        assert!(!contains_point(main, (3024.0, 10.0)));
+        assert!(contains_point(main, (0.0, 0.0)));
+        assert!(contains_point(external, (-1920.0, -98.0)));
         // The external display ends where the main one starts.
-        assert!(!contains_physical(external, (0.0, -98.0)));
+        assert!(!contains_point(external, (0.0, -98.0)));
+    }
+
+    /// Borrowed from the machine this was fixed on: a 2x built-in display
+    /// (3024x1964 physical, 1512x982 points, primary) and a 1x 1920x1080 display
+    /// to its left. Dividing tao's per-monitor scale back out must give the
+    /// monitors' rectangles in points, the space they tile in.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn undoes_the_per_monitor_scale_to_get_points() {
+        let main = logical_rect((0.0, 0.0), (3024.0, 1964.0), 2.0);
+        let external = logical_rect((-1920.0, -98.0), (1920.0, 1080.0), 1.0);
+
+        assert_eq!(
+            (main.x, main.y, main.width, main.height),
+            (0.0, 0.0, 1512.0, 982.0)
+        );
+        assert_eq!(
+            (external.x, external.y, external.width, external.height),
+            (-1920.0, -98.0, 1920.0, 1080.0)
+        );
+    }
+
+    /// The cursor query is points × the primary display's factor (tao converts
+    /// `NSEvent::mouseLocation` with the primary monitor, while the tray event
+    /// uses the icon display's factor); dividing it back out gives the click in
+    /// points, which can be matched against `logical_rect`.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn turns_the_cursor_query_back_into_points() {
+        // Cursor on the 1x display's menu bar, reported by the 2x primary.
+        assert_eq!(cursor_in_points((-3800.0, -176.0), 2.0), (-1900.0, -88.0));
+
+        // Cursor on the 2x primary's own menu bar.
+        assert_eq!(cursor_in_points((1400.0, 22.0), 2.0), (700.0, 11.0));
+    }
+
+    /// Regression for the mixed-scale bug: with the 1x display to the *right* of
+    /// the 2x primary, tao's reported rectangle for the primary (0..3024)
+    /// contains a click on the 1x display's menu bar (reported at x=2500), so the
+    /// old physical match picked the primary display. In points the click belongs
+    /// to the second display alone.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_click_on_a_second_display_is_not_swallowed_by_the_primary() {
+        let main = logical_rect((0.0, 0.0), (3024.0, 1964.0), 2.0);
+        let external = logical_rect((1512.0, 0.0), (1920.0, 1080.0), 1.0);
+        let reported_main = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 3024.0,
+            height: 1964.0,
+        };
+
+        let click = (2500.0, 11.0);
+        assert!(contains_point(reported_main, click));
+        assert!(!contains_point(main, click));
+        assert!(contains_point(external, click));
+
+        // A display to the left of the primary reports negative points; the
+        // primary's point rect must not catch those either.
+        let left = logical_rect((-1920.0, -98.0), (1920.0, 1080.0), 1.0);
+        let click = (-1900.0, -88.0);
+        assert!(!contains_point(main, click));
+        assert!(contains_point(left, click));
+    }
+
+    /// The panel is placed and clamped inside the display that was clicked, not
+    /// the primary one — including a second display with a different resolution
+    /// and scale factor.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn places_the_panel_on_the_clicked_display() {
+        let external = logical_rect((1512.0, 0.0), (1920.0, 1080.0), 1.0);
+
+        // Middle of the menu bar: below the icon, centred on it.
+        assert_eq!(
+            place_popover((2500.0, 11.0), external),
+            (2500.0 - POPOVER_WIDTH / 2.0, 11.0 + POPOVER_GAP)
+        );
+
+        // Near the right edge: clamped to that display's edge, not the primary's.
+        let (x, _) = place_popover((3400.0, 11.0), external);
+        assert_eq!(x, 1512.0 + 1920.0 - POPOVER_WIDTH - 8.0);
+
+        // A shorter 1x display: the 480-point panel is clamped back inside it.
+        let short = logical_rect((1512.0, 0.0), (1920.0, 420.0), 1.0);
+        let (_, y) = place_popover((2500.0, 11.0), short);
+        assert_eq!(y, 8.0);
     }
 }
 
