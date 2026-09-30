@@ -85,7 +85,7 @@ export default {
     backupPassword: 'Backup Password',
     exportSuccess: 'Exported to {path}',
     about: 'About',
-    version: 'OpenOTP v0.2.6',
+    version: 'OpenOTP v0.3.0',
     linkCopied: 'Repository link copied',
     sourceCode: 'Source Code',
     debugMode: 'Debug Mode',
