@@ -57,12 +57,23 @@ Tauri 2 (Rust) with a Vue 3 + TypeScript front end; data lives in local JSON fil
 
 ## Install
 
+### Homebrew (recommended)
+
+```bash
+brew install --cask yuefeiduzi/openotp/openotp
+```
+
+Homebrew adds our own tap and trusts that single cask; the cask clears the quarantine flag on every
+install and upgrade, so there is nothing to approve by hand. Upgrade and remove:
+`brew upgrade --cask openotp` · `brew uninstall --cask openotp`. If it reports
+`No Cask with this name exists`, run `brew update` first.
+
 ### Download
 
 See [Releases](https://github.com/yuefeiduzi/openOTP/releases): pushing a `v*` tag makes CI build a
 universal DMG (arm64 + x86_64) and open a draft release. The build is **unsigned**, so macOS asks
 for a manual approval the first time — the steps and checksum verification are in
-[docs/UNSIGNED.md](docs/UNSIGNED.md) (a copy also heads every release body; the doc is in Chinese).
+[docs/INSTALL.md](docs/INSTALL.md) (a copy also heads every release body; the doc is in Chinese).
 
 ### Build from source
 
@@ -106,6 +117,8 @@ The in-repo docs are currently written in Chinese.
 
 | Document | Contents |
 |---|---|
+| [docs/INSTALL.md](docs/INSTALL.md) | Install and first launch: Homebrew / DMG, approval, checksums, data location |
+| [docs/HOMEBREW.md](docs/HOMEBREW.md) | Homebrew distribution: tap layout, automatic sync, why the official cask is out of reach |
 | [docs/STRUCTURE.md](docs/STRUCTURE.md) | Features, stack, module layout, data and security, platform support |
 | [docs/CODE_CONVENTIONS.md](docs/CODE_CONVENTIONS.md) | Style, testing, commit and i18n rules |
 | [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md) | Local environment: dev ports, macOS gotchas, scripted unlock / popover regression |

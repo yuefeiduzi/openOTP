@@ -2,7 +2,7 @@
 
 > 状态：**tag 触发的自动发布已建立**（`.github/workflows/release.yml`），产出的是未签名的
 > universal DMG 草稿 Release。签名与公证**不会做**：没有 Apple Developer 账号，而 Developer ID
-> 证书与公证都要求付费会员资格；改用 [UNSIGNED.md](UNSIGNED.md) 里的放行与校验说明替代，
+> 证书与公证都要求付费会员资格；改用 [INSTALL.md](INSTALL.md) 里的放行与校验说明替代，
 > 该说明会原样出现在每个 Release 正文的开头。自动更新仍未配置，见缺口三。
 
 ## 发布一个版本
@@ -30,10 +30,24 @@ git tag v0.2.7 && git push origin main v0.2.7
 - **演练**：Actions → Release → Run workflow（`workflow_dispatch`）只跑检查与构建，把 DMG 存成
   workflow artifact，不创建任何 Release。首次打 tag 前可以先用它验证整条构建链路
 - **未签名**：DMG 里的 App 是 ad-hoc 签名，`spctl --assess` 判定 `rejected: no usable signature`，
-  下载后会被 Gatekeeper 拦下。Release 正文开头会原样带上 [UNSIGNED.md](UNSIGNED.md)
-  （放行方式 + 校验哈希）——正文保持这个结构：**第一部分 macOS 放行，第二部分更新信息**，
-  不再写签名背景之类的自述
+  下载后会被 Gatekeeper 拦下。Release 正文开头会原样带上 [INSTALL.md](INSTALL.md)
+  （Homebrew 推荐 / DMG 放行 / 校验哈希）——正文保持这个结构：**第一部分安装与首次打开，
+  第二部分更新信息**，不再写签名背景之类的自述
 - **签名/公证**：见缺口一 —— 现在做不了（没有 Apple Developer 账号），也没打算先去买
+
+## Homebrew tap（Publish 之后）
+
+[INSTALL.md](INSTALL.md) 把 Homebrew 列为推荐安装方式，对应的第三方 tap 是
+`yuefeiduzi/homebrew-openotp`（官方 `homebrew/cask` 目前进不去，原因与门槛见
+[HOMEBREW.md](HOMEBREW.md)）。tap 里的 cask 由本仓 `packaging/homebrew/` 派生：
+
+| 步骤 | 说明 |
+|---|---|
+| 触发 | **Release 被 Publish 时**（`.github/workflows/homebrew.yml`）＋ 手动 `workflow_dispatch`；草稿不触发，因为草稿的资产匿名下载不到 |
+| 同步 | 下载该 Release 的 DMG → 自己算 sha256（不信 `SHA256SUMS.txt`）→ 盖章写进 tap 的 `Casks/openotp.rb` 与 README → commit & push |
+| 缺 secret | 没配 `HOMEBREW_TAP_TOKEN` 时只 warning 跳过，不阻断发布（tap 建起来之前照常发版） |
+
+一次性设置（建 tap 仓库 + PAT）见 [HOMEBREW.md](HOMEBREW.md) 的「一次性设置」。
 
 ## 当前构建方式（本地）
 
@@ -70,14 +84,16 @@ pnpm tauri:build --target universal-apple-darwin --bundles dmg
 ## ⏸️ 缺口一：代码签名与公证（macOS）—— 暂不处理
 
 **结论：不做。** 没有 Apple Developer 账号（99 USD/年），拿不到 Developer ID 证书，也就无法公证；
-费用与这个项目的形态不匹配。取而代之的是 [UNSIGNED.md](UNSIGNED.md)：每个 Release 正文开头都会
-原样带上它，告诉用户怎么放行、怎么校验下载。
+费用与这个项目的形态不匹配。取而代之的是 [INSTALL.md](INSTALL.md)：每个 Release 正文开头都会
+原样带上它，告诉用户怎么放行、怎么校验下载；走 Homebrew 的话由 cask 自动清 quarantine，用户
+根本碰不到这一步（见 [HOMEBREW.md](HOMEBREW.md)）。
 
 有一点未实测：真实下载路径上弹的是「无法验证开发者」还是「已损坏」，两种提示对应不同的命令，
-所以 UNSIGNED.md 两条都写了。本机只能验证到 `spctl --assess` 判定
+所以 INSTALL.md 两条都写了。本机只能验证到 `spctl --assess` 判定
 `rejected: no usable signature`（打包产物已实测）。
 
-何时改主意：有了 Apple Developer 账号以后。做法：
+何时改主意：有了 Apple Developer 账号以后。除了让 DMG 首次打开不再需要放行，它还是进官方
+`homebrew/cask` 的两道门槛之一（另一道是关注度，见 [HOMEBREW.md](HOMEBREW.md)）。做法：
 
 ```jsonc
 // src-tauri/tauri.conf.json
@@ -159,5 +175,8 @@ Tauri 会在打包时自动签名并提交公证（`notarytool`）。凭据就�
       导入备份 → 锁定 → 解锁 → 托盘 / 菜单栏模式 → 删除账号后重启确认未复现
 - [ ] 打 tag（`git tag vX.Y.Z && git push origin vX.Y.Z`——推送由你操作）后，
       到 Releases 检查草稿的正文与资产，确认后再 Publish
+- [ ] Publish 之后确认 Actions 的 **Homebrew tap** 跑成功，tap 里 `Casks/openotp.rb` 的
+      `version` / `sha256` 已是这一版（[HOMEBREW.md](HOMEBREW.md)）；`docs/INSTALL.md` 推荐
+      Homebrew 时，release.yml 会在 tap 仓库不可达时打 warning
 - [ ] 若已有签名/公证凭据（见缺口一：目前没有），把变量接入 `release.yml` 的 Build 步骤，
       并同步删掉 Release 正文里那段未签名说明

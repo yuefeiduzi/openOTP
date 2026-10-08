@@ -3,6 +3,23 @@
 本项目的重要变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### Added
+
+- Homebrew 分发的脚手架：`packaging/homebrew/`（cask 模板 + tap 仓库首页）、
+  `.github/workflows/homebrew.yml`（Release 被 Publish 后下载 DMG、自算 sha256、盖章同步进 tap
+  `yuefeiduzi/homebrew-openotp`）、CI 里的 `ruby -c` 语法检查。**tap 仓库尚未创建**：建仓库并配好
+  `HOMEBREW_TAP_TOKEN` 后才生效，步骤见 [docs/HOMEBREW.md](docs/HOMEBREW.md)
+- [docs/HOMEBREW.md](docs/HOMEBREW.md)：tap 结构、一次性设置、发布时自动同步，以及为什么现在
+  进不了官方 `homebrew/cask`（未公证 + 自荐 225 stars 门槛）
+
+### Changed
+
+- 安装说明改为 [docs/INSTALL.md](docs/INSTALL.md)（原 `docs/UNSIGNED.md`）：Homebrew 列为推荐方式
+  （cask 自动清 quarantine），DMG 的放行步骤与哈希校验保留，并补上数据目录与卸载说明；
+  README 中英双版同步
+
 ## [0.3.1] - 2026-09-30
 
 ### Fixed
@@ -45,7 +62,7 @@
 - 点菜单栏 / 托盘小图标的行为按模式分开：App 模式只把主窗口带到前台，不再弹出弹窗——
   此前 App 模式下点它会在主窗口背后弹出托盘弹窗，但激活策略没切，程序坞图标一直留着，
   与真正进入菜单栏模式（程序坞图标消失）看起来是两回事；菜单栏模式下仍是开关弹窗
-- Release 正文精简为两部分：macOS 放行步骤（[docs/UNSIGNED.md](docs/UNSIGNED.md) 原样）
+- Release 正文精简为两部分：macOS 放行步骤（[docs/INSTALL.md](docs/INSTALL.md) 原样）
   + 该版本的更新信息（`CHANGELOG.md` 段落）；不再跟用户交代签名背景
 
 ## [0.2.5] - 2026-09-29
@@ -72,10 +89,10 @@
 - 发布流程（`.github/workflows/release.yml`）：推送 `v*` tag 后自动跑一遍 CI 的全量检查、
   校验 tag 与三处版本号一致、构建 universal DMG（arm64 + x86_64，附带 SHA256），
   再建一个**草稿** Release 由人工确认发布；`workflow_dispatch` 可先演练（只出 artifact，
-  不碰 Release）。产物未签名，正文开头原样带上 [docs/UNSIGNED.md](docs/UNSIGNED.md)
+  不碰 Release）。产物未签名，正文开头原样带上 [docs/INSTALL.md](docs/INSTALL.md)
   （放行方式 + 校验哈希）
-- [UNSIGNED.md](docs/UNSIGNED.md)：未签名包的放行说明（右键打开 / 清 quarantine、`shasum -c`
-  校验），随每个 Release 正文发布
+- [INSTALL.md](docs/INSTALL.md)：未签名包的放行说明（右键打开 / 清 quarantine、`shasum -c`
+  校验），随每个 Release 正文发布（后来扩充为含 Homebrew 的完整安装说明）
 - `.editorconfig`：统一 LF、单个结尾换行、行尾不留空白（Markdown 除外）
 
 ### Changed

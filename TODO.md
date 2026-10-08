@@ -1,7 +1,8 @@
 # TODO
 
 > 只记录**尚未完成**的事项；已完成的工作见 [CHANGELOG.md](CHANGELOG.md) 与 git 记录。
-> 目前只保留待决策的内容与平台（Android / Windows）事项，新发现的 bug 出现时再记入。
+> 目前只保留待决策的内容、分发（Homebrew）与平台（Android / Windows）事项，新发现的 bug 出现时
+> 再记入。
 
 ## 待决策
 
@@ -18,6 +19,18 @@
       若还想更简：把数据导入导出与调试收进二级页，或按平台隐藏不适用项
 - [ ] **摄像头实时扫码**：需要 macOS 摄像头用途声明 + `getUserMedia`，且需要人工在真机上授权验证。
       桌面端「截图 → 选择图片」已是主路径，价值有限
+
+## 分发（Homebrew）
+
+- [ ] **建 tap 仓库并配 token**：`yuefeiduzi/homebrew-openotp`（空仓库）+ fine-grained PAT
+      （`Contents: Read and write`）存成 secret `HOMEBREW_TAP_TOKEN`；在此之前
+      [docs/INSTALL.md](docs/INSTALL.md) 与 README 里的 `brew install` 命令指向的 tap 还不存在，
+      步骤见 [docs/HOMEBREW.md](docs/HOMEBREW.md) 的「一次性设置」
+- [ ] **真实远端 tap 的首次验证**：建好后用 Actions → Homebrew tap 手动跑一个已发布的 tag，
+      确认 tap 里出现 cask，并在干净机器上 `brew install --cask yuefeiduzi/openotp/openotp`
+      （本机只用临时 tap 实测过 cask 与 postflight，未跑过真实远端同步）
+- [ ] **（长期）官方 `homebrew/cask`**：两道门槛 —— Apple Developer 签名 + 公证（[docs/RELEASE.md](docs/RELEASE.md)
+      缺口一），以及自荐需要的 225 stars / 90 forks；现状与解法见 [docs/HOMEBREW.md](docs/HOMEBREW.md)
 
 ## Android
 

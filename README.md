@@ -52,11 +52,21 @@
 
 ## 安装
 
+### Homebrew（推荐）
+
+```bash
+brew install --cask yuefeiduzi/openotp/openotp
+```
+
+Homebrew 会自动加上自建的 tap，并且只信任这一个 cask；cask 在安装 / 升级后自动清掉 quarantine
+标记，所以不用手动放行。升级与卸载：`brew upgrade --cask openotp` ·
+`brew uninstall --cask openotp`。报 `No Cask with this name exists` 时先 `brew update` 再试。
+
 ### 下载安装包
 
 见 [Releases](https://github.com/yuefeiduzi/openOTP/releases)：推送 `v*` tag 后由 CI 构建
 universal DMG（arm64 + x86_64）并以草稿 Release 发布。产物**未签名**，首次打开需要手动放行，
-步骤与校验方法见 [docs/UNSIGNED.md](docs/UNSIGNED.md)（每个 Release 正文开头也带着这份说明）。
+步骤与校验方法见 [docs/INSTALL.md](docs/INSTALL.md)（每个 Release 正文开头也带着这份说明）。
 
 ### 从源码构建
 
@@ -99,6 +109,8 @@ cargo fmt --check
 
 | 文档 | 内容 |
 |---|---|
+| [docs/INSTALL.md](docs/INSTALL.md) | 安装与首次打开：Homebrew / DMG、放行与校验、数据目录 |
+| [docs/HOMEBREW.md](docs/HOMEBREW.md) | Homebrew 分发：tap 结构、自动同步、为什么进不了官方 cask |
 | [docs/STRUCTURE.md](docs/STRUCTURE.md) | 功能、技术栈、模块结构、数据与安全、平台支持 |
 | [docs/CODE_CONVENTIONS.md](docs/CODE_CONVENTIONS.md) | 代码风格、测试要求、提交与 i18n 规范 |
 | [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md) | 本地开发环境：dev 端口清理、macOS 已知坑、解锁 / 弹窗的脚本化回归 |
