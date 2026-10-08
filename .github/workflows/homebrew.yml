@@ -1,0 +1,108 @@
+name: Homebrew tap
+
+# The tap `yuefeiduzi/homebrew-openotp` mirrors packaging/homebrew/ in this repo: this
+# workflow stamps the released version and its sha256 into the tap copy of the cask.
+#
+# `published`, not `created`: a draft release's assets are not downloadable by anonymous
+# users, so `brew install` could not fetch them and the SHA256 would be unverifiable.
+# Manual dispatch exists for tags whose release was published before the tap existed.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag to sync into the tap (e.g. v0.3.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  tap:
+    name: Stamp the tap cask
+    runs-on: ubuntu-latest
+    env:
+      TAP_REPO: yuefeiduzi/homebrew-openotp
+      SOURCE_REPO: ${{ github.repository }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sync the cask and the tap README
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Nothing to push to without a token. That is a pending setup step
+          # (docs/HOMEBREW.md), not a broken release, so warn and stop cleanly.
+          if [ -z "${TAP_TOKEN:-}" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN is not set — skipping the tap sync. Create ${TAP_REPO}, add a fine-grained token with 'Contents: Read and write' on it as that secret, then re-run this workflow."
+            exit 0
+          fi
+
+          # v0.3.1 -> 0.3.1: the asset name and the cask's url are built from the bare version.
+          VERSION="${TAG#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$TAG" ]; then
+            echo "::error::'$TAG' does not look like a v<version> tag."
+            exit 1
+          fi
+          ASSET="OpenOTP_${VERSION}_universal.dmg"
+          ASSET_URL="https://github.com/${SOURCE_REPO}/releases/download/${TAG}/${ASSET}"
+
+          # Hash the very bytes brew will download. SHA256SUMS.txt only repeats what the
+          # build saw at upload time; it cannot tell whether the asset changed since.
+          curl --fail --location --silent --show-error --retry 3 -o "$ASSET" "$ASSET_URL"
+          if command -v sha256sum >/dev/null 2>&1; then
+            SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
+          else
+            SHA="$(shasum -a 256 "$ASSET" | awk '{print $1}')"
+          fi
+          echo "Stamping openotp ${VERSION} (${SHA})"
+
+          # Exactly one replacement each: if a future edit to the template drops or
+          # duplicates a stanza, fail here rather than ship a cask with a placeholder in it.
+          awk -v version="$VERSION" -v sha="$SHA" '
+            /^  version "/ { version_seen++; print "  version \"" version "\""; next }
+            /^  sha256 /    { sha_seen++;      print "  sha256 \"" sha "\"";      next }
+            { print }
+            END {
+              if (version_seen != 1 || sha_seen != 1) {
+                printf "::error::expected exactly one version and one sha256 stanza in the template, found %d and %d\n", version_seen, sha_seen
+                exit 1
+              }
+            }
+          ' packaging/homebrew/Casks/openotp.rb > stamped-cask.rb
+
+          git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/${TAP_REPO}.git" tap
+          mkdir -p tap/Casks
+
+          # A tap copy that differs from the template beyond the two stamped lines holds
+          # hand edits that are about to be overwritten: say so, and say where they belong.
+          if [ -f tap/Casks/openotp.rb ] &&
+             ! diff -q \
+                 <(sed -E 's|^  version ".*"$|VERSION|; s|^  sha256 .*$|SHA|' tap/Casks/openotp.rb) \
+                 <(sed -E 's|^  version ".*"$|VERSION|; s|^  sha256 .*$|SHA|' stamped-cask.rb) >/dev/null; then
+            echo "::warning::${TAP_REPO}'s cask differs from the template beyond version/sha256 — those edits are being overwritten. Move them into packaging/homebrew/Casks/openotp.rb."
+          fi
+
+          cp stamped-cask.rb tap/Casks/openotp.rb
+          cp packaging/homebrew/README.md tap/README.md
+
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/openotp.rb README.md
+          if git diff --cached --quiet; then
+            echo "${TAP_REPO} is already at ${VERSION}; nothing to push."
+            exit 0
+          fi
+          git commit -m "openotp ${VERSION}"
+          git push
+          echo "Pushed openotp ${VERSION} to ${TAP_REPO}."

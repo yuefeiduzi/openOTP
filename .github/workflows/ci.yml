@@ -41,6 +41,12 @@ jobs:
       - name: Tests
         run: pnpm test
 
+      # packaging/homebrew/ is the source of truth for the tap's cask
+      # (docs/HOMEBREW.md). Homebrew only evaluates that file after a release is
+      # out, so catch a broken template here instead of in `brew install`.
+      - name: Cask template parses
+        run: ruby -c packaging/homebrew/Casks/openotp.rb
+
   backend:
     name: Backend (fmt + clippy + tests)
     # macOS because the app depends on macOS frameworks; the Linux build would
