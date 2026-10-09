@@ -30,7 +30,11 @@ base64 = "0.22"
 hex = "0.4"
 subtle = "2"
 # Backup container: standard zip, optionally AES-256 encrypted.
-zip = { version = "8", default-features = false, features = ["aes-crypto", "deflate-flate2"] }
+# The deflate backend is named explicitly: `deflate-flate2` alone leaves flate2
+# without a backend, which only happened to work on the host target because a
+# proc-macro dependency pulled flate2 in with its defaults. Cross-compiling
+# (Android/Windows) has no such overlap and fails to compile.
+zip = { version = "8", default-features = false, features = ["aes-crypto", "deflate-flate2-zlib-rs"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-localauthentication = "0.3"
