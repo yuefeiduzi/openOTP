@@ -78,6 +78,37 @@ adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-u
 $ANDROID_HOME/emulator/emulator -avd Medium_Phone_API_37.0
 ```
 
+## 真机（USB / 无线）
+
+> **未实测**：本项目还没在真机上跑过，下面是上手清单。
+
+1. 手机：连点「版本号」开开发者选项 → 打开 USB 调试；国产 ROM 还要额外开
+   「USB 安装 / 通过 USB 安装应用」（小米 / 澎湃）、「仅充电模式下允许 ADB 调试」（华为），
+   否则 `adb install` 会报 `INSTALL_FAILED_USER_RESTRICTED`
+2. 看架构：`adb shell getprop ro.product.cpu.abi`。多数手机是 `arm64-v8a`，现有 APK
+   （只编了 aarch64）可以直接装；32 位机器会报 `INSTALL_FAILED_NO_MATCHING_ABIS`，
+   改用 `--target armv7`；两个都要就 `--target aarch64 armv7`
+3. 装 + 启动 + 看日志：
+
+   ```bash
+   adb devices -l                      # 要显示 device；unauthorized = 手机上还没点允许
+   adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
+   adb shell am start -n com.openotp.desktop.debug/com.openotp.desktop.MainActivity
+   adb logcat | grep -i openotp
+   ```
+
+   debug 包的包名带 `.debug` 后缀，能和正式版共存；minSdk 24（Android 7.0）
+4. WebView 调试与模拟器同一套（见下）；多设备（模拟器 + 真机）同时在线时，每条
+   adb 命令加 `-s <serial>`
+5. 要热重载而不是装固定包：`pnpm tauri android dev`（会自己 `adb reverse` 到 5173）
+6. 卸载：`adb uninstall com.openotp.desktop.debug`
+
+无线调试（Android 11+）：`adb pair <ip>:<port>`（手机上「无线调试」里的配对码）
+→ `adb connect <ip>:<port>`。
+
+真机上预计会撞到的既有缺口：指纹解锁不可用、备份导出/导入失败
+（`content://` URI，见上）、Android 14+ 会对 debug 包的「未知来源安装」弹确认。
+
 ## 已知缺口
 
 1. **备份全部不可用（导出/导入/andOTP）**：文件对话框在 Android 上返回 `content://` URI，
