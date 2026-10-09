@@ -9,7 +9,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
+use tauri::{AppHandle, Emitter, Manager};
 
 /// Size of the menu bar / tray popover window.
 #[cfg(desktop)]
@@ -25,11 +25,15 @@ const TRAY_MENU_HEIGHT: f64 = 56.0;
 #[cfg(desktop)]
 const POPOVER_GAP: f64 = 12.0;
 
+// Tray, panels and popover geometry are desktop-only; mobile keeps a single
+// window and never wires any of this up.
+#[cfg(desktop)]
 use tauri::tray::TrayIconBuilder;
-/// Whether the window is being used as a tray-only app.
-///
-/// macOS also drops the Dock icon; other desktops just keep the window hidden.
+#[cfg(desktop)]
 use tauri::LogicalPosition;
+#[cfg(desktop)]
+use tauri::PhysicalPosition;
+#[cfg(desktop)]
 use tauri::WebviewWindowBuilder;
 
 #[derive(Serialize)]
@@ -165,7 +169,6 @@ fn is_desktop() -> bool {
 
 /// How long a released pin keeps the popover from hiding. Long enough to cover a
 /// focus-loss notification that was queued behind a blocking command.
-#[cfg(desktop)]
 const HIDE_GRACE: Duration = Duration::from_millis(1500);
 
 /// While pinned the popover ignores focus loss, so opening a native file dialog
@@ -237,7 +240,7 @@ fn set_menu_bar_only(app: tauri::AppHandle, enabled: bool) -> Result<(), String>
     Ok(())
 }
 
-/// Applies or leaves background mode. On macOS this also switches between the
+/// Applies or leaves tray-only mode. On macOS this also switches between the
 /// regular and accessory activation policies, which is what removes the Dock
 /// icon; other desktops have no equivalent and only hide the window.
 #[allow(unused_variables)]

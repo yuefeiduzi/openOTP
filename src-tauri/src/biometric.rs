@@ -10,6 +10,9 @@ use crate::biometric_status::BiometricStatus;
 use serde::Serialize;
 use tauri::AppHandle;
 
+/// The variants macOS maps its `LAError`s onto. The other platforms only ever
+/// answer `NotAvailable`, but the wire format is shared.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", content = "message")]
 pub enum BiometricError {
@@ -76,6 +79,9 @@ pub fn get_biometric_type() -> String {
     }
 }
 
+/// Only the macOS path consumes `reason` and mutates the failure counter; the
+/// other platforms answer `NotAvailable` without touching either.
+#[cfg_attr(not(target_os = "macos"), allow(unused_mut, unused_variables))]
 pub fn authenticate(app: &AppHandle, reason: &str) -> Result<bool, BiometricError> {
     let mut status = BiometricStatus::load(app);
 

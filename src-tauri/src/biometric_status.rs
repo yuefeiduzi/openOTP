@@ -4,6 +4,9 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri::Manager;
 
+/// Only the platform that can actually authenticate records failures (macOS
+/// today); the counter and its expiry window stay platform-agnostic.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 const EXPIRY_SECONDS: i64 = 1800;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -60,6 +63,7 @@ impl BiometricStatus {
         false
     }
 
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub fn record_failure(&mut self) {
         let now = now_epoch_seconds();
 
