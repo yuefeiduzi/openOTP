@@ -26,6 +26,8 @@
 - 代码风格、测试要求、提交与 i18n 规范 → [docs/CODE_CONVENTIONS.md](docs/CODE_CONVENTIONS.md)
 - 本地环境：dev 端口清理、macOS 托盘 / 窗口已知坑、解锁与弹窗的脚本化回归方法 →
   [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)
+- Android 构建（SDK / NDK / Gradle 版本对齐）、已实测能力、已知缺口与 WebView 调试方法 →
+  [docs/ANDROID.md](docs/ANDROID.md)
 - 发布流程（打 tag 即构建 universal DMG 并建草稿 Release）与签名 / 更新机制现状 →
   [docs/RELEASE.md](docs/RELEASE.md)
 - 图标现状与重新生成 → [docs/ICON_STATUS.md](docs/ICON_STATUS.md)

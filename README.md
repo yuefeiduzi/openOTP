@@ -47,7 +47,7 @@
 | macOS | ✅ 完整支持（菜单栏模式、Touch ID） | Touch ID / Face ID |
 | Windows | ✅ 主窗口与托盘常驻模式 | 无，使用 PIN |
 | Linux | ⚠️ 托盘为桌面通用实现，未实机验证 | 无，使用 PIN |
-| Android | ❌ 工程未初始化 | 计划支持指纹（待接入） |
+| Android | ⚠️ 主窗口可用（模拟器实测：设置主密码 / 添加账号 / 验证码 / 持久化）；指纹与备份未接入，真机未验证 → [docs/ANDROID.md](docs/ANDROID.md) | 无，使用 PIN |
 | iOS | ❌ 工程未初始化 | 无，使用 PIN |
 
 ## 安装

@@ -34,8 +34,17 @@
 
 ## Android
 
-- [ ] **指纹解锁**：`biometric.rs` 已如实报告不可用；接入需 `tauri android init` +
-      注册 `tauri-plugin-biometric` + 权限声明（本机无 Android SDK/NDK，未验证）
+- [ ] **备份导出 / 导入 / andOTP 导入全部不可用**：文件对话框返回 `content://` URI，
+      Rust 侧 `std::fs` 打不开——导出报
+      `failed to create content://...: Read-only file system (os error 30)` 并留下 0 字节文件，
+      导入同理。修法（改走 `tauri-plugin-fs` 的 content URI 支持，或在 Kotlin 侧用
+      MediaStore / SAF）见 [docs/ANDROID.md](docs/ANDROID.md)
+- [ ] **指纹解锁**：`biometric.rs` 已如实报告不可用；接入需注册 `tauri-plugin-biometric` +
+      权限声明（Cargo 依赖已在 `[target.'cfg(target_os = "android")'.dependencies]`）
+- [ ] **自适应图标**：`pnpm tauri icon` 生成的 `ic_launcher_foreground` 是整块圆角方砖，
+      系统圆形遮罩下会露出方角；需要单独出一版「白盾牌 + 安全区留白」的前景，背景取方砖的蓝
+- [ ] **CI 与发布**：CI 只跑前端与桌面端 Rust 检查，Android 产物（APK / AAB）目前只能本地
+      构建；**真机未验证**（只在模拟器 API 37 / arm64 上跑过），各厂商 ROM 差异没有结论
 
 ## Windows
 

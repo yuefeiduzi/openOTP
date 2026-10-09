@@ -52,7 +52,7 @@ Tauri 2 (Rust) with a Vue 3 + TypeScript front end; data lives in local JSON fil
 | macOS | ✅ Full support (menu bar mode, Touch ID) | Touch ID / Face ID |
 | Windows | ✅ Main window and tray resident mode | None, PIN |
 | Linux | ⚠️ Generic desktop tray implementation, not verified on hardware | None, PIN |
-| Android | ❌ Project not initialised | Fingerprint planned |
+| Android | ⚠️ Main window works (verified on an emulator: PIN setup, adding accounts, codes, persistence); fingerprint and backups are not wired up, not verified on hardware → [docs/ANDROID.md](docs/ANDROID.md) | None, PIN |
 | iOS | ❌ Project not initialised | None, PIN |
 
 ## Install

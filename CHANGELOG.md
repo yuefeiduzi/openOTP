@@ -7,6 +7,10 @@
 
 ### Added
 
+- Android 工程初始化（`src-tauri/gen/android` 入库），并在模拟器（API 37 / arm64-v8a）实测：
+  设置主密码、添加账号（OTP URL / 手动输入）、验证码生成与刷新、数据持久化（`0600`）均正常；
+  构建方式（SDK / NDK / JDK / Gradle 版本对齐与镜像）、已知缺口与 WebView 调试方法见
+  [docs/ANDROID.md](docs/ANDROID.md)。指纹解锁与备份导入导出**尚未接入**，真机未验证
 - Homebrew 分发的脚手架：`packaging/homebrew/`（cask 模板 + tap 仓库首页）、
   `.github/workflows/homebrew.yml`（Release 被 Publish 后下载 DMG、自算 sha256、盖章同步进 tap
   `yuefeiduzi/homebrew-openotp`）、CI 里的 `ruby -c` 语法检查。**tap 仓库尚未创建**：建仓库并配好
@@ -19,6 +23,19 @@
 - 安装说明改为 [docs/INSTALL.md](docs/INSTALL.md)（原 `docs/UNSIGNED.md`）：Homebrew 列为推荐方式
   （cask 自动清 quarantine），DMG 的放行步骤与哈希校验保留，并补上数据目录与卸载说明；
   README 中英双版同步
+
+### Fixed
+
+- 添加账号的「手动输入」页整块渲染失败：`addAccount.accountNamePlaceholder` 里的 `@`
+  是 vue-i18n 的链接消息语法，运行期编译直接抛 `SyntaxError`（实测于 Android，桌面端走的是
+  同一条运行期编译路径，未实测）；改为 `{'@'}`，并给 `src/locales/i18n.test.ts` 加上
+  「逐条编译所有文案」的用例，同类问题以后在测试阶段就会失败
+- 交叉编译到 Android / Windows 时 `zip` 编不过（`You need to choose a zlib backend`）：
+  `deflate-flate2` 单独用不会给 flate2 选后端，宿主目标上只是因为 proc-macro 依赖把
+  flate2 的默认 feature 也拉了进来才恰好能编译；改为显式启用 `deflate-flate2-zlib-rs`
+- 移动端目标下的桌面专属代码没加 `cfg`：`tauri::tray` 导入、`HIDE_GRACE` 常量与
+  `PhysicalPosition` / `LogicalPosition` / `WebviewWindowBuilder` 导入会直接报错，
+  `biometric.rs` 里仅 macOS 使用的参数会告警
 
 ## [0.3.1] - 2026-09-30
 

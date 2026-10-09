@@ -3,7 +3,8 @@
 ## 技术栈
 
 - 前端：Vue 3 + TypeScript + Pinia + Vue Router + vue-i18n
-- 桌面端：Tauri 2.0（Rust），支持 macOS 与 Windows
+- 桌面端：Tauri 2.0（Rust），支持 macOS 与 Windows；Android 已初始化工程并在模拟器上跑通主流程
+  （指纹与备份未接入，见 [docs/ANDROID.md](ANDROID.md)）
 - 存储：本地 JSON 文件（非数据库）——`data.json`（账号）、`settings.json`（设置）、
   `password.dat`（密码哈希），位于系统 app data 目录
 - 密码：PBKDF2-HMAC-SHA256（100k 次迭代，格式 `pbkdf2_sha256:<iterations>:<salt>:<hash>`，
@@ -68,5 +69,5 @@ src-tauri/src/
 | macOS | ✅ 完整支持（菜单栏模式、Touch ID） | Touch ID / Face ID |
 | Windows | ✅ 主窗口与托盘常驻模式（同一套代码路径） | 无，使用 PIN |
 | Linux | ⚠️ 托盘为桌面通用实现，未实机验证 | 无，使用 PIN |
-| Android | ❌ 工程未初始化；指纹待接入 | 计划支持 |
+| Android | ⚠️ 主窗口可用：模拟器实测设置主密码 / 添加账号 / 验证码 / 持久化；指纹与备份未接入，真机未验证 → [docs/ANDROID.md](ANDROID.md) | 无，使用 PIN |
 | iOS | ❌ 工程未初始化 | 无，使用 PIN |
