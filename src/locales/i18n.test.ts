@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { createI18n } from 'vue-i18n'
 import zhCN from './zh-CN'
 import enUS from './en-US'
 
@@ -53,6 +54,22 @@ describe('translations', () => {
     // Keys are matched as literals, so keep t() calls static: a key built by
     // string concatenation would be reported here even though it is used.
     expect(unused).toEqual([])
+  })
+
+  it('should compile every message', () => {
+    // Message syntax is only parsed when a string is first used, so a malformed
+    // one breaks the view that renders it rather than the build. A bare `@`
+    // did exactly that: vue-i18n reads it as its linked-message syntax.
+    for (const [locale, messages] of [
+      ['zh-CN', zhCN],
+      ['en-US', enUS],
+    ] as const) {
+      const i18n = createI18n({ legacy: false, locale, messages: { [locale]: messages } })
+
+      for (const key of flatten(messages as LocaleTree)) {
+        expect(() => i18n.global.t(key, {}), `${locale}: ${key}`).not.toThrow()
+      }
+    }
   })
 
   it('should not leave hardcoded Chinese next to translated labels', () => {

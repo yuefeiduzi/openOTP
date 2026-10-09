@@ -118,7 +118,7 @@ export default {
     otpauthPlaceholder: 'otpauth://totp/...',
     parseError: '解析错误',
     accountName: '账号名称',
-    accountNamePlaceholder: '例如: user@example.com',
+    accountNamePlaceholder: "例如: user{'@'}example.com",
     issuer: '发行方',
     issuerPlaceholder: '例如: Google',
     secretKey: '密钥 (Base32)',

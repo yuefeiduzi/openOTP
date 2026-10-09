@@ -118,7 +118,7 @@ export default {
     otpauthPlaceholder: 'otpauth://totp/...',
     parseError: 'Parse error',
     accountName: 'Account Name',
-    accountNamePlaceholder: 'e.g.: user@example.com',
+    accountNamePlaceholder: "e.g.: user{'@'}example.com",
     issuer: 'Issuer',
     issuerPlaceholder: 'e.g.: Google',
     secretKey: 'Secret Key (Base32)',
