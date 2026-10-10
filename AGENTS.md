@@ -20,6 +20,15 @@
   语言、账号列表时两个方向都要想到（改动如何到达另一窗口）。验证方法见
   [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md) 的「解锁 / 弹窗回归」。
 
+## 验证与截图（省时优先）
+
+- **默认用测试验证，不用截图**：能被 `pnpm test` / `cargo test` 覆盖的行为（逻辑、组件、
+  命令契约）先写测试再跑。起 dev 服务 + 手动点界面 + 截图很慢，只用于测试覆盖不到的真实
+  UI（窗口 / 托盘 / 系统权限）。
+- **截图只截目标窗口，不截全屏**，并尽量压小文件（命令见
+  [docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md) 的「截图」小节）。
+- **一次只截一张**：看完这张再决定要不要下一张，不要批量截图塞进上下文。
+
 ## 按需查阅
 
 - 功能 / 技术栈 / 模块结构 / 数据与安全 / 平台支持 → [docs/STRUCTURE.md](docs/STRUCTURE.md)

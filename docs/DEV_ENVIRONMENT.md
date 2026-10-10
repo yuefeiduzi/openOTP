@@ -86,6 +86,39 @@ pnpm tauri dev --config '{"identifier":"com.openotp.devcheck"}'
   测试二进制与 App 补上 `/usr/lib/swift`；若看到 `dyld: Library not loaded` 就是这条 rpath
   丢了，`otool -l <二进制> | grep LC_RPATH` 可直接确认
 
+### 截图（做 UI 验证时）
+
+截图是**最后手段**：慢，且图片进上下文很贵。先看能不能写成单元 / 组件测试或脚本化键盘
+回归；必须看图时按下面三条做。
+
+1. **只截目标窗口，不截全屏**。先取窗口 id，再 `screencapture -o -x -l <id>`（`-o` 去
+   阴影、`-x` 静音）。按窗口 id 截能拿到完整内容，被其它窗口遮挡也不影响，比 `-R` 区域
+   截图可靠：
+
+   ```bash
+   # 取窗口 id（swift 从 stdin 读脚本，实测约 0.2s）
+   swift - <<'EOF' | grep -i openotp
+   import CoreGraphics
+   import Foundation
+   let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+   for w in list where (w[kCGWindowLayer as String] as? Int) == 0 {
+     let owner = w[kCGWindowOwnerName as String] as? String ?? "?"
+     let num = w[kCGWindowNumber as String] as? Int ?? 0
+     print("\(num)\t\(owner)")
+   }
+   EOF
+
+   screencapture -o -x -l <id> /tmp/win.png
+   ```
+
+2. **文件尽量小**。窗口级 2x PNG 通常几十到几百 KB，够小就不要再转；仍偏大时转 1x JPEG：
+   `sips -Z 1000 -s format jpeg -s formatOptions 60 /tmp/win.png --out /tmp/win.jpg`。
+   注意**不要**用 `sips -Z` 缩 PNG 当压缩手段（实测反而变大：437KB → 310KB）。
+   实测（2026-10-10，macOS 27.0.1，1840×872 窗口）：全屏 PNG 1.06MB、窗口 PNG 437KB、
+   窗口 JPEG 316KB、1x JPEG (q60) 91KB、(q40) 59KB
+
+3. **一次只截一张**，看过再决定要不要下一张；不要批量截图。
+
 ### 解锁 / 弹窗回归（不点托盘也能做）
 
 合成**键盘**事件没有被拦（被拦的只有合成点击），所以「锁屏 → 输入 PIN → 解锁」这类回归
@@ -104,5 +137,5 @@ pnpm tauri dev --config '{"identifier":"com.openotp.devcheck"}'
   `build_panel(..., "popover", ...)` + `focus_tray_panel`，即模仿托盘左键；验证完删掉，不要提交
 - **看窗口是否还在**：
   `osascript -e 'tell application "System Events" to tell process "OpenOTP" to get count of windows'`；
-  截图用 `screencapture -x`，弹窗在 (200,200)-(520,680) 点附近，可用
-  `sips -c 960 640 --cropOffset 400 400` 裁出来看
+  需要看图时按上面「截图」小节只截那个窗口（`-l <id>`），弹窗的窗口 id 也在同一份
+  `CGWindowList` 里，别截全屏、也别一次截多张

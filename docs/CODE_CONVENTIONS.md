@@ -32,6 +32,8 @@
 ## 测试
 
 - 前端：vitest + @vue/test-utils + happy-dom；后端：`#[cfg(test)]` 模块
+- **能写成测试的行为先写测试**（含组件测试与命令契约测试），不要把「起 dev + 手动点界面 +
+  截图」当默认验证手段；只有测试覆盖不到的真实 UI 才起 app 看
 - 测试关注**行为与契约**，不要断言自己刚写下的实现细节；涉及算法时使用公开测试向量
   （例如 TOTP 用 RFC 6238 的向量）
 - 组件测试中 `<Teleport>` 的内容（如 BottomSheet）在 `document.body` 里，需用 `DOMWrapper` 查询
