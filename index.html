@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/icon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover: 让 env(safe-area-inset-*) 生效（Android 的 edge-to-edge
+         与 iOS 刘海屏都会把内容画到系统栏下面，靠安全区变量把内容让开） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>openOTP</title>
   </head>
   <body>

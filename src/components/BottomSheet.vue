@@ -70,7 +70,8 @@ const { t } = useI18n()
   border-radius: 20px 20px 0 0;
   display: flex;
   flex-direction: column;
-  padding: 8px 0 env(safe-area-inset-bottom, 0) 0;
+  /* 手势条安全区，变量见 style.css（桌面端为 0）*/
+  padding: 8px 0 var(--safe-bottom) 0;
 }
 
 .sheet-header {
@@ -95,7 +96,7 @@ const { t } = useI18n()
   display: flex;
   gap: 12px;
   padding: 16px 24px;
-  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  padding-bottom: max(16px, var(--safe-bottom));
 }
 
 .sheet-btn {

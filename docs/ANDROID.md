@@ -12,10 +12,20 @@
 | 验证码生成与刷新 | ✅ 与独立实现（页面内 WebCrypto HMAC-SHA1）逐窗口比对一致 |
 | 数据持久化 | ✅ `data.json` / `settings.json` 落在应用私有目录，权限 `0600` |
 | 设置页 | ✅ 桌面专属项（托盘模式、生物识别开关）不显示 |
+| 系统栏安全区 | ✅ 页面不再被状态栏 / 手势条压住（实测上下各 24px） |
 | 指纹解锁 | ❌ 未接入（`biometric.rs` 如实报告不可用，见 [TODO](../TODO.md)） |
 | 备份导出 / 导入 / andOTP 导入 | ❌ 见下方「已知缺口」 |
 | 应用图标 | ✅ `pnpm tauri icon` 生成到 `gen/android/app/src/main/res/mipmap-*` |
 | Windows 侧同类问题 | 无关；Windows 仍是主窗口 + 托盘（桌面通用实现） |
+
+系统栏安全区（2026-10-10 修）：Android 15+ 对 targetSdk 35+ 强制 edge-to-edge
+（`MainActivity.kt` 里也显式调了 `enableEdgeToEdge()`），WebView 会把内容画到状态栏和手势条
+下面：修复前首页标题与齿轮、设置页返回按钮都贴着系统栏。`index.html` 加上 `viewport-fit=cover`
+后 `env(safe-area-inset-*)` 才会返回真实高度（实测窗口 411×914、dpr 2.625 的 API 37 模拟器上
+上下都是 24px）；`src/style.css` 把它暴露成 `--safe-top` / `--safe-bottom`，Home / Settings /
+Setup 的根节点与底部弹层用 `calc(原内边距 + var(--safe-*))` 让开，Unlock 顶部 48px 已覆盖
+状态栏、未改。桌面端这两个变量是 0（macOS WebKit 窗口态实测 0px），所以桌面布局不变——
+`src/styles.test.ts` 里按此断言各视图带上了安全区内边距。
 
 包名：`com.openotp.desktop`（debug 构建加 `.debug` 后缀，见 `tauri.conf.json` 的
 `bundle.android.debugApplicationIdSuffix`）。

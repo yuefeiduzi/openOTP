@@ -136,6 +136,9 @@ async function handleSkipSetup() {
 <style scoped>
 .setup {
   padding: 24px;
+  /* 移动端：让开状态栏与手势条（桌面端两个变量都是 0，尺寸不变）*/
+  padding-top: calc(24px + var(--safe-top));
+  padding-bottom: calc(24px + var(--safe-bottom));
   display: flex;
   flex-direction: column;
   min-height: 100vh;

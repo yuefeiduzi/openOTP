@@ -838,6 +838,9 @@ async function exportDebugLogs() {
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* 移动端：让开状态栏与手势条（桌面端两个变量都是 0，尺寸不变）*/
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
 }
 
 .header {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 // Vitest only hands over the real source with `css: true` (see vitest.config.ts).
 import themeSource from './theme.css?raw'
+import indexSource from '../index.html?raw'
 
 const components = import.meta.glob('./**/*.vue', {
   eager: true,
@@ -78,5 +79,38 @@ describe('setting row colours', () => {
     const rule = block.match(/\.setting-btn\s*\{([^}]*)\}/)?.[1] ?? ''
 
     expect(rule).toMatch(/color\s*:/)
+  })
+})
+
+describe('system bar safe area', () => {
+  it('should opt into viewport-fit=cover so that env() reports the insets', () => {
+    // 没有 viewport-fit=cover 时 `env(safe-area-inset-*)` 恒为 0，下面各视图的内边距
+    // 会全部失效（桌面端两种情况下都是 0，看不出区别）。
+    expect(indexSource).toContain('viewport-fit=cover')
+  })
+
+  it('should keep the window-filling views clear of the status and gesture bars', () => {
+    // Android 15+ 对 targetSdk 35+ 强制 edge-to-edge，WebView 会画到状态栏和手势条下面：
+    // 视图根节点得自己用 calc(原内边距 + var(--safe-*)) 让开。桌面端这两个变量都是 0，
+    // 尺寸不变，所以这个 bug 在桌面上完全看不出来 —— 全屏视图都得带上这两行。
+    const rootRule = (file: string, selector: string) => {
+      const block = styleBlocks(components[file]).join('\n')
+      const pattern = new RegExp(`${selector.replace(/\./g, '\\.')}\\s*\\{([^}]*)\\}`)
+      return block.match(pattern)?.[1] ?? ''
+    }
+
+    for (const [file, selector] of [
+      ['./views/Home.vue', '.home'],
+      ['./views/Settings.vue', '.settings'],
+      ['./views/Setup.vue', '.setup'],
+    ]) {
+      const rule = rootRule(file, selector)
+      expect(rule, `${file} 的 ${selector} 缺少安全区内边距`).toMatch(
+        /padding-top:[^;]*var\(--safe-top\)/,
+      )
+      expect(rule, `${file} 的 ${selector} 缺少安全区内边距`).toMatch(
+        /padding-bottom:[^;]*var\(--safe-bottom\)/,
+      )
+    }
   })
 })

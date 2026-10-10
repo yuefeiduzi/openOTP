@@ -4,6 +4,18 @@
   box-sizing: border-box;
 }
 
+/*
+ * 系统栏安全区。桌面端两个值都是 0，移动端才有值：
+ * - Android 15+ 对 targetSdk 35+ 强制 edge-to-edge（本项目的 MainActivity 也显式
+ *   `enableEdgeToEdge()`），WebView 会画到状态栏 / 手势条下面；
+ * - 有了 viewport-fit=cover，`env(safe-area-inset-*)` 才会返回真实高度。
+ * 视图用 calc(原内边距 + var(--safe-top)) 让开，而不是写死偏移。
+ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 html, body, #app {
   width: 100%;
   height: 100%;

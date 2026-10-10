@@ -26,6 +26,11 @@
 
 ### Fixed
 
+- Android 上首页标题与设置按钮、设置页返回按钮贴着状态栏：Android 15+ 对 targetSdk 35+ 强制
+  edge-to-edge，WebView 会画到状态栏与手势条下面，而 `index.html` 少了 `viewport-fit=cover` 时
+  `env(safe-area-inset-*)` 恒为 0。现在 `src/style.css` 把它暴露成 `--safe-top` / `--safe-bottom`，
+  Home / Settings / Setup 的根节点与底部弹层据此让开（Unlock 顶部 48px 已覆盖状态栏）；桌面端
+  变量为 0，尺寸不变（模拟器实测安全区上下各 24px）
 - 添加账号的「手动输入」页整块渲染失败：`addAccount.accountNamePlaceholder` 里的 `@`
   是 vue-i18n 的链接消息语法，运行期编译直接抛 `SyntaxError`（实测于 Android，桌面端走的是
   同一条运行期编译路径，未实测）；改为 `{'@'}`，并给 `src/locales/i18n.test.ts` 加上

@@ -130,6 +130,9 @@ function goToSettings() {
   flex-direction: column;
   height: 100%;
   padding: 16px;
+  /* 移动端：让开状态栏与手势条（桌面端两个变量都是 0，尺寸不变）*/
+  padding-top: calc(16px + var(--safe-top));
+  padding-bottom: calc(16px + var(--safe-bottom));
   background: var(--bg-primary);
 }
 
@@ -216,7 +219,7 @@ function goToSettings() {
 
 .add-btn {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(24px + var(--safe-bottom));
   right: 24px;
   width: 48px;
   height: 48px;
